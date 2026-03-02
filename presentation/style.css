@@ -1,0 +1,162 @@
+:root {
+    --bg: #0a0a0c;
+    --glass: rgba(255, 255, 255, 0.03);
+    --border: rgba(255, 255, 255, 0.1);
+    --primary: #9d50bb;
+    --secondary: #6e48aa;
+    --accent: #00d2ff;
+    --text: #ffffff;
+    --text-dim: #a0a0a0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+}
+
+h1,
+h2,
+h3 {
+    font-family: 'Outfit', sans-serif;
+}
+
+.presentation-container {
+    width: 100%;
+}
+
+.slide {
+    min-height: 100vh;
+    padding: 80px 10%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+    page-break-after: always;
+}
+
+.background-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+    filter: blur(120px);
+    opacity: 0.2;
+    z-index: -1;
+}
+
+.badge {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    padding: 6px 16px;
+    border-radius: 50px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+    display: inline-block;
+}
+
+h1 {
+    font-size: 100px;
+    line-height: 0.9;
+    font-weight: 800;
+    margin-bottom: 24px;
+}
+
+h2 {
+    font-size: 56px;
+    margin-bottom: 48px;
+    font-weight: 800;
+}
+
+.gradient-text {
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+    font-size: 24px;
+    color: var(--text-dim);
+    max-width: 600px;
+}
+
+.divider {
+    width: 60px;
+    height: 4px;
+    background: var(--accent);
+    margin: 40px 0;
+}
+
+.card {
+    padding: 32px;
+    border-radius: 24px;
+    border: 1px solid var(--border);
+}
+
+.glass {
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+}
+
+.problem-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+}
+
+.pillars-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+}
+
+.pillar .icon {
+    font-size: 40px;
+    margin-bottom: 24px;
+}
+
+.code-slide pre {
+    padding: 40px;
+    border-radius: 16px;
+    font-size: 18px;
+    line-height: 1.6;
+    overflow-x: auto;
+}
+
+.conclusion {
+    text-align: center;
+    align-items: center;
+}
+
+.conclusion p {
+    font-size: 28px;
+    max-width: 800px;
+    color: var(--text-dim);
+}
+
+.footer {
+    position: absolute;
+    bottom: 40px;
+    color: var(--text-dim);
+    font-size: 14px;
+}
+
+@media print {
+    .slide {
+        border: none;
+        height: 100vh;
+    }
+}

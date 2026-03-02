@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omega Architecture - Whitepaper</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@300;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="presentation-container">
+        <!-- Portada -->
+        <section class="slide cover">
+            <div class="background-glow"></div>
+            <div class="content">
+                <span class="badge">Technical Whitepaper 2026</span>
+                <h1>Omega<br><span class="gradient-text">Architecture</span></h1>
+                <p class="subtitle">The Evolution of Agent-Based Systems for Flutter</p>
+                <div class="divider"></div>
+                <div class="author-info">
+                    <p>Creado por: <strong>Yeferson Segura</strong></p>
+                    <p>Framework: <strong>Omega v1.0</strong></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- El Problema -->
+        <section class="slide">
+            <h2>El Problema del <span class="gradient-text">Estado Tradicional</span></h2>
+            <div class="problem-grid">
+                <div class="card glass">
+                    <h3>BLoC</h3>
+                    <p>Rigidez estructural. Acoplamiento fuerte entre Streams y Widgets. Complejidad exponencial en apps grandes.</p>
+                </div>
+                <div class="card glass">
+                    <h3>Riverpod</h3>
+                    <p>Dificultad de trazabilidad. Fragmentación de Providers. Curva de aprendizaje técnica sobre la semántica del negocio.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Los Pilares -->
+        <section class="slide">
+            <h2>La Propuesta <span class="gradient-text">Omega</span></h2>
+            <div class="pillars-container">
+                <div class="pillar">
+                    <div class="icon">🤖</div>
+                    <h3>Agentes Autónomos</h3>
+                    <p>Entidades con cerebro propio (Behavior) que reaccionan al sistema, no solo a la UI.</p>
+                </div>
+                <div class="pillar">
+                    <div class="icon">💬</div>
+                    <h3>OmegaChannel</h3>
+                    <p>Un bus de eventos global basado en semántica, no en jerarquía de widgets.</p>
+                </div>
+                <div class="pillar">
+                    <div class="icon">⚡</div>
+                    <h3>Intenciones y Expresiones</h3>
+                    <p>Desacoplamiento total: La UI solo expresa "querer algo" y reacciona a "cambios de humor".</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Arquitectura Técnica -->
+        <section class="slide code-slide">
+            <h2>Arquitectura <span class="gradient-text">Desacoplada</span></h2>
+            <pre class="glass"><code>
+// El Agente: Cerebro de la lógica
+class AuthAgent extends OmegaAgent {
+  void _login(credentials) {
+    emit("auth.login.success", payload: user);
+  }
+}
+
+// El Flow: Orquestador de navegación
+class AuthFlow extends OmegaFlow {
+  void onEvent(ctx) {
+    if (ctx.event?.name == "auth.login.success") {
+       emitExpression("success");
+       navigate("home");
+    }
+  }
+}
+            </code></pre>
+        </section>
+
+        <!-- Conclusión -->
+        <section class="slide conclusion">
+            <h2>Hacia un Futuro <span class="gradient-text">Sostenible</span></h2>
+            <p>Omega no es solo una librería; es una forma de pensar el software. Escalable, testeable y lista para el mundo real.</p>
+            <div class="footer">
+                <p>© 2026 Omega Architecture Project</p>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
