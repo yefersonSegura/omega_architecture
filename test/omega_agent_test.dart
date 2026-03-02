@@ -7,7 +7,7 @@ class FakeBehavior extends OmegaAgentBehaviorEngine {
   @override
   OmegaAgentReaction? evaluate(OmegaAgentBehaviorContext ctx) {
     if (ctx.event?.name == "hello") {
-      return OmegaAgentReaction("sayHello", "world");
+      return OmegaAgentReaction("sayHello", payload: "world");
     }
     return null;
   }

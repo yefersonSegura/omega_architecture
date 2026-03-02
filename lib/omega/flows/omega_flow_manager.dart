@@ -8,10 +8,13 @@ import '../core/channel/omega_channel.dart';
 import 'omega_flow.dart';
 import 'omega_flow_state.dart';
 
+/// [OmegaFlowManager] es el orquestador de todos los flujos en la aplicación.
+/// Permite registrar, activar y gestionar el ciclo de vida de mútiples flujos.
 class OmegaFlowManager {
+  /// El canal de comunicación global para coordinar eventos.
   final OmegaChannel channel;
 
-  // Registro dinámico de flows del sistema
+  // Registro dinámico de flows del sistema.
   final Map<String, OmegaFlow> _flows = {};
 
   OmegaFlowManager({required this.channel});
@@ -19,6 +22,7 @@ class OmegaFlowManager {
   // -----------------------------------------------------------
   // 1. Registrar un Flow en el sistema
   // -----------------------------------------------------------
+  /// Registra un nuevo flujo en el sistema para que pueda ser gestionado.
   void registerFlow(OmegaFlow flow) {
     _flows[flow.id] = flow;
   }
@@ -31,6 +35,7 @@ class OmegaFlowManager {
   // -----------------------------------------------------------
   // 3. Recibir intenciones desde la UI o sistema
   // -----------------------------------------------------------
+  /// Procesa una intención y la distribuye a todos los flujos que estén en ejecución.
   void handleIntent(OmegaIntent intent) {
     for (final flow in _flows.values) {
       if (flow.state == OmegaFlowState.running) {
@@ -42,6 +47,7 @@ class OmegaFlowManager {
   // -----------------------------------------------------------
   // 4. Activar un flow específico
   // -----------------------------------------------------------
+  /// Inicia o reanuda un flujo específico por su identificador.
   void activate(String id) {
     final flow = _flows[id];
     if (flow == null) return;
@@ -68,14 +74,13 @@ class OmegaFlowManager {
   // -----------------------------------------------------------
   // 7. Detener un flow definitivamente
   // -----------------------------------------------------------
+  /// Finaliza un flujo definitivamente.
   void end(String id) {
     final flow = _flows[id];
     flow?.end();
   }
 
-  // -----------------------------------------------------------
-  // 8. Detener todos los flows (ej: logout)
-  // -----------------------------------------------------------
+  /// Finaliza todos los flujos registrados (útil para cerrar sesión).
   void endAll() {
     for (final flow in _flows.values) {
       flow.end();
@@ -95,11 +100,16 @@ class OmegaFlowManager {
     }
   }
 
+  /// Vincula un [OmegaNavigator] con el canal para procesar intenciones de navegación automáticamente.
   void wireNavigator(OmegaNavigator nav) {
     channel.events.listen((event) {
       if (event.name == "navigation.intent") {
-        final intent = event.payload as OmegaIntent;
-        nav.handleIntent(intent);
+        if (event.payload is OmegaIntent) {
+          nav.handleIntent(event.payload as OmegaIntent);
+        } else {
+          // Log or handle error: Payload is not an OmegaIntent
+          print("Warning: navigation.intent payload is not an OmegaIntent");
+        }
       }
     });
   }

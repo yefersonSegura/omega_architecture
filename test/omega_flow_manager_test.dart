@@ -9,7 +9,7 @@ class DummyFlow extends OmegaFlow {
 
   @override
   void onIntent(OmegaFlowContext intent) {
-    lastIntentAction = intent.intent?.action;
+    lastIntentAction = intent.intent?.name;
   }
 
   @override
@@ -25,7 +25,7 @@ void main() {
     manager.registerFlow(flow);
     manager.activate("dummy");
 
-    manager.handleIntent(OmegaIntent(id: "i1", action: "test.action"));
+    manager.handleIntent(OmegaIntent(id: "i1", name: "test.action"));
 
     expect(flow.lastIntentAction, "test.action");
   });

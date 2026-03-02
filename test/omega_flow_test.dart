@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:omega_architecture/omega/flows/omega_flow_context.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 
 class TestFlow extends OmegaFlow {
@@ -7,7 +6,11 @@ class TestFlow extends OmegaFlow {
 
   @override
   void onIntent(OmegaFlowContext intent) {
-    emitExpression("received_intent", payload: intent.intent?.action);
+    if (intent.intent?.name == "next") {
+      emitExpression("received_intent", payload: "next_intent_processed");
+    } else {
+      emitExpression("received_intent", payload: intent.intent?.name);
+    }
   }
 
   @override
@@ -24,13 +27,26 @@ void main() {
 
     flow.expressions.listen((exp) => expression = exp);
 
+    // Test case for "next" intent
     flow.onIntent(
       OmegaFlowContext(
-        intent: OmegaIntent(id: "i1", action: "do.something"),
+        intent: const OmegaIntent(id: "i", name: "next"),
+        memory: const {},
+      ),
+    );
+    await Future.delayed(const Duration(milliseconds: 10));
+    expect(expression.type, "received_intent");
+    expect(expression.payload, "next_intent_processed");
+
+    // Original test case for "do.something" action
+    flow.onIntent(
+      OmegaFlowContext(
+        intent: const OmegaIntent(id: "i1", name: "do.something"),
+        memory: const {},
       ),
     );
 
-    await Future.delayed(Duration(milliseconds: 10));
+    await Future.delayed(const Duration(milliseconds: 10));
 
     expect(expression.type, "received_intent");
     expect(expression.payload, "do.something");

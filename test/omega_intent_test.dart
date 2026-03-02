@@ -2,14 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 
 void main() {
-  test("OmegaIntent stores action and data", () {
+  test("OmegaIntent stores name and payload", () {
     final intent = OmegaIntent(
       id: "123",
-      action: "auth.login",
-      data: {"email": "a@b.com"},
+      name: "auth.login",
+      payload: {"email": "a@b.com"},
     );
 
-    expect(intent.action, "auth.login");
-    expect(intent.data["email"], "a@b.com");
+    expect(intent.name, "auth.login");
+    expect(intent.payload["email"], "a@b.com");
   });
 }

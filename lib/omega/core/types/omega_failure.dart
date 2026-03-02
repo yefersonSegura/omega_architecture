@@ -1,14 +1,24 @@
 // lib/omega/core/types/omega_failure.dart
 
-class OmegaFailure {
-  final String
-  code; // Código interno del error (ej: "auth.invalid_credentials")
-  final String message; // Mensaje legible
-  final dynamic details; // Datos extra (opcional)
+import 'omega_object.dart';
 
-  const OmegaFailure({required this.code, required this.message, this.details});
+/// [OmegaFailure] representa un error o fallo dentro del sistema.
+/// Extiende de [OmegaObject] para mantener consistencia en la jerarquía.
+class OmegaFailure extends OmegaObject {
+  /// Un mensaje legible que describe el fallo.
+  final String message;
+
+  /// Detalles adicionales sobre el error, opcional.
+  final dynamic details;
+
+  const OmegaFailure({
+    required super.id,
+    required this.message,
+    this.details,
+    super.meta = const {},
+  });
 
   @override
   String toString() =>
-      "OmegaFailure(code: $code, message: $message, details: $details)";
+      "OmegaFailure(id: $id, message: $message, details: $details)";
 }

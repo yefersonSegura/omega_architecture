@@ -2,9 +2,13 @@
 
 import 'package:flutter/widgets.dart';
 
+/// [OmegaRoute] define una ruta de navegación en la aplicación.
 class OmegaRoute {
-  final String id; // Ej: "login", "home", "products"
-  final WidgetBuilder builder; // La pantalla a mostrar
+  /// Identificador único de la ruta (ej: "login", "home").
+  final String id;
+
+  /// Función constructora que devuelve el Widget de la pantalla.
+  final WidgetBuilder builder;
 
   const OmegaRoute({required this.id, required this.builder});
 }
