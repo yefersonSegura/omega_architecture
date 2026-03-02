@@ -1,4 +1,4 @@
-# Omega Architecture
+# <img src="assets/logo.png" width="40" height="40" /> Omega Architecture
 
 A reactive, agent-based architecture framework for Flutter applications.
 
