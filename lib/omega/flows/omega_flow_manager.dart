@@ -102,14 +102,28 @@ class OmegaFlowManager {
 
   /// Vincula un [OmegaNavigator] con el canal para procesar intenciones de navegación automáticamente.
   void wireNavigator(OmegaNavigator nav) {
+    print("OmegaFlowManager: Vinculando navegador...");
     channel.events.listen((event) {
+      print("OmegaFlowManager: Evento recibido -> ${event.name}");
+
+      // 1. Manejar Intención formal (vía navigation.intent)
       if (event.name == "navigation.intent") {
         if (event.payload is OmegaIntent) {
           nav.handleIntent(event.payload as OmegaIntent);
         } else {
-          // Log or handle error: Payload is not an OmegaIntent
-          print("Warning: navigation.intent payload is not an OmegaIntent");
+          print(
+            "OmegaFlowManager ERROR: El payload de navigation.intent no es un OmegaIntent",
+          );
         }
+      }
+      // 2. Manejar Evento directo (Atajo: permite usar name: 'navigate.login')
+      else if (event.name.startsWith("navigate.")) {
+        print(
+          "OmegaFlowManager: Detectado atajo de navegación para ${event.name}",
+        );
+        nav.handleIntent(
+          OmegaIntent(id: event.id, name: event.name, payload: event.payload),
+        );
       }
     });
   }
