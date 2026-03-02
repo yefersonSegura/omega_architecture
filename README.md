@@ -31,7 +31,9 @@ Add the dependency to your `pubspec.yaml`:
 ```yaml
 dependencies:
   omega_architecture:
-    path: ./
+    git:
+      url: https://github.com/yefersonSegura/omega_architecture.git
+      ref: main # Opcional: puedes especificar una rama, tag o commit
 ```
 
 ## Usage
