@@ -1,70 +1,133 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Omega Architecture - Whitepaper</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@300;600;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@300;600;800&display=swap"
+        rel="stylesheet">
 </head>
+
 <body>
     <div class="presentation-container">
         <!-- Portada -->
-        <section class="slide cover">
+        <section id="vision" class="slide cover">
             <div class="background-glow"></div>
-            <div class="content">
+            <div class="content animate">
                 <span class="badge">Technical Whitepaper 2026</span>
-                <h1>Omega<br><span class="gradient-text">Architecture</span></h1>
-                <p class="subtitle">The Evolution of Agent-Based Systems for Flutter</p>
+                <h1 class="big-title">Omega<br><span class="gradient-text">Architecture</span></h1>
+                <p class="highlight-text">
+                    El sistema nervioso autónomo para aplicaciones de alta complejidad en Flutter.
+                </p>
                 <div class="divider"></div>
                 <div class="author-info">
                     <p>Creado por: <strong>Yeferson Segura</strong></p>
-                    <p>Framework: <strong>Omega v1.0</strong></p>
+                    <p>Liderando una nueva era en Flutter</p>
+                    <p>Framework Version: <strong>1.0.0-Stable</strong></p>
+                    <p style="margin-top: 20px; display: flex; gap: 20px; flex-wrap: wrap;">
+                        <a href="https://github.com/yefersonSegura/omega_architecture" target="_blank"
+                            style="color: var(--accent); text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <svg height="20" width="20" viewBox="0 0 16 16" fill="currentColor">
+                                <path
+                                    d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z">
+                                </path>
+                            </svg>
+                            GitHub
+                        </a>
+                        <a href="#"
+                            style="color: #E1306C; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <svg height="20" width="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.332 3.608 1.308.975.975 1.245 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.063 1.366-.333 2.633-1.308 3.608-.975.975-2.242 1.245-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.063-2.633-.333-3.608-1.308-.975-.975-1.246-2.242-1.308-3.608-.058-1.266-.07-1.646-.07-4.85s.012-3.584.07-4.85c.062-1.366.332-2.633 1.308-3.608.975-.975 2.242-1.246 3.608-1.308 1.266-.058 1.646-.07 4.85-.07zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948s.014 3.667.072 4.947c.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072s3.667-.014 4.947-.072c4.358-.2 6.78-2.618 6.98-6.98.058-1.281.072-1.689.072-4.948s-.014-3.667-.072-4.947c-.2-4.358-2.618-6.78-6.98-6.98-1.281-.059-1.689-.073-4.948-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.162 6.162 6.162 6.162-2.759 6.162-6.162-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.791-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.209-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z">
+                                </path>
+                            </svg>
+                            Instagram
+                        </a>
+                    </p>
                 </div>
             </div>
         </section>
 
         <!-- El Problema -->
-        <section class="slide">
-            <h2>El Problema del <span class="gradient-text">Estado Tradicional</span></h2>
-            <div class="problem-grid">
+        <section id="problem" class="slide">
+            <span class="section-tag">Contexto Técnico</span>
+            <h2 class="animate">Superando los <span class="gradient-text">Límites Tradicionales</span></h2>
+            <div class="problem-grid animate">
                 <div class="card glass">
-                    <h3>BLoC</h3>
-                    <p>Rigidez estructural. Acoplamiento fuerte entre Streams y Widgets. Complejidad exponencial en apps grandes.</p>
+                    <h3>El Techo de Cristal de BLoC</h3>
+                    <p>Rigidez estructural. Acoplamiento fuerte entre Streams y Widgets. Complejidad exponencial en apps
+                        grandes.</p>
                 </div>
                 <div class="card glass">
-                    <h3>Riverpod</h3>
-                    <p>Dificultad de trazabilidad. Fragmentación de Providers. Curva de aprendizaje técnica sobre la semántica del negocio.</p>
+                    <h3>El Laberinto de Riverpod</h3>
+                    <p>Dificultad de trazabilidad. Fragmentación de Providers. Curva de aprendizaje técnica sobre la
+                        semántica del negocio.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filosofía -->
+        <section id="philosophy" class="slide">
+            <span class="section-tag">Core Philosophy</span>
+            <h2 class="animate">El Cambio de <span class="gradient-text">Paradigma</span></h2>
+            <div class="highlight-box animate">
+                <p style="font-size: 24px; line-height: 1.4;">
+                    En Omega, la lógica no "vive" en la UI. La lógica reside en <strong>Agentes Autónomos</strong>
+                    que operan de forma independiente, comunicándose a través de una <strong>Capa Semántica</strong>.
+                </p>
+            </div>
+            <div class="pillars-container animate" style="margin-top: 40px;">
+                <div class="pillar">
+                    <h3>UI as a Mirror</h3>
+                    <p>La interfaz es un espejo "tonto" que refleja las expresiones del proceso de negocio.</p>
+                </div>
+                <div class="pillar">
+                    <h3>Actor-Based</h3>
+                    <p>Inspirado en el modelo de actores de Elixir/Erlang para un aislamiento total de
+                        responsabilidades.</p>
+                </div>
+                <div class="pillar">
+                    <h3>Scalable-First</h3>
+                    <p>Diseñado para equipos grandes donde la modularidad es el único camino al éxito.</p>
                 </div>
             </div>
         </section>
 
         <!-- Los Pilares -->
-        <section class="slide">
-            <h2>La Propuesta <span class="gradient-text">Omega</span></h2>
-            <div class="pillars-container">
+        <section id="pillars" class="slide">
+            <span class="section-tag">Functional Pillars</span>
+            <h2>Arquitectura <span class="gradient-text">Evolutiva</span></h2>
+            <div class="pillars-container animate">
                 <div class="pillar">
-                    <div class="icon">🤖</div>
-                    <h3>Agentes Autónomos</h3>
-                    <p>Entidades con cerebro propio (Behavior) que reaccionan al sistema, no solo a la UI.</p>
+                    <div class="icon">🧠</div>
+                    <h3>Inteligencia Distribuida</h3>
+                    <p>Agentes autónomos reducen la carga del hilo principal y desacoplan la lógica del ciclo de vida
+                        del widget.</p>
                 </div>
                 <div class="pillar">
-                    <div class="icon">💬</div>
-                    <h3>OmegaChannel</h3>
-                    <p>Un bus de eventos global basado en semántica, no en jerarquía de widgets.</p>
+                    <div class="icon">📡</div>
+                    <h3>Bus Global Reactivo</h3>
+                    <p>Canales de comunicación asíncronos permiten una observabilidad del 100% de la actividad del
+                        sistema.</p>
                 </div>
                 <div class="pillar">
-                    <div class="icon">⚡</div>
-                    <h3>Intenciones y Expresiones</h3>
-                    <p>Desacoplamiento total: La UI solo expresa "querer algo" y reacciona a "cambios de humor".</p>
+                    <div class="icon">🎭</div>
+                    <h3>Capa Semántica</h3>
+                    <p>Intenciones y Expresiones eliminan el acoplamiento directo entre la intención del usuario y la
+                        respuesta del sistema.</p>
                 </div>
             </div>
         </section>
 
         <!-- Arquitectura Técnica -->
-        <section class="slide code-slide">
-            <h2>Arquitectura <span class="gradient-text">Desacoplada</span></h2>
-            <pre class="glass"><code>
+        <section id="architecture" class="slide code-slide">
+            <span class="section-tag">Technical Execution</span>
+            <h2 class="animate">Arquitectura <span class="gradient-text">Desacoplada</span></h2>
+            <div class="grid-2 animate">
+                <pre class="glass"><code>
 // El Agente: Cerebro de la lógica
 class AuthAgent extends OmegaAgent {
   void _login(credentials) {
@@ -81,17 +144,77 @@ class AuthFlow extends OmegaFlow {
     }
   }
 }
-            </code></pre>
+                </code></pre>
+                <div class="card glass">
+                    <h3>Desacoplamiento Atómico</h3>
+                    <p>El código de negocio no menciona widgets, ni contextos, ni rutas. Es lógica pura, 100% portable y
+                        testeable en segundos sin necesidad de emuladores.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Comparativa -->
+        <section id="comparison" class="slide">
+            <span class="section-tag">Market Analysis</span>
+            <h2 class="animate">Omega vs <span class="gradient-text">El Mercado</span></h2>
+            <table class="comparison-table animate">
+                <thead>
+                    <tr>
+                        <th>Característica</th>
+                        <th>Omega Architecture</th>
+                        <th>BLoC / Riverpod</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Autonomía de Lógica</td>
+                        <td><span class="check">✔</span> Agentes Independientes</td>
+                        <td><span class="cross">✘</span> Dependientes de UI/Providers</td>
+                    </tr>
+                    <tr>
+                        <td>Trazabilidad Semántica</td>
+                        <td><span class="check">✔</span> Nativa (Event Bus)</td>
+                        <td><span class="cross">✘</span> Manual (Debug Print)</td>
+                    </tr>
+                    <tr>
+                        <td>Navegación Desacoplada</td>
+                        <td><span class="check">✔</span> Sí (via Flows)</td>
+                        <td><span class="cross">✘</span> No (via BuildContext)</td>
+                    </tr>
+                    <tr>
+                        <td>Escalabilidad en Equipos</td>
+                        <td><span class="check">✔</span> Modular (Micro-Agents)</td>
+                        <td><span class="cross">✘</span> Propenso a "Spaguetti"</td>
+                    </tr>
+                </tbody>
+            </table>
         </section>
 
         <!-- Conclusión -->
-        <section class="slide conclusion">
-            <h2>Hacia un Futuro <span class="gradient-text">Sostenible</span></h2>
-            <p>Omega no es solo una librería; es una forma de pensar el software. Escalable, testeable y lista para el mundo real.</p>
+        <section id="next" class="slide conclusion">
+            <span class="section-tag">Final Word</span>
+            <h1 class="animate">El Futuro es <span class="gradient-text">Reactivo</span></h1>
+            <p class="animate">Omega no es solo una librería; es una forma de pensar el software. Escalable, testeable y
+                lista para el mundo real.</p>
             <div class="footer">
-                <p>© 2026 Omega Architecture Project</p>
+                <p>© 2026 Omega Architecture Project • Leading Flutter Evolution</p>
             </div>
         </section>
     </div>
+
+    <script>
+        // Intersection Observer for Animations
+        const observerOptions = { threshold: 0.1 };
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.animate').forEach(el => observer.observe(el));
+    </script>
 </body>
+
 </html>

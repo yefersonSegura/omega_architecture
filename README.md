@@ -118,7 +118,6 @@ Check the implementation:
 - [Main Setup](lib/examples/omega_main_setup_example.dart) - Framework initialization.
 - [Auth Flow](lib/examples/auth/auth_flow.dart) - Business logic orchestration.
 - [Login Page](lib/examples/auth/ui/omega_login_page.dart) - Reactive UI.
-- [Home Page](lib/examples/home/ui/omega_home_page.dart) - Landing page after login.
 
 ## Project Structure
 
