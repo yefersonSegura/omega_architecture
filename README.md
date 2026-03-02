@@ -105,9 +105,25 @@ OmegaBuilder(
 )
 ```
 
+### Full Example: Authentication Flow
+
+A complete, working example of an authentication system is provided in the `lib/examples` directory. This example demonstrates the interaction between all layers:
+
+1.  **UI (`omega_login_page.dart`)**: The reactive login screen that emits intents.
+2.  **Flow (`auth_flow.dart`)**: Orchestrates the login process, handles navigation, and emits expressions to the UI.
+3.  **Agent (`auth_agent.dart`)**: Autonomous entity that performs the actual login logic (simulated) and emits success/error events.
+4.  **Behavior (`auth_behavior.dart`)**: Defines the rules and reactions for the Auth Agent.
+
+Check the implementation:
+- [Main Setup](lib/examples/omega_main_setup_example.dart) - Framework initialization.
+- [Auth Flow](lib/examples/auth/auth_flow.dart) - Business logic orchestration.
+- [Login Page](lib/examples/auth/ui/omega_login_page.dart) - Reactive UI.
+- [Home Page](lib/examples/home/ui/omega_home_page.dart) - Landing page after login.
+
 ## Project Structure
 
 - `lib/omega/core`: Core primitives (Channels, Events, Intents).
 - `lib/omega/agents`: Agent definitions and Behavior Engine.
 - `lib/omega/flows`: Flow management components.
 - `lib/omega/ui`: Navigation and UI-related architecture.
+- `lib/examples`: Complete usage examples and feature implementations.
