@@ -28,17 +28,8 @@
                     <p>Liderando una nueva era en Flutter</p>
                     <p>Framework Version: <strong>1.0.0-Stable</strong></p>
                     <p class="doc-links" style="margin-top: 12px; font-size: 14px; color: var(--text-dim);">
-                            <a href="#importance">Importancia</a> ·
-                            <a href="#why-worth-it">Por qué usarlo</a> ·
-                            <a href="#about">Sobre el software</a> ·
-                            <a href="#concepts">Conceptos</a> ·
-                            <a href="#usecases">Casos de uso</a> ·
-                            <a href="#install">Instalación</a> ·
-                            <a href="#cli">CLI</a> ·
-                            <a href="#usage-agent">Uso</a> ·
-                            <a href="#lifecycle">Ciclo de vida</a> ·
-                            <a href="#structure">Estructura</a>
-                        </p>
+                        <a href="#about">Documentación</a>
+                    </p>
                         <p style="margin-top: 20px; display: flex; gap: 20px; flex-wrap: wrap;">
                         <a href="https://github.com/yefersonSegura/omega_architecture" target="_blank"
                             style="color: var(--accent); text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 8px;">
@@ -162,6 +153,21 @@ class AuthFlow extends OmegaFlow {
                     <p>El código de negocio no menciona widgets, ni contextos, ni rutas. Es lógica pura, 100% portable y
                         testeable en segundos sin necesidad de emuladores.</p>
                 </div>
+            </div>
+        </section>
+
+        <!-- Diagrama de arquitectura -->
+        <section id="architecture-diagram" class="slide">
+            <span class="section-tag">Arquitectura</span>
+            <h2 class="animate">Visión general de <span class="gradient-text">Omega</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 24px;">
+                Diagrama de alto nivel que muestra cómo interactúan la UI, los agentes, los flows, el canal de eventos,
+                el FlowManager, el navegador y el CLI.
+            </p>
+            <div class="card glass animate" style="display: flex; justify-content: center; align-items: center; padding: 32px;">
+                <img src="diagram.png"
+                     alt="Diagrama de arquitectura de Omega Architecture: UI, OmegaScope, OmegaBuilder, OmegaChannel, OmegaAgent, Behavior Engine, OmegaFlow, OmegaFlowManager, OmegaNavigator y Omega CLI."
+                     style="max-width: 100%; border-radius: 16px; border: 1px solid var(--border);" />
             </div>
         </section>
 
@@ -450,6 +456,77 @@ class MyAgent extends OmegaAgent {
             </div>
         </section>
 
+        <!-- Integración en la app host -->
+        <section id="usage-runtime" class="slide code-slide">
+            <span class="section-tag">Implementación</span>
+            <h2 class="animate">Integrar Omega en tu <span class="gradient-text">app host</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 24px;">La app host crea el runtime, envuelve la UI con <code>OmegaScope</code> y define la navegación inicial.</p>
+            <div class="grid-2 animate">
+                <pre class="glass"><code>// lib/main.dart de tu app
+void main() {
+  final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
+  runApp(
+    OmegaScope(
+      channel: runtime.channel,
+      flowManager: runtime.flowManager,
+      child: MyApp(navigator: runtime.navigator),
+    ),
+  );
+}
+
+class MyApp extends StatelessWidget {
+  final OmegaNavigator navigator;
+
+  const MyApp({super.key, required this.navigator});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      navigatorKey: navigator.navigatorKey,
+      home: const _RootHandler(),
+    );
+  }
+}</code></pre>
+                <pre class="glass"><code>// lib/_root_handler.dart
+class _RootHandler extends StatefulWidget {
+  const _RootHandler();
+
+  @override
+  State&lt;_RootHandler&gt; createState() =&gt; _RootHandlerState();
+}
+
+class _RootHandlerState extends State&lt;_RootHandler&gt; {
+  @override
+  void initState() {
+    super.initState();
+    // Ruta de inicio decidida por la app host
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final scope = OmegaScope.of(context);
+      final intent =
+          OmegaIntent(id: "goLogin", name: "navigate.login");
+
+      scope.channel.emit(
+        OmegaEvent(
+          id: "nav:${DateTime.now().millisecondsSinceEpoch}",
+          name: "navigation.intent",
+          payload: intent,
+        ),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(body: Center(child: Text("Omega Running")));
+  }
+}</code></pre>
+            </div>
+            <p class="subtitle animate" style="margin-top: 24px;">
+                El archivo <code>createOmegaConfig</code> se genera en tu app con <code>omega init</code> y <code>omega g ecosystem</code>.
+                Ahí registras los agentes, flujos y rutas que el runtime usará.
+            </p>
+        </section>
+
         <!-- Flutter: Scope y Builder -->
         <section id="usage-flutter" class="slide">
             <span class="section-tag">Documentación</span>
@@ -475,15 +552,54 @@ class MyAgent extends OmegaAgent {
             </div>
         </section>
 
-        <!-- Flows: activar uno o varios -->
+        <!-- Flows: activar, pausar, dormir, finalizar -->
         <section id="usage-flows" class="slide">
             <span class="section-tag">Documentación</span>
-            <h2 class="animate">Activar <span class="gradient-text">flujos</span></h2>
-            <div class="highlight-box animate">
-                <p><strong>Varios flujos a la vez:</strong> usa <code>flowManager.activate("flowId")</code> para cada uno. Todos permanecen en <code>running</code> y reciben intenciones con <code>handleIntent</code>.</p>
+            <h2 class="animate">Ciclo de vida de un <span class="gradient-text">flow</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 24px;">
+                Un <code>OmegaFlow</code> solo procesa eventos e intenciones cuando está en estado <code>running</code>.
+                Activar o no un flow define si participa o no en la orquestación.
+            </p>
+            <div class="problem-grid animate">
+                <div class="card glass">
+                    <h3>Estados del flow</h3>
+                    <ul style="margin-left: 16px; margin-top: 8px;">
+                        <li><strong>idle</strong>: creado pero aún no ha empezado. No procesa nada.</li>
+                        <li><strong>running</strong>: activo. Recibe eventos/intents y ejecuta <code>onEvent</code>/<code>onIntent</code>. Se llama <code>onStart()</code> al entrar.</li>
+                        <li><strong>sleeping</strong>: mantiene memoria, pero ignora eventos/intents. Útil para “hibernar” lógica.</li>
+                        <li><strong>paused</strong>: detenido temporalmente. No procesa nada hasta reactivarlo.</li>
+                        <li><strong>ended</strong>: finalizado. Cierra su stream de expresiones y libera recursos.</li>
+                    </ul>
+                </div>
+                <div class="card glass">
+                    <h3>Activar y desactivar</h3>
+                    <ul style="margin-left: 16px; margin-top: 8px;">
+                        <li><code>flowManager.activate("flowId")</code>: pone el flow en <code>running</code> sin tocar los demás. Puedes tener varios flows activos a la vez.</li>
+                        <li><code>flowManager.switchTo("flowId")</code>: activa uno y pausa los que estaban en <code>running</code>. Ideal para un solo flow “principal”.</li>
+                        <li><code>flowManager.activateExclusive("flowId")</code>: similar a <code>switchTo</code>, pero no valida si el id existe; es más “agresivo”.</li>
+                        <li><strong>Si no activas un flow</strong>: se queda en <code>idle</code>, no procesa eventos/intents y su <code>onStart()</code> nunca se llama.</li>
+                    </ul>
+                </div>
             </div>
-            <div class="highlight-box animate" style="margin-top: 16px;">
-                <p><strong>Un solo flujo “principal”:</strong> usa <code>flowManager.switchTo("flowId")</code> para activar uno y pausar el resto.</p>
+            <div class="problem-grid animate" style="margin-top: 24px;">
+                <div class="card glass">
+                    <h3>Pausar, dormir y finalizar</h3>
+                    <ul style="margin-left: 16px; margin-top: 8px;">
+                        <li><code>flowManager.pause("flowId")</code>: pasa el flow a <code>paused</code>. No procesa nada hasta reactivarlo con <code>activate</code> o <code>switchTo</code>.</li>
+                        <li><code>flowManager.sleep("flowId")</code>: llama a <code>sleep()</code> en el flow (estado <code>sleeping</code>). Mantiene memoria, pero está “en reposo”.</li>
+                        <li><code>flowManager.end("flowId")</code>: llama a <code>end()</code> (estado <code>ended</code>) y ya no debería volver a usarse.</li>
+                        <li><code>flowManager.endAll()</code>: finaliza todos los flows registrados y limpia el <code>activeFlowId</code>.</li>
+                    </ul>
+                </div>
+                <div class="card glass">
+                    <h3>Consecuencias prácticas</h3>
+                    <ul style="margin-left: 16px; margin-top: 8px;">
+                        <li>Solo los flows en <code>running</code> reciben <code>OmegaIntent</code> desde <code>handleIntent</code>.</li>
+                        <li>Si una pantalla depende de las expresiones de un flow, debes asegurarte de activarlo antes (por ejemplo en un <code>RootHandler</code> o tras login).</li>
+                        <li>Usa <code>switchTo</code> cuando quieras un único flow “dueño” de la navegación y la experiencia principal.</li>
+                        <li>Usa <code>activate</code> cuando quieras varios flows colaborando en paralelo (por ejemplo, notificaciones + auth + carrito).</li>
+                    </ul>
+                </div>
             </div>
         </section>
 
