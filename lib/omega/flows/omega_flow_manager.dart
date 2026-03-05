@@ -1,41 +1,42 @@
 // lib/omega/flows/omega_flow_manager.dart
 
+import 'dart:async';
 import 'package:omega_architecture/omega/core/semantics/omega_intent.dart';
 import 'package:omega_architecture/omega/ui/navigation/omega_navigator.dart';
 
 import '../core/channel/omega_channel.dart';
-
 import 'omega_flow.dart';
 import 'omega_flow_state.dart';
 
-/// [OmegaFlowManager] es el orquestador de todos los flujos en la aplicación.
-/// Permite registrar, activar y gestionar el ciclo de vida de mútiples flujos.
 class OmegaFlowManager {
-  /// El canal de comunicación global para coordinar eventos.
   final OmegaChannel channel;
 
-  // Registro dinámico de flows del sistema.
   final Map<String, OmegaFlow> _flows = {};
+  StreamSubscription? _navSubscription;
+
+  /// Flow actualmente activo (modo principal)
+  String? activeFlowId;
 
   OmegaFlowManager({required this.channel});
 
   // -----------------------------------------------------------
-  // 1. Registrar un Flow en el sistema
+  // Registrar Flow
   // -----------------------------------------------------------
-  /// Registra un nuevo flujo en el sistema para que pueda ser gestionado.
+
   void registerFlow(OmegaFlow flow) {
     _flows[flow.id] = flow;
   }
 
   // -----------------------------------------------------------
-  // 2. Obtener un flow por ID
+  // Obtener Flow
   // -----------------------------------------------------------
+
   OmegaFlow? getFlow(String id) => _flows[id];
 
   // -----------------------------------------------------------
-  // 3. Recibir intenciones desde la UI o sistema
+  // Manejar Intent
   // -----------------------------------------------------------
-  /// Procesa una intención y la distribuye a todos los flujos que estén en ejecución.
+
   void handleIntent(OmegaIntent intent) {
     for (final flow in _flows.values) {
       if (flow.state == OmegaFlowState.running) {
@@ -45,9 +46,12 @@ class OmegaFlowManager {
   }
 
   // -----------------------------------------------------------
-  // 4. Activar un flow específico
+  // Activar Flow (sin afectar otros)
   // -----------------------------------------------------------
-  /// Inicia o reanuda un flujo específico por su identificador.
+
+  /// Activa el flow [id] sin pausar los demás. Permite tener varios flows
+  /// en [OmegaFlowState.running] a la vez; todos recibirán intents vía [handleIntent].
+  /// Para un único flow activo (y pausar el resto), usar [switchTo] o [activateExclusive].
   void activate(String id) {
     final flow = _flows[id];
     if (flow == null) return;
@@ -56,75 +60,103 @@ class OmegaFlowManager {
   }
 
   // -----------------------------------------------------------
-  // 5. Poner un flow en pausa
+  // Activar Flow exclusivo
   // -----------------------------------------------------------
+
+  /// Activa el flow [id] y pausa los demás. No comprueba si [id] está registrado;
+  /// si no existe, [activeFlowId] puede quedar asignado sin flow activo.
+  /// Preferir [switchTo] cuando el id deba existir.
+  void activateExclusive(String id) {
+    for (final flow in _flows.values) {
+      if (flow.id == id) {
+        flow.start();
+        activeFlowId = id;
+      } else if (flow.state == OmegaFlowState.running) {
+        flow.pause();
+      }
+    }
+  }
+
+  // -----------------------------------------------------------
+  // Cambiar Flow principal
+  // -----------------------------------------------------------
+
+  /// Cambia al flow [id] (debe estar registrado), lo activa y pausa el resto.
+  /// Más seguro que [activateExclusive] porque ignora ids no registrados.
+  void switchTo(String id) {
+    if (!_flows.containsKey(id)) return;
+
+    for (final flow in _flows.values) {
+      if (flow.id == id) {
+        flow.start();
+        activeFlowId = id;
+      } else if (flow.state == OmegaFlowState.running) {
+        flow.pause();
+      }
+    }
+  }
+
+  // -----------------------------------------------------------
+  // Pausar Flow
+  // -----------------------------------------------------------
+
   void pause(String id) {
     final flow = _flows[id];
     flow?.pause();
   }
 
   // -----------------------------------------------------------
-  // 6. Dormir un flow
+  // Dormir Flow
   // -----------------------------------------------------------
+
   void sleep(String id) {
     final flow = _flows[id];
     flow?.sleep();
   }
 
   // -----------------------------------------------------------
-  // 7. Detener un flow definitivamente
+  // Finalizar Flow
   // -----------------------------------------------------------
-  /// Finaliza un flujo definitivamente.
+
   void end(String id) {
     final flow = _flows[id];
     flow?.end();
+
+    if (activeFlowId == id) {
+      activeFlowId = null;
+    }
   }
 
-  /// Finaliza todos los flujos registrados (útil para cerrar sesión).
   void endAll() {
     for (final flow in _flows.values) {
       flow.end();
     }
+
+    activeFlowId = null;
   }
 
   // -----------------------------------------------------------
-  // 9. Activar un único flow y pausar los demás (Modo exclusivo)
+  // Navigator wiring
   // -----------------------------------------------------------
-  void activateExclusive(String id) {
-    for (final flow in _flows.values) {
-      if (flow.id == id) {
-        flow.start();
-      } else {
-        flow.pause();
-      }
-    }
-  }
 
-  /// Vincula un [OmegaNavigator] con el canal para procesar intenciones de navegación automáticamente.
   void wireNavigator(OmegaNavigator nav) {
-    print("OmegaFlowManager: Vinculando navegador...");
-    channel.events.listen((event) {
-      print("OmegaFlowManager: Evento recibido -> ${event.name}");
-
-      // 1. Manejar Intención formal (vía navigation.intent)
+    _navSubscription?.cancel();
+    _navSubscription = channel.events.listen((event) {
       if (event.name == "navigation.intent") {
         if (event.payload is OmegaIntent) {
           nav.handleIntent(event.payload as OmegaIntent);
-        } else {
-          print(
-            "OmegaFlowManager ERROR: El payload de navigation.intent no es un OmegaIntent",
-          );
         }
-      }
-      // 2. Manejar Evento directo (Atajo: permite usar name: 'navigate.login')
-      else if (event.name.startsWith("navigate.")) {
-        print(
-          "OmegaFlowManager: Detectado atajo de navegación para ${event.name}",
-        );
+      } else if (event.name.startsWith("navigate.")) {
         nav.handleIntent(
           OmegaIntent(id: event.id, name: event.name, payload: event.payload),
         );
       }
     });
+  }
+
+  /// Cancela suscripciones (p. ej. navegación). Llamar al cerrar la app.
+  void dispose() {
+    _navSubscription?.cancel();
+    _navSubscription = null;
   }
 }

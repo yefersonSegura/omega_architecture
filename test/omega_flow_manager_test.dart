@@ -28,5 +28,32 @@ void main() {
     manager.handleIntent(OmegaIntent(id: "i1", name: "test.action"));
 
     expect(flow.lastIntentAction, "test.action");
+
+    manager.dispose();
+    channel.dispose();
+  });
+
+  test("FlowManager switchTo ignores unregistered flow id", () {
+    final channel = OmegaChannel();
+    final manager = OmegaFlowManager(channel: channel);
+    final flow = DummyFlow(channel);
+    manager.registerFlow(flow);
+    manager.activate("dummy");
+
+    manager.switchTo("nonexistent");
+
+    expect(manager.activeFlowId, isNull);
+    expect(manager.getFlow("dummy")?.state, OmegaFlowState.running);
+
+    manager.dispose();
+    channel.dispose();
+  });
+
+  test("FlowManager dispose does not throw", () {
+    final channel = OmegaChannel();
+    final manager = OmegaFlowManager(channel: channel);
+    manager.dispose();
+    manager.dispose();
+    channel.dispose();
   });
 }

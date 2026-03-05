@@ -6,6 +6,10 @@ import 'package:omega_architecture/omega/flows/omega_flow_manager.dart';
 
 /// [OmegaScope] es el contenedor principal de dependencias para la UI.
 /// Proporciona acceso al [OmegaChannel] y al [OmegaFlowManager] a través del árbol de widgets.
+///
+/// **Ciclo de vida:** Este widget no hace [OmegaChannel.dispose] ni [OmegaFlowManager.dispose].
+/// Quien cree el [channel] y el [flowManager] debe llamar a sus `dispose()` al cerrar la app
+/// (p. ej. en el [State.dispose] del widget que los instancia).
 class OmegaScope extends InheritedWidget {
   /// El canal de eventos global.
   final OmegaChannel channel;

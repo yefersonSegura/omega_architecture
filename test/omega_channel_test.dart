@@ -16,5 +16,25 @@ void main() {
 
     expect(received.name, "test.event");
     expect(received.payload, "hello");
+
+    channel.dispose();
+  });
+
+  test("OmegaChannel emit after dispose does not throw and calls onEmitError", () {
+    Object? capturedError;
+    final channel = OmegaChannel(
+      onEmitError: (e, _) => capturedError = e,
+    );
+    channel.dispose();
+
+    channel.emit(OmegaEvent(id: "1", name: "late", payload: null));
+
+    expect(capturedError, isNotNull);
+  });
+
+  test("OmegaChannel dispose is idempotent", () {
+    final channel = OmegaChannel();
+    channel.dispose();
+    channel.dispose(); // no throw
   });
 }
