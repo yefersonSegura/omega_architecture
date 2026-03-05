@@ -12,8 +12,16 @@ class OmegaRuntime {
 
   OmegaRuntime._(this.channel, this.flowManager, this.protocol, this.navigator);
 
-  factory OmegaRuntime.bootstrap(OmegaConfig config) {
+  /// Inicializa el runtime de Omega a partir de una función que construye
+  /// el [OmegaConfig] usando el [OmegaChannel] interno.
+  ///
+  /// De este modo, agentes y flows comparten SIEMPRE el mismo canal que
+  /// utiliza el [OmegaFlowManager] y el [OmegaNavigator].
+  factory OmegaRuntime.bootstrap(
+    OmegaConfig Function(OmegaChannel) createConfig,
+  ) {
     final channel = OmegaChannel();
+    final config = createConfig(channel);
     final flowManager = OmegaFlowManager(channel: channel);
     final protocol = OmegaAgentProtocol(channel);
     final navigator = OmegaNavigator();

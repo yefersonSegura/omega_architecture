@@ -4,7 +4,7 @@ import 'package:omega_architecture/omega/bootstrap/omega_runtime.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 
 void main() {
-  final runtime = OmegaRuntime.bootstrap(createOmegaConfig(OmegaChannel()));
+  final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
   runApp(
     OmegaScope(
       channel: runtime.channel,
