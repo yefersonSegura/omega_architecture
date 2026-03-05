@@ -269,17 +269,12 @@ void registerInOmegaSetup(String name, String path) {
       "import 'package:$pkg/$relative/${name.toLowerCase()}_agent.dart';";
   final flowImport =
       "import 'package:$pkg/$relative/${name.toLowerCase()}_flow.dart';";
-  final pageImport =
-      "import 'package:$pkg/$relative/ui/${name.toLowerCase()}_page.dart';";
 
   if (!content.contains(agentImport)) {
     content = agentImport + "\n" + content;
   }
   if (!content.contains(flowImport)) {
     content = flowImport + "\n" + content;
-  }
-  if (!content.contains(pageImport)) {
-    content = pageImport + "\n" + content;
   }
 
   if (!content.contains("${pascal}Agent(channel)")) {
@@ -294,26 +289,10 @@ void registerInOmegaSetup(String name, String path) {
       "<OmegaFlow>[\n      ${pascal}Flow(channel),",
     );
   }
-  if (!content.contains("${pascal}Page()")) {
-    if (content.contains("routes: []")) {
-      content = content.replaceFirst(
-        "routes: []",
-        "routes: [\n      OmegaRoute(id: \"${name.toLowerCase()}\", builder: (context) => const ${pascal}Page()),",
-      );
-    } else {
-      final closing = "    ],\n  );";
-      final idx = content.lastIndexOf(closing);
-      if (idx >= 0) {
-        content = content.substring(0, idx) +
-            "\n      OmegaRoute(id: \"${name.toLowerCase()}\", builder: (context) => const ${pascal}Page())," +
-            content.substring(idx);
-      }
-    }
-  }
 
   setupFile.writeAsStringSync(content);
 
-  print("Registered $pascal (agent, flow, route) in omega_setup.dart");
+  print("Registered $pascal (agent, flow) in omega_setup.dart");
 }
 
 String toPascalCase(String name) {

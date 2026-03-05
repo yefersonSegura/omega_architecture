@@ -17,7 +17,7 @@
         <section id="vision" class="slide cover">
             <div class="background-glow"></div>
             <div class="content animate">
-                <span class="badge">Technical Whitepaper 2026</span>
+                <span class="badge">Framework · 2026</span>
                 <h1 class="big-title">Omega<br><span class="gradient-text">Architecture</span></h1>
                 <p class="highlight-text">
                     El sistema nervioso autónomo para aplicaciones de alta complejidad en Flutter.
@@ -28,6 +28,8 @@
                     <p>Liderando una nueva era en Flutter</p>
                     <p>Framework Version: <strong>1.0.0-Stable</strong></p>
                     <p class="doc-links" style="margin-top: 12px; font-size: 14px; color: var(--text-dim);">
+                            <a href="#importance">Importancia</a> ·
+                            <a href="#why-worth-it">Por qué usarlo</a> ·
                             <a href="#about">Sobre el software</a> ·
                             <a href="#concepts">Conceptos</a> ·
                             <a href="#usecases">Casos de uso</a> ·
@@ -198,6 +200,81 @@ class AuthFlow extends OmegaFlow {
                     </tr>
                 </tbody>
             </table>
+            <div class="highlight-box animate" style="margin-top: 32px;">
+                <p><strong>Omega vs BLoC:</strong> La lógica en Omega vive en agentes que no conocen la UI; en BLoC está en Blocs atados a Streams y widgets. Omega desacopla la navegación (intents); BLoC suele usar <code>BuildContext</code>.</p>
+                <p style="margin-top: 12px;"><strong>Omega vs Riverpod:</strong> Riverpod es muy flexible (providers, ref); Omega fija un modelo (agentes + flows + canal) y da trazabilidad explícita (eventos/intents con nombre). Navegación en Omega sin depender de <code>context</code>.</p>
+            </div>
+        </section>
+
+        <section id="when-choose" class="slide">
+            <span class="section-tag">Comparativa</span>
+            <h2 class="animate">Cuándo elegir <span class="gradient-text">Omega</span></h2>
+            <div class="problem-grid animate">
+                <div class="card glass">
+                    <h3>Elige Omega si...</h3>
+                    <p>Quieres lógica de negocio fuera de la UI y fácil de testear sin Flutter, navegación desacoplada, equipos que necesitan estructura clara (agentes, flows, intents) o apps con mucha complejidad.</p>
+                </div>
+                <div class="card glass">
+                    <h3>BLoC o Riverpod si...</h3>
+                    <p>Prefieres algo muy adoptado (documentación, ejemplos, comunidad), te basta con eventos→estados→UI o con providers flexibles y no necesitas el modelo de agentes ni la capa de intents.</p>
+                </div>
+            </div>
+            <p class="animate subtitle" style="margin-top: 24px;">Omega no compite en popularidad; se diferencia por <strong>agentes + behavior + canal + flows + intents</strong> y navegación sin <code>BuildContext</code>. Es arquitectura, no solo state management.</p>
+        </section>
+
+        <!-- Importancia de Omega / Por qué vale la pena -->
+        <section id="importance" class="slide">
+            <span class="section-tag">Valor</span>
+            <h2 class="animate">La importancia de <span class="gradient-text">Omega</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 32px;">Un framework que une arquitectura clara, desacoplamiento real y herramientas desde el primer día.</p>
+            <div class="highlight-box animate">
+                <p style="font-size: 22px; line-height: 1.5;">
+                    Omega no es "un BLoC más". Es una forma de organizar la aplicación donde la <strong>lógica de negocio vive en agentes</strong>, la <strong>orquestación en flujos</strong> y la <strong>UI solo refleja</strong> lo que el sistema decide. Eso reduce bugs, acelera los tests y escala con el equipo.
+                </p>
+            </div>
+            <div class="pillars-container animate" style="margin-top: 40px;">
+                <div class="pillar card glass">
+                    <div class="icon">🎯</div>
+                    <h3>Claridad desde el día uno</h3>
+                    <p>Sabes dónde va cada cosa: agentes para lógica, flows para orquestar, intents para comunicar. Sin adivinar en qué Provider o Bloc tocó cada regla.</p>
+                </div>
+                <div class="pillar card glass">
+                    <div class="icon">🧪</div>
+                    <h3>Testeable de verdad</h3>
+                    <p>La lógica no depende de Flutter. Puedes probar agentes y flujos con tests unitarios puros, sin <code>pumpWidget</code> ni mocks de contexto.</p>
+                </div>
+                <div class="pillar card glass">
+                    <div class="icon">📦</div>
+                    <h3>Escalable por diseño</h3>
+                    <p>Ecosistemas (agent + flow + behavior + UI) permiten que varios desarrolladores trabajen en features sin pisarse. El CLI genera la estructura consistente.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="why-worth-it" class="slide">
+            <span class="section-tag">Valor</span>
+            <h2 class="animate">Por qué vale la pena <span class="gradient-text">usarlo</span></h2>
+            <div class="problem-grid animate">
+                <div class="card glass">
+                    <h3>Menos acoplamiento, menos deuda</h3>
+                    <p>La UI no conoce rutas ni contextos de navegación. Los flujos emiten intenciones; el navegador reacciona. Cambiar pantallas o flujos no rompe la lógica de negocio.</p>
+                </div>
+                <div class="card glass">
+                    <h3>Trazabilidad semántica</h3>
+                    <p>Eventos e intents tienen nombre y payload. Puedes seguir "quién pidió qué" y "quién respondió" sin depender de prints ni debugging a ciegas.</p>
+                </div>
+                <div class="card glass">
+                    <h3>Un solo lugar para la configuración</h3>
+                    <p><code>omega_setup.dart</code> en tu app concentra agentes, flujos y rutas. Un vistazo y entiendes cómo está montada la aplicación.</p>
+                </div>
+                <div class="card glass">
+                    <h3>Inversión baja, beneficio alto</h3>
+                    <p><code>omega init</code> y <code>omega g ecosystem</code> generan la estructura. Te enfocas en reglas de negocio y UX, no en montar capas a mano.</p>
+                </div>
+            </div>
+            <div class="highlight-box animate" style="margin-top: 32px;">
+                <p style="font-size: 20px;"><strong>En resumen:</strong> Omega vale la pena cuando quieres una arquitectura que escale con la complejidad, que sea fácil de testear y que todo el equipo pueda seguir sin perderse en Providers o Blocs dispersos.</p>
+            </div>
         </section>
 
         <!-- Documentación: Sobre el software -->
