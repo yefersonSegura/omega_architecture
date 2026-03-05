@@ -43,11 +43,6 @@ class OmegaRuntime {
 
     flowManager.wireNavigator(navigator);
 
-    /// Activar primer flow
-    if (config.flows.isNotEmpty) {
-      flowManager.activate(config.flows.first.id);
-    }
-
     return OmegaRuntime._(channel, flowManager, protocol, navigator);
   }
 }
