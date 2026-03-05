@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:omega_architecture/examples/omega_setup_example.dart';
+import 'package:omega_architecture/examples/omega/omega_setup.dart';
 import 'package:omega_architecture/omega/bootstrap/omega_runtime.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 
@@ -41,19 +41,24 @@ class _RootHandlerState extends State<_RootHandler> {
   @override
   void initState() {
     super.initState();
-    // Activamos el primer flow (auth) cuando el árbol ya está montado
+
+    // Disparamos la navegación al login cuando el árbol ya está montado
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final scope = OmegaScope.of(context);
-      scope.flowManager.activate("auth");
+      final intent = OmegaIntent(id: "goLogin", name: "navigate.login");
+
+      scope.channel.emit(
+        OmegaEvent(
+          id: "nav:${DateTime.now().millisecondsSinceEpoch}",
+          name: "navigation.intent",
+          payload: intent,
+        ),
+      );
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text("Omega Running"),
-      ),
-    );
+    return const Scaffold(body: Center(child: Text("Omega Running")));
   }
 }

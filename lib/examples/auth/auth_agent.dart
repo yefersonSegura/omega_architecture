@@ -1,15 +1,10 @@
-import 'package:omega_architecture/omega/agents/behavior/omega_agent_behavior_engine.dart';
-import 'package:omega_architecture/omega/agents/omega_agent.dart';
-import 'package:omega_architecture/omega/agents/protocol/omega_agent_message.dart';
-import 'package:omega_architecture/omega/core/types/omega_failure.dart';
+import 'package:omega_architecture/omega_architecture.dart';
+import 'auth_behavior.dart';
 
 class AuthAgent extends OmegaAgent {
-  AuthAgent({
-    required super.channel,
-    required OmegaAgentBehaviorEngine behavior,
-  }) : super(id: "auth", behavior: behavior);
+  AuthAgent(OmegaChannel channel)
+    : super(id: "Auth", channel: channel, behavior: AuthBehavior());
 
-  // Estado interno del agente
   String? token;
   Map<String, dynamic>? user;
 
@@ -23,10 +18,10 @@ class AuthAgent extends OmegaAgent {
   }
 
   @override
-  void onAction(String action, payload) async {
+  void onAction(String action, dynamic payload) {
     switch (action) {
       case "doLogin":
-        await _login(payload);
+        _login(payload);
         break;
 
       case "doLogout":
@@ -35,13 +30,10 @@ class AuthAgent extends OmegaAgent {
     }
   }
 
-  // ----------------------------------------------
-  // LOGIN SIMULADO (aquí pondrás tu API real)
-  // ----------------------------------------------
   Future<void> _login(dynamic credentials) async {
     emit("auth.login.started");
 
-    await Future.delayed(const Duration(seconds: 1)); // simular API
+    await Future.delayed(const Duration(seconds: 1));
 
     final email = credentials["email"];
     final pass = credentials["password"];
@@ -63,13 +55,9 @@ class AuthAgent extends OmegaAgent {
     }
   }
 
-  // ----------------------------------------------
-  // LOGOUT
-  // ----------------------------------------------
   void _logout() {
     token = null;
     user = null;
-
     emit("auth.logout.success");
   }
 }

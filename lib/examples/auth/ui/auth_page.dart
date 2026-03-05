@@ -29,9 +29,9 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
     // Obtener FlowManager desde OmegaScope
     flowManager = OmegaScope.of(context).flowManager;
 
-    // Obtener el flow
+    flowManager.activate("authFlow");
+    // Obtener el flow (id debe coincidir con el que se registró en AuthFlow)
     flow = flowManager.getFlow("authFlow") as AuthFlow;
-
     // escuchar expresiones del Flow
     flow.expressions.listen((exp) {
       setState(() {
