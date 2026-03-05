@@ -43,8 +43,8 @@ void printHelp() {
   print("Usage: omega <command> [options] [arguments]");
   print("");
   print("Commands:");
-  print("  init [--force]     Create omega_setup.dart in lib/omega/ (use --force to overwrite)");
-  print("  g ecosystem <Name>  Generate agent, flow, behavior and page for a new ecosystem");
+  print("  init [--force]     Create lib/omega/omega_setup.dart in your app (use --force to overwrite)");
+  print("  g ecosystem <Name>  Generate agent, flow, behavior, page; find omega_setup in your app and add them");
   print("");
   print("Options:");
   print("  -h, --help     Show this help");

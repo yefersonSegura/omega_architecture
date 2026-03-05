@@ -209,6 +209,23 @@ h2 {
     color: #ff4d4d;
 }
 
+.doc-links a {
+    color: var(--accent);
+    text-decoration: none;
+}
+.doc-links a:hover {
+    text-decoration: underline;
+}
+
+/* Inline code (no inside pre) */
+:not(pre) > code {
+    background: rgba(0, 210, 255, 0.1);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.9em;
+}
+
 .conclusion {
     text-align: center;
     align-items: center;

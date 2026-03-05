@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:omega_architecture/examples/omega_setup_example.dart';
 import 'package:omega_architecture/omega/bootstrap/omega_runtime.dart';
-import 'package:omega_architecture/omega/omega_setup.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 
 void main() {

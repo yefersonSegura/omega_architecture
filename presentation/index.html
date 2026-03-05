@@ -27,7 +27,17 @@
                     <p>Creado por: <strong>Yeferson Segura</strong></p>
                     <p>Liderando una nueva era en Flutter</p>
                     <p>Framework Version: <strong>1.0.0-Stable</strong></p>
-                    <p style="margin-top: 20px; display: flex; gap: 20px; flex-wrap: wrap;">
+                    <p class="doc-links" style="margin-top: 12px; font-size: 14px; color: var(--text-dim);">
+                            <a href="#about">Sobre el software</a> ·
+                            <a href="#concepts">Conceptos</a> ·
+                            <a href="#usecases">Casos de uso</a> ·
+                            <a href="#install">Instalación</a> ·
+                            <a href="#cli">CLI</a> ·
+                            <a href="#usage-agent">Uso</a> ·
+                            <a href="#lifecycle">Ciclo de vida</a> ·
+                            <a href="#structure">Estructura</a>
+                        </p>
+                        <p style="margin-top: 20px; display: flex; gap: 20px; flex-wrap: wrap;">
                         <a href="https://github.com/yefersonSegura/omega_architecture" target="_blank"
                             style="color: var(--accent); text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 8px;">
                             <svg height="20" width="20" viewBox="0 0 16 16" fill="currentColor">
@@ -190,6 +200,263 @@ class AuthFlow extends OmegaFlow {
             </table>
         </section>
 
+        <!-- Documentación: Sobre el software -->
+        <section id="about" class="slide">
+            <span class="section-tag">Documentación</span>
+            <h2 class="animate">Sobre el <span class="gradient-text">software</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 32px;">Framework reactivo y basado en agentes para aplicaciones Flutter.</p>
+            <div class="pillars-container animate">
+                <div class="pillar card glass">
+                    <div class="icon">🤖</div>
+                    <h3>Agentes reactivos</h3>
+                    <p>Entidades autónomas que reaccionan a eventos del sistema y mensajes directos.</p>
+                </div>
+                <div class="pillar card glass">
+                    <div class="icon">⚙️</div>
+                    <h3>Motor de comportamiento</h3>
+                    <p>Lógica desacoplada con reglas y condiciones que determinan las reacciones del agente.</p>
+                </div>
+                <div class="pillar card glass">
+                    <div class="icon">📡</div>
+                    <h3>Event-driven</h3>
+                    <p>Comunicación global mediante <code>OmegaChannel</code> (bus de eventos).</p>
+                </div>
+            </div>
+            <div class="problem-grid animate" style="margin-top: 32px;">
+                <div class="card glass">
+                    <h3>Gestión de flujos</h3>
+                    <p>Orquestación de transiciones de estado y lógica de negocio con <code>OmegaFlow</code> y <code>OmegaFlowManager</code>. Varios flujos pueden estar activos a la vez.</p>
+                </div>
+                <div class="card glass">
+                    <h3>Intenciones semánticas</h3>
+                    <p>Abstracción de alto nivel para peticiones de usuario o del sistema (<code>OmegaIntent</code>).</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Conceptos core -->
+        <section id="concepts" class="slide">
+            <span class="section-tag">Documentación</span>
+            <h2 class="animate">Conceptos <span class="gradient-text">core</span></h2>
+            <table class="comparison-table animate">
+                <thead>
+                    <tr>
+                        <th>Concepto</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>OmegaAgent</strong></td>
+                        <td>Unidad de procesamiento. Tiene id, canal y motor de comportamiento.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OmegaAgentBehaviorEngine</strong></td>
+                        <td>Evalúa eventos/intenciones y devuelve reacciones (acciones a ejecutar).</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OmegaChannel</strong></td>
+                        <td>Bus de eventos. Los agentes y flujos se suscriben a <code>events</code> y usan <code>emit()</code> para publicar.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OmegaFlow</strong></td>
+                        <td>Flujo de negocio con estados (idle, running, paused…). Orquesta UI y agentes.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OmegaFlowManager</strong></td>
+                        <td>Registra flujos, enruta intenciones a los que están en ejecución y los activa o pausa.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Casos de uso -->
+        <section id="usecases" class="slide">
+            <span class="section-tag">Documentación</span>
+            <h2 class="animate">Casos de <span class="gradient-text">uso</span></h2>
+            <div class="problem-grid animate">
+                <div class="card glass">
+                    <h3>Apps de alta complejidad</h3>
+                    <p>Múltiples flujos (auth, checkout, onboarding) con lógica desacoplada y trazabilidad clara.</p>
+                </div>
+                <div class="card glass">
+                    <h3>Equipos grandes</h3>
+                    <p>Modularidad por ecosistemas (agent + flow + behavior + UI). Cada feature puede desarrollarse de forma aislada.</p>
+                </div>
+                <div class="card glass">
+                    <h3>Testing sin UI</h3>
+                    <p>Lógica de negocio en agentes y flujos, 100% testeable sin emuladores ni widgets.</p>
+                </div>
+                <div class="card glass">
+                    <h3>Navegación desacoplada</h3>
+                    <p>Los flujos emiten intenciones de navegación; el navegador reacciona sin depender del <code>BuildContext</code>.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Instalación -->
+        <section id="install" class="slide code-slide">
+            <span class="section-tag">Documentación</span>
+            <h2 class="animate">Instalación</h2>
+            <p class="subtitle animate" style="margin-bottom: 16px;">En tu <strong>app host</strong> (el proyecto Flutter que usa Omega), añade la dependencia. El archivo <code>omega_setup.dart</code> se crea en tu app con <code>omega init</code>, no viene dentro de la librería.</p>
+            <p class="subtitle animate" style="margin-bottom: 24px;">Añade en tu <code>pubspec.yaml</code>:</p>
+            <pre class="glass animate"><code>dependencies:
+  omega_architecture:
+    git:
+      url: https://github.com/yefersonSegura/omega_architecture.git
+      ref: main</code></pre>
+        </section>
+
+        <!-- CLI -->
+        <section id="cli" class="slide">
+            <span class="section-tag">Documentación</span>
+            <h2 class="animate">Omega <span class="gradient-text">CLI</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 16px;">El CLI se ejecuta en <strong>tu app</strong> (la que usa omega_architecture). Resuelve la raíz de tu proyecto y crea/actualiza archivos en <strong>tu proyecto</strong>, no dentro del paquete.</p>
+            <p class="subtitle animate" style="margin-bottom: 24px;">Desde un proyecto que dependa de <code>omega_architecture</code>:</p>
+            <pre class="glass animate" style="margin-bottom: 24px;"><code>dart run omega_architecture:omega &lt;comando&gt; [opciones] [argumentos]</code></pre>
+            <table class="comparison-table animate">
+                <thead>
+                    <tr>
+                        <th>Comando</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>init [--force]</code></td>
+                        <td>Crea <code>lib/omega/omega_setup.dart</code> <strong>en tu app</strong>. Ahí defines rutas, agentes y flujos. <code>--force</code> sobrescribe.</td>
+                    </tr>
+                    <tr>
+                        <td><code>g ecosystem &lt;Nombre&gt;</code></td>
+                        <td>Genera agente, flow, behavior y página; <strong>busca</strong> <code>lib/omega/omega_setup.dart</code> en tu proyecto y <strong>agrega</strong> el nuevo agente, flow y ruta. Ejecuta <code>omega init</code> antes.</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="highlight-box animate" style="margin-top: 20px;">
+                <p><strong>Flujo de <code>g ecosystem</code>:</strong> 1) Resuelve la raíz del proyecto (donde está <code>pubspec.yaml</code>). 2) Busca <code>lib/omega/omega_setup.dart</code>; si no existe, pide ejecutar <code>omega init</code>. 3) Crea los archivos del ecosistema. 4) Actualiza ese mismo <code>omega_setup.dart</code> (imports + registro de agente, flow y ruta).</p>
+            </div>
+            <p class="animate" style="color: var(--text-dim); margin-top: 16px;">Opciones globales: <code>-h, --help</code> · <code>-v, --version</code></p>
+            <pre class="glass animate" style="margin-top: 16px;"><code>dart run omega_architecture:omega init
+dart run omega_architecture:omega g ecosystem Auth</code></pre>
+        </section>
+
+        <!-- Uso: Agent y Behavior -->
+        <section id="usage-agent" class="slide code-slide">
+            <span class="section-tag">Documentación</span>
+            <h2 class="animate">Uso: agente y <span class="gradient-text">behavior</span></h2>
+            <div class="grid-2 animate">
+                <pre class="glass"><code>class MyBehavior extends OmegaAgentBehaviorEngine {
+  @override
+  OmegaAgentReaction? evaluate(OmegaAgentBehaviorContext ctx) {
+    if (ctx.event?.name == "greet")
+      return const OmegaAgentReaction("sayHello", payload: "Welcome!");
+    return null;
+  }
+}
+
+class MyAgent extends OmegaAgent {
+  MyAgent(OmegaChannel channel)
+    : super(id: "my_agent", channel: channel, behavior: MyBehavior());
+
+  @override
+  void onMessage(OmegaAgentMessage msg) {}
+
+  @override
+  void onAction(String action, dynamic payload) {
+    if (action == "sayHello") print(payload);
+  }
+}</code></pre>
+                <div class="card glass">
+                    <h3>Flujo</h3>
+                    <p>El canal emite eventos → el agente los recibe → el behavior evalúa y devuelve una reacción → <code>onAction</code> ejecuta la lógica.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Flutter: Scope y Builder -->
+        <section id="usage-flutter" class="slide">
+            <span class="section-tag">Documentación</span>
+            <h2 class="animate">Flutter: <span class="gradient-text">OmegaScope</span> y <span class="gradient-text">OmegaBuilder</span></h2>
+            <div class="problem-grid animate">
+                <div class="card glass">
+                    <h3>OmegaScope (DI)</h3>
+                    <p>Envuelve la app para inyectar <code>OmegaChannel</code> y <code>OmegaFlowManager</code> en el árbol de widgets.</p>
+                    <pre class="glass" style="margin-top: 16px; padding: 16px; font-size: 14px;"><code>OmegaScope(
+  channel: myChannel,
+  flowManager: myFlowManager,
+  child: MyApp(),
+)</code></pre>
+                </div>
+                <div class="card glass">
+                    <h3>OmegaBuilder (UI reactiva)</h3>
+                    <p>Reconstruye partes de la UI cuando ocurren eventos concretos en el sistema.</p>
+                    <pre class="glass" style="margin-top: 16px; padding: 16px; font-size: 14px;"><code>OmegaBuilder(
+  eventName: 'user.updated',
+  builder: (context, event) => Text('${event?.payload}'),
+)</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Flows: activar uno o varios -->
+        <section id="usage-flows" class="slide">
+            <span class="section-tag">Documentación</span>
+            <h2 class="animate">Activar <span class="gradient-text">flujos</span></h2>
+            <div class="highlight-box animate">
+                <p><strong>Varios flujos a la vez:</strong> usa <code>flowManager.activate("flowId")</code> para cada uno. Todos permanecen en <code>running</code> y reciben intenciones con <code>handleIntent</code>.</p>
+            </div>
+            <div class="highlight-box animate" style="margin-top: 16px;">
+                <p><strong>Un solo flujo “principal”:</strong> usa <code>flowManager.switchTo("flowId")</code> para activar uno y pausar el resto.</p>
+            </div>
+        </section>
+
+        <!-- Ciclo de vida -->
+        <section id="lifecycle" class="slide">
+            <span class="section-tag">Documentación</span>
+            <h2 class="animate">Ciclo de vida y <span class="gradient-text">dispose</span></h2>
+            <table class="comparison-table animate">
+                <thead>
+                    <tr>
+                        <th>Componente</th>
+                        <th>Responsabilidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>OmegaChannel</strong></td>
+                        <td>Quien lo cree debe llamar a <code>channel.dispose()</code> al cerrar la app.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OmegaFlowManager</strong></td>
+                        <td>Llamar a <code>flowManager.dispose()</code> para cancelar la suscripción de <code>wireNavigator</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OmegaAgent</strong></td>
+                        <td>Llamar a <code>agent.dispose()</code> para cancelar la suscripción al canal.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OmegaScope</strong></td>
+                        <td>No hace dispose; el widget que cree channel y flowManager debe llamar a sus <code>dispose()</code> en <code>State.dispose</code>.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Estructura del proyecto -->
+        <section id="structure" class="slide code-slide">
+            <span class="section-tag">Documentación</span>
+            <h2 class="animate">Estructura del <span class="gradient-text">proyecto</span></h2>
+            <pre class="glass animate"><code>lib/
+├── omega/
+│   ├── core/          # Channel, events, intents, types
+│   ├── agents/        # OmegaAgent, behavior engine, protocol
+│   ├── flows/         # OmegaFlow, OmegaFlowManager, expressions
+│   ├── ui/            # OmegaScope, OmegaBuilder, navigation
+│   └── bootstrap/     # Config, runtime
+├── examples/          # Ejemplos completos
+└── omega_architecture.dart  # Exportaciones públicas</code></pre>
+        </section>
+
         <!-- Conclusión -->
         <section id="next" class="slide conclusion">
             <span class="section-tag">Final Word</span>
@@ -197,7 +464,7 @@ class AuthFlow extends OmegaFlow {
             <p class="animate">Omega no es solo una librería; es una forma de pensar el software. Escalable, testeable y
                 lista para el mundo real.</p>
             <div class="footer">
-                <p>© 2026 Omega Architecture Project • Leading Flutter Evolution</p>
+                <p>© 2026 Omega Architecture Project • Yeferson Segura • Leading Flutter Evolution</p>
             </div>
         </section>
     </div>
