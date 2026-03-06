@@ -26,6 +26,47 @@ html {
     scroll-behavior: smooth;
 }
 
+.top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    background: linear-gradient(90deg, rgba(10, 10, 12, 0.95), rgba(10, 10, 12, 0.8));
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(18px);
+}
+
+.top-nav-inner {
+    padding: 12px 10%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.top-nav-logo {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    font-size: 14px;
+}
+
+.top-nav-links {
+    display: flex;
+    gap: 20px;
+    font-size: 14px;
+}
+
+.top-nav-links a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.top-nav-links a:hover {
+    text-decoration: underline;
+}
+
 h1,
 h2,
 h3 {
