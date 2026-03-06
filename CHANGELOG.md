@@ -1,3 +1,8 @@
+## 0.0.3
+
+- Add official example in `example/lib/main.dart` for pub.dev scoring.
+- Tweak documentation (README and website) to point to pub.dev installation.
+
 ## 0.0.2
 
 - Publish on pub.dev and switch docs/install to pub.dev usage (`omega_architecture: ^0.0.2`).
