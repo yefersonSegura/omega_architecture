@@ -17,7 +17,8 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 
 ## 2. Contratos y convenciones (semántica)
 
-- [ ] **Eventos/intents tipados o registrados:** registro de “eventos conocidos” con payload opcional (autocompletado, refactors, menos strings mágicos).
+- [x] **Eventos/intents tipados (nombres):** OmegaEventName, OmegaIntentName, fromName.
+- [ ] **Registro/contratos por evento (opcional):** registro de “eventos conocidos” con payload opcional (autocompletado, refactors, menos strings mágicos).
 - [ ] **Contratos por flow:** “este flow solo emite estas expresiones” y “solo reacciona a estos intents”, documentados o validables en tests.
 - [ ] **Versionado de intents:** soporte para `auth.login.v2` y migraciones cuando cambie el payload.
 

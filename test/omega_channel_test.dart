@@ -1,6 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 
+enum _TestEvent implements OmegaEventName {
+  testEvent('test.event'),
+  other('other');
+
+  const _TestEvent(this.name);
+  @override
+  final String name;
+}
+
 void main() {
   test("OmegaChannel should emit and listen events", () async {
     final channel = OmegaChannel();
@@ -36,5 +45,12 @@ void main() {
     final channel = OmegaChannel();
     channel.dispose();
     channel.dispose(); // no throw
+  });
+
+  test("OmegaEvent.fromName uses typed name and generates id", () {
+    final event = OmegaEvent.fromName(_TestEvent.testEvent, payload: 'data');
+    expect(event.name, 'test.event');
+    expect(event.payload, 'data');
+    expect(event.id.startsWith('ev:'), isTrue);
   });
 }

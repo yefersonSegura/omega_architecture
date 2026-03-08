@@ -1,9 +1,11 @@
 // Implementación web: recibe datos del canal principal por BroadcastChannel y muestra el inspector.
+// Usa package:web en lugar de dart:html (recomendado por pub.dev).
 
-import 'dart:html' as html;
 import 'dart:convert';
+import 'dart:js_interop';
 
 import 'package:flutter/material.dart';
+import 'package:web/web.dart' as web;
 
 const String _kChannelName = 'omega_inspector';
 
@@ -19,28 +21,40 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
   List<Map<String, dynamic>> _events = [];
   String? _activeFlowId;
   List<Map<String, dynamic>> _flows = [];
-  html.BroadcastChannel? _channel;
+  web.BroadcastChannel? _channel;
   String _error = '';
+
+  void _onMessage(web.Event e) {
+    final me = e as web.MessageEvent;
+    final raw = me.data?.dartify();
+    try {
+      Map<String, dynamic>? data;
+      if (raw is String) {
+        data = jsonDecode(raw) as Map<String, dynamic>;
+      } else if (raw is Map) {
+        data = Map<String, dynamic>.from(raw.map((k, v) => MapEntry(k.toString(), v)));
+      }
+      if (data == null || !mounted) return;
+      final events = data['events'] as List<dynamic>? ?? [];
+      final activeFlowId = data['activeFlowId'] as String?;
+      final flows = data['flows'] as List<dynamic>? ?? [];
+      setState(() {
+        _events = List<Map<String, dynamic>>.from(events);
+        _activeFlowId = activeFlowId;
+        _flows = List<Map<String, dynamic>>.from(flows);
+        _error = '';
+      });
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Error al decodificar');
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     try {
-      _channel = html.BroadcastChannel(_kChannelName);
-      _channel!.onMessage.listen((event) {
-        try {
-          final data = jsonDecode(event.data) as Map<String, dynamic>;
-          if (!mounted) return;
-          setState(() {
-            _events = List<Map<String, dynamic>>.from(data['events'] as List<dynamic>? ?? []);
-            _activeFlowId = data['activeFlowId'] as String?;
-            _flows = List<Map<String, dynamic>>.from(data['flows'] as List<dynamic>? ?? []);
-            _error = '';
-          });
-        } catch (_) {
-          if (mounted) setState(() => _error = 'Error al decodificar');
-        }
-      });
+      _channel = web.BroadcastChannel(_kChannelName);
+      _channel!.addEventListener('message', ((web.Event e) => _onMessage(e)).toJS);
     } catch (e) {
       _error = e.toString();
     }

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:omega_architecture/omega/bootstrap/omega_runtime.dart';
 import 'package:omega_architecture/omega_architecture.dart';
+import 'omega/app_semantics.dart';
 import 'omega/omega_setup.dart';
 
 void main() {
@@ -59,14 +60,10 @@ class _RootHandlerState extends State<_RootHandler> {
       if (scope.initialFlowId != null) {
         scope.flowManager.switchTo(scope.initialFlowId!);
       }
-      // 2) Navegar a la pantalla de login (contrato: navigation.intent + OmegaIntent)
-      final intent = OmegaIntent(id: "goLogin", name: "navigate.login");
+      // 2) Navegar a la pantalla de login (nombres tipados: AppIntent / AppEvent)
+      final intent = OmegaIntent.fromName(AppIntent.navigateLogin);
       scope.channel.emit(
-        OmegaEvent(
-          id: "nav:${DateTime.now().millisecondsSinceEpoch}",
-          name: "navigation.intent",
-          payload: intent,
-        ),
+        OmegaEvent.fromName(AppEvent.navigationIntent, payload: intent),
       );
     });
   }

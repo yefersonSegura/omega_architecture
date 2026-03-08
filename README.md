@@ -8,7 +8,7 @@ A reactive, agent-based architecture framework for Flutter applications.
 - **Behavior Engine** — Decoupled logic using rules and conditions to determine agent reactions.
 - **Event-Driven** — Global communication through `OmegaChannel`.
 - **Flow Management** — Orchestrate complex state transitions and business logic flows; run one or multiple flows at once.
-- **Semantic Intents** — High-level abstraction for user or system requests.
+- **Semantic Intents** — High-level abstraction for user or system requests. Optional **typed names** via [OmegaEventName]/[OmegaIntentName] and [OmegaEvent.fromName]/[OmegaIntent.fromName] to avoid magic strings and ease refactors. See the [example](example/lib/omega/app_semantics.dart) for full usage (`AppEvent` / `AppIntent` enums).
 - **Persistence & restore** — Serialize [OmegaAppSnapshot] to JSON and restore on launch ([toJson]/[fromJson], [OmegaFlowManager.restoreFromSnapshot], optional [OmegaSnapshotStorage]).
 - **CLI** — Scaffold setup and generate ecosystems (agent, flow, behavior, page) from the command line.
 

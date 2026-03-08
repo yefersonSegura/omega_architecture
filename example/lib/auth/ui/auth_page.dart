@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:omega_architecture/omega/core/semantics/omega_intent.dart';
-import 'package:omega_architecture/omega/flows/omega_flow_manager.dart';
-import 'package:omega_architecture/omega/ui/flutter/omega_scope.dart';
+import 'package:omega_architecture/omega_architecture.dart';
 
+import '../../omega/app_semantics.dart';
 import '../auth_flow.dart';
 
 class OmegaLoginPage extends StatefulWidget {
@@ -42,15 +41,13 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
   }
 
   void _login() {
-    final intent = OmegaIntent(
-      id: "loginIntent",
-      name: "auth.login",
+    final intent = OmegaIntent.fromName(
+      AppIntent.authLogin,
       payload: {
         "email": emailCtrl.text.trim(),
         "password": passCtrl.text.trim(),
       },
     );
-
     flowManager.handleIntent(intent);
   }
 
@@ -144,7 +141,7 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
           ElevatedButton(
             onPressed: () {
               flowManager.handleIntent(
-                OmegaIntent(id: "logoutIntent", name: "auth.logout"),
+                OmegaIntent.fromName(AppIntent.authLogout),
               );
             },
             child: const Text("Logout"),

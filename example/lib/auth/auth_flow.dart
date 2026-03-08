@@ -1,5 +1,7 @@
 import 'package:omega_architecture/omega_architecture.dart';
 
+import '../omega/app_semantics.dart';
+
 class AuthFlow extends OmegaFlow {
   AuthFlow(OmegaChannel channel) : super(id: "authFlow", channel: channel);
 
@@ -14,30 +16,18 @@ class AuthFlow extends OmegaFlow {
 
     if (intent == null) return;
 
-    // LOGIN → intención desde UI
-    if (intent.name == "auth.login") {
+    // LOGIN → intención desde UI (comparar con nombre tipado)
+    if (intent.name == AppIntent.authLogin.name) {
       emitExpression("loading");
-
-      // Disparamos evento a los agentes
       channel.emit(
-        OmegaEvent(
-          id: "authFlow:${DateTime.now().millisecondsSinceEpoch}",
-          name: "auth.login.request",
-          payload: intent.payload,
-        ),
+        OmegaEvent.fromName(AppEvent.authLoginRequest, payload: intent.payload),
       );
     }
 
     // LOGOUT
-    if (intent.name == "auth.logout") {
+    if (intent.name == AppIntent.authLogout.name) {
       emitExpression("loading");
-
-      channel.emit(
-        OmegaEvent(
-          id: "authFlow:${DateTime.now().millisecondsSinceEpoch}",
-          name: "auth.logout.request",
-        ),
-      );
+      channel.emit(OmegaEvent.fromName(AppEvent.authLogoutRequest));
     }
   }
 
@@ -74,7 +64,7 @@ class AuthFlow extends OmegaFlow {
     }
 
     // LOGOUT
-    if (event.name == "auth.logout.success") {
+    if (event.name == AppEvent.authLogoutSuccess.name) {
       emitExpression("loggedOut");
     }
   }

@@ -14,6 +14,8 @@ library;
 // CORE EXPORTS
 export 'omega/core/channel/omega_channel.dart';
 export 'omega/core/semantics/omega_intent.dart';
+export 'omega/core/semantics/omega_intent_name.dart';
+export 'omega/core/semantics/omega_event_name.dart';
 export 'omega/core/events/omega_event.dart';
 export 'omega/core/types/omega_failure.dart';
 export 'omega/core/types/omega_object.dart';

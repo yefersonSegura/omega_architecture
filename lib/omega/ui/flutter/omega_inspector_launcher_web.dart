@@ -1,10 +1,12 @@
 // Implementación web: abre el inspector en una nueva ventana del navegador (estilo Isar).
+// Usa package:web en lugar de dart:html (recomendado por pub.dev).
 
 import 'dart:async';
-import 'dart:html' as html;
 import 'dart:convert';
+import 'dart:js_interop';
 
 import 'package:flutter/material.dart';
+import 'package:web/web.dart' as web;
 
 import '../../core/events/omega_event.dart';
 import 'omega_scope.dart';
@@ -29,11 +31,11 @@ class _OmegaInspectorLauncherWebState extends State<OmegaInspectorLauncher> {
 
   void _openWindow() {
     if (_sending) return;
-    final loc = html.window.location;
+    final loc = web.window.location;
     final base = '${loc.origin}${loc.pathname}${loc.search}';
     final sep = base.contains('?') ? '&' : '?';
     final url = '$base${sep}omega_inspector=1';
-    html.window.open(url, 'omega_inspector', 'width=400,height=500');
+    web.window.open(url, 'omega_inspector', 'width=400,height=500');
     _sending = true;
     _sendOnce();
     _timer = Timer.periodic(const Duration(milliseconds: 500), (_) => _sendOnce());
@@ -57,8 +59,8 @@ class _OmegaInspectorLauncherWebState extends State<OmegaInspectorLauncher> {
           };
         }).toList(),
       };
-      final channel = html.BroadcastChannel(_kChannelName);
-      channel.postMessage(jsonEncode(payload));
+      final channel = web.BroadcastChannel(_kChannelName);
+      channel.postMessage(jsonEncode(payload).toJS);
       channel.close();
     } catch (_) {}
   }

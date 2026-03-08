@@ -1,3 +1,12 @@
+## 0.0.10
+
+- **Pub.dev static analysis:** Inspector web migrado de `dart:html` a `package:web` y `dart:js_interop` para eliminar el INFO de deprecación y recuperar los 10 puntos en "Pass static analysis". Dependencia `web: ^1.0.0` añadida.
+
+## 0.0.9
+
+- **Eventos e intents tipados:** [OmegaEventName] y [OmegaIntentName] (interfaces) + [OmegaEvent.fromName] y [OmegaIntent.fromName] para usar enums o clases y evitar strings mágicos (autocompletado, refactors). Documentación en README, ARQUITECTURA y ROADMAP; tests en omega_channel_test y omega_intent_test.
+- **Example:** `example/lib/omega/app_semantics.dart` con enums AppEvent y AppIntent; main, auth_flow, auth_agent, auth_behavior y auth_page usan fromName y los nombres tipados. example/README.md actualizado.
+
 ## 0.0.8
 
 - **Persistencia y restore:** Serialización de snapshots con `OmegaFlowSnapshot.toJson`/`fromJson` y `OmegaAppSnapshot.toJson`/`fromJson`. `OmegaFlow.restoreMemory` y `OmegaFlowManager.restoreFromSnapshot` para recuperar estado al abrir la app. Interfaz opcional `OmegaSnapshotStorage` (save/load). Documentación en README, ARQUITECTURA y ROADMAP.

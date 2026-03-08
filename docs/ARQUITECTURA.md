@@ -54,6 +54,8 @@ Omega es un framework **reactivo y basado en agentes** para Flutter. La lógica 
 
 **Qué hace:** La UI (u otro componente) no llama directamente a métodos; emite un intent. El [OmegaFlowManager] enruta los intents a los flows que estén en `running`. También se usan para navegación: el canal emite un evento con payload [OmegaIntent] y el navegador reacciona.
 
+**Nombres tipados (menos strings mágicos):** Para evitar escribir el nombre del evento o intent a mano y tener autocompletado y refactors seguros, implementa [OmegaEventName] o [OmegaIntentName] (p. ej. con un enum) y usa [OmegaEvent.fromName] / [OmegaIntent.fromName]. Así defines una sola vez los nombres (ej. `enum AppEvent implements OmegaEventName { authLoginSuccess('auth.login.success'); ... }`) y el resto del código usa `OmegaEvent.fromName(AppEvent.authLoginSuccess, payload: data)`. En el **example** del paquete (carpeta `example/`, archivo `lib/omega/app_semantics.dart`) hay un uso completo: enums `AppEvent` y `AppIntent` usados en main, flow, agente, behavior y pantalla de login.
+
 ---
 
 ### OmegaObject

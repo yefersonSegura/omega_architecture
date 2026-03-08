@@ -1,26 +1,25 @@
 import 'package:omega_architecture/omega_architecture.dart';
 
+import '../omega/app_semantics.dart';
+
 class AuthBehavior extends OmegaAgentBehaviorEngine {
   AuthBehavior() {
-    // Regla 1: manejar solicitudes de login
     addRule(
       OmegaAgentBehaviorRule(
         condition: (ctx) =>
-            ctx.event?.name == "auth.login.request" ||
-            ctx.intent?.name == "auth.login",
+            ctx.event?.name == AppEvent.authLoginRequest.name ||
+            ctx.intent?.name == AppIntent.authLogin.name,
         reaction: (ctx) => OmegaAgentReaction(
           "doLogin",
           payload: ctx.event?.payload ?? ctx.intent?.payload,
         ),
       ),
     );
-
-    // Regla 2: manejar logout
     addRule(
       OmegaAgentBehaviorRule(
         condition: (ctx) =>
-            ctx.event?.name == "auth.logout.request" ||
-            ctx.intent?.name == "auth.logout",
+            ctx.event?.name == AppEvent.authLogoutRequest.name ||
+            ctx.intent?.name == AppIntent.authLogout.name,
         reaction: (_) => OmegaAgentReaction("doLogout"),
       ),
     );

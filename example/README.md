@@ -23,6 +23,7 @@ cd example && flutter run
 
 - `lib/main.dart` — Punto de entrada, bootstrap, `OmegaScope`, activación del flow inicial y primera navegación.
 - `lib/omega/omega_setup.dart` — Config: agentes (Provider, Auth), flows (Provider, Auth), rutas (login, home), `initialFlowId`.
+- `lib/omega/app_semantics.dart` — **Nombres tipados:** enums [AppEvent] y [AppIntent] que implementan [OmegaEventName]/[OmegaIntentName]. Se usan con `OmegaEvent.fromName` y `OmegaIntent.fromName` para evitar strings mágicos.
 - `lib/auth/` — AuthFlow, AuthAgent, AuthBehavior, pantalla de login.
 - `lib/home/` — Pantalla Home.
 
