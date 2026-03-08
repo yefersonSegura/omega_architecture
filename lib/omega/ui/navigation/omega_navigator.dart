@@ -33,35 +33,35 @@ class OmegaNavigator {
   /// Procesa una [OmegaIntent] de navegación.
   /// Si la intención comienza con "navigate.", intenta cambiar a la ruta especificada.
   void handleIntent(OmegaIntent intent) {
-    print("OmegaNavigator: Procesando intención -> ${intent.name}");
+    debugPrint("OmegaNavigator: Procesando intención -> ${intent.name}");
 
     if (!intent.name.startsWith("navigate.")) {
-      print(
+      debugPrint(
         "OmegaNavigator: Ignorando intención (no comienza con 'navigate.')",
       );
       return;
     }
 
     final destination = intent.name.replaceFirst("navigate.", "");
-    print("OmegaNavigator: Buscando ruta para el destino -> '$destination'");
+    debugPrint("OmegaNavigator: Buscando ruta para el destino -> '$destination'");
 
     final entry = _routes[destination];
     if (entry == null) {
-      print(
+      debugPrint(
         "OmegaNavigator ERROR: No se encontró la ruta '$destination' registrada.",
       );
-      print("Rutas registradas actualmente: ${_routes.keys.toList()}");
+      debugPrint("Rutas registradas actualmente: ${_routes.keys.toList()}");
       return;
     }
 
     if (navigatorKey.currentState == null) {
-      print(
+      debugPrint(
         "OmegaNavigator ERROR: navigatorKey.currentState es NULL. Asegúrate de pasar la llave al MaterialApp.",
       );
       return;
     }
 
-    print("OmegaNavigator: Navegando a '$destination'...");
+    debugPrint("OmegaNavigator: Navegando a '$destination'...");
     navigatorKey.currentState?.pushReplacement(
       MaterialPageRoute(builder: entry.route.builder),
     );

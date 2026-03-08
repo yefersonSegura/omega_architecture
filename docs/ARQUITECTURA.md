@@ -223,7 +223,7 @@ En una frase: la finalidad es **poder ver (y opcionalmente guardar) el estado ac
 
 **Qué es:** El puente entre intents de navegación y el [Navigator] de Flutter. Tiene una [GlobalKey] del Navigator.
 
-**Qué hace:** Registras rutas con `registerRoute(OmegaRoute)`. Cuando el canal emite un evento de navegación (p. ej. con un [OmegaIntent] con `name: "navigate.login"`), el [OmegaFlowManager] (vía `wireNavigator`) llama a `navigator.handleIntent`. El navegador traduce el intent a una ruta y hace `push`/`pop` según la ruta registrada.
+**Qué hace:** Registras rutas con `registerRoute(OmegaRoute)`. Cuando el canal emite un evento de navegación (p. ej. con un [OmegaIntent] con `name: "navigate.login"`), el [OmegaFlowManager] (vía `wireNavigator`) llama a `navigator.handleIntent`. El navegador traduce el intent a una ruta y hace `push`/`pop` según la ruta registrada. Los mensajes de diagnóstico (intención recibida, ruta no encontrada, etc.) se emiten con `debugPrint`, así que solo aparecen en modo debug y no en producción.
 
 ---
 

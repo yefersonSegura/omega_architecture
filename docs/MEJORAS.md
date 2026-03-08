@@ -20,10 +20,10 @@ Lista de mejoras propuestas para Omega. No se cierran hasta que se implementen o
 
 ---
 
-## Paso 3 – Logging y diagnóstico
+## Paso 3 – Logging y diagnóstico ✅ (hecho)
 
-- [ ] Sustituir `print` por un mecanismo de logging (ej. callback inyectable o `debugPrint`)
-- [ ] En `omega_bootstrap.dart` y `omega_navigator.dart` evitar `avoid_print` en producción
+- [x] Sustituir `print` por un mecanismo de logging (ej. callback inyectable o `debugPrint`)
+- [x] En `omega_bootstrap.dart` y `omega_navigator.dart` evitar `avoid_print` en producción
 
 ---
 

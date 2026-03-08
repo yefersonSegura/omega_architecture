@@ -1,12 +1,14 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 void main(List<String> args) {
   if (args.isEmpty) {
-    print("Omega CLI");
-    print("Commands:");
-    print("  omega init");
-    print("  omega create agent <name>");
-    print("  omega create flow <name>");
+    _log("Omega CLI");
+    _log("Commands:");
+    _log("  omega init");
+    _log("  omega create agent <name>");
+    _log("  omega create flow <name>");
     return;
   }
 
@@ -22,8 +24,13 @@ void main(List<String> args) {
       break;
 
     default:
-      print("Unknown command");
+      _log("Unknown command");
   }
+}
+
+/// Salida de diagnóstico; en release no imprime (evita [avoid_print] en producción).
+void _log(String message) {
+  debugPrint(message);
 }
 
 class OmegaInitCommand {
@@ -48,14 +55,14 @@ OmegaConfig createOmegaConfig() {
 }
 """);
 
-    print("Omega setup created at lib/omega/omega_setup.dart");
+    _log("Omega setup created at lib/omega/omega_setup.dart");
   }
 }
 
 class OmegaCreateCommand {
   static void run(List<String> args) {
     if (args.length < 3) {
-      print("Usage: omega create agent <Name>");
+      _log("Usage: omega create agent <Name>");
       return;
     }
 
@@ -99,7 +106,7 @@ class $className extends OmegaAgent {
 }
 """);
 
-    print("Agent created: ${file.path}");
+    _log("Agent created: ${file.path}");
 
     _registerAgent(className, name);
   }
@@ -126,7 +133,7 @@ class $className extends OmegaFlow {
 }
 """);
 
-    print("Flow created: ${file.path}");
+    _log("Flow created: ${file.path}");
 
     _registerFlow(className, name);
   }
@@ -139,7 +146,7 @@ class $className extends OmegaFlow {
     final setupFile = File("lib/omega/omega_setup.dart");
 
     if (!setupFile.existsSync()) {
-      print("omega_setup.dart not found. Run omega init first.");
+      _log("omega_setup.dart not found. Run omega init first.");
       return;
     }
 
@@ -159,7 +166,7 @@ class $className extends OmegaFlow {
 
     setupFile.writeAsStringSync(content);
 
-    print("Agent registered in omega_setup.dart");
+    _log("Agent registered in omega_setup.dart");
   }
 
   // ------------------------------------------------------
@@ -170,7 +177,7 @@ class $className extends OmegaFlow {
     final setupFile = File("lib/omega/omega_setup.dart");
 
     if (!setupFile.existsSync()) {
-      print("omega_setup.dart not found. Run omega init first.");
+      _log("omega_setup.dart not found. Run omega init first.");
       return;
     }
 
@@ -186,6 +193,6 @@ class $className extends OmegaFlow {
 
     setupFile.writeAsStringSync(content);
 
-    print("Flow registered in omega_setup.dart");
+    _log("Flow registered in omega_setup.dart");
   }
 }
