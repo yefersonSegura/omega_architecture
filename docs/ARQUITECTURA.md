@@ -223,7 +223,16 @@ En una frase: la finalidad es **poder ver (y opcionalmente guardar) el estado ac
 
 **Qué es:** El puente entre intents de navegación y el [Navigator] de Flutter. Tiene una [GlobalKey] del Navigator.
 
-**Qué hace:** Registras rutas con `registerRoute(OmegaRoute)`. Cuando el canal emite un evento de navegación (p. ej. con un [OmegaIntent] con `name: "navigate.login"`), el [OmegaFlowManager] (vía `wireNavigator`) llama a `navigator.handleIntent`. El navegador traduce el intent a una ruta y hace `push`/`pop` según la ruta registrada. Los mensajes de diagnóstico (intención recibida, ruta no encontrada, etc.) se emiten con `debugPrint`, así que solo aparecen en modo debug y no en producción.
+**Contrato de navegación (canal):** El [OmegaFlowManager.wireNavigator] escucha dos formas de evento:
+- **"navigation.intent"** con payload [OmegaIntent] → se llama `handleIntent(payload)`.
+- **"navigate.xxx"** o **"navigate.push.xxx"** → se construye un intent con ese nombre y se llama `handleIntent`.
+
+**Comportamiento de handleIntent:**
+- **"navigate.&lt;id&gt;"** (ej. `navigate.login`) → reemplaza la pantalla actual (pushReplacement).
+- **"navigate.push.&lt;id&gt;"** (ej. `navigate.push.detail`) → apila la pantalla (push). Útil para flujos donde el usuario puede volver atrás.
+- El [OmegaIntent.payload] se pasa a la pantalla como [RouteSettings.arguments]; en el builder puedes leerlo con `ModalRoute.of(context)?.settings.arguments`.
+
+**Qué hace:** Registras rutas con `registerRoute(OmegaRoute)`. Los mensajes de diagnóstico usan `debugPrint` (solo en debug).
 
 ---
 
@@ -231,7 +240,7 @@ En una frase: la finalidad es **poder ver (y opcionalmente guardar) el estado ac
 
 **Qué es:** Una ruta registrada en el navegador: `id` (ej. `"login"`) y un `builder` que devuelve el widget de la pantalla.
 
-**Qué hace:** Define las pantallas que el navegador puede mostrar. El intent `navigate.login` lleva a la ruta con `id: "login"`.
+**Qué hace:** Define las pantallas que el navegador puede mostrar. "navigate.login" o "navigate.push.login" llevan a la ruta con `id: "login"`. Los argumentos del intent (payload) están en `RouteSettings.arguments` para el builder.
 
 ---
 

@@ -27,11 +27,11 @@ Lista de mejoras propuestas para Omega. No se cierran hasta que se implementen o
 
 ---
 
-## Paso 4 – Navegación
+## Paso 4 – Navegación ✅ (hecho)
 
-- [ ] Revisar contrato de navegación (eventos "navigate.*" vs "navigation.intent")
-- [ ] Soporte para push vs pushReplacement según ruta o intent
-- [ ] Opcional: deep links / rutas con parámetros
+- [x] Revisar contrato de navegación (eventos "navigate.*" vs "navigation.intent")
+- [x] Soporte para push vs pushReplacement según ruta o intent
+- [x] Opcional: deep links / rutas con parámetros
 
 ---
 

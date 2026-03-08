@@ -184,7 +184,7 @@ class OmegaFlowManager {
   void wireNavigator(OmegaNavigator nav) {
     _navSubscription?.cancel();
     _navSubscription = channel.events.listen((event) {
-      if (event.name == "navigation.intent") {
+      if (event.name == navigationIntentEvent) {
         if (event.payload is OmegaIntent) {
           nav.handleIntent(event.payload as OmegaIntent);
         }
