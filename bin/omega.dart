@@ -460,8 +460,9 @@ void registerInOmegaSetup(
   final flowFile = nameLower + "_flow.dart";
   final agentPattern = RegExp("import\\s+['\"].*" + RegExp.escape(agentFile) + "['\"];\\s*");
   final flowPattern = RegExp("import\\s+['\"].*" + RegExp.escape(flowFile) + "['\"];\\s*");
-  content = content.replaceFirst(agentPattern, "");
-  content = content.replaceFirst(flowPattern, "");
+  // Solo quitar el import del artefacto que estamos registrando (no el del otro)
+  if (registerAgent) content = content.replaceFirst(agentPattern, "");
+  if (registerFlow) content = content.replaceFirst(flowPattern, "");
 
   final newImports = <String>[];
   if (registerAgent) newImports.add(agentImport);

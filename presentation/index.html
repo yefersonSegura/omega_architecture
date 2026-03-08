@@ -423,16 +423,31 @@ class AuthFlow extends OmegaFlow {
                     </tr>
                     <tr>
                         <td><code>g ecosystem &lt;Nombre&gt;</code></td>
-                        <td>Genera agente, flow, behavior y página <strong>en el directorio actual</strong> (donde abres la terminal). Busca <code>lib/omega/omega_setup.dart</code> en tu proyecto y <strong>registra</strong> el nuevo agente y flow (actualiza imports y añade <code>flows:</code> si no existía). Ejecuta <code>omega init</code> antes.</td>
+                        <td>Genera agente, flow, behavior y página <strong>en el directorio actual</strong>. Registra agente y flow en <code>omega_setup.dart</code> (actualiza imports y añade <code>flows:</code> si no existía).</td>
+                    </tr>
+                    <tr>
+                        <td><code>g agent &lt;Nombre&gt;</code></td>
+                        <td>Genera solo agente + behavior en el directorio actual. Actualiza <strong>solo</strong> el import y registro del agente en <code>omega_setup.dart</code> (no toca el flow).</td>
+                    </tr>
+                    <tr>
+                        <td><code>g flow &lt;Nombre&gt;</code></td>
+                        <td>Genera solo flow en el directorio actual. Actualiza <strong>solo</strong> el import y registro del flow en <code>omega_setup.dart</code> (no toca el agente).</td>
+                    </tr>
+                    <tr>
+                        <td><code>validate</code></td>
+                        <td>Comprueba <code>omega_setup.dart</code>: estructura (<code>createOmegaConfig</code>, <code>agents:</code>) e ids duplicados. Ejecuta desde la raíz del proyecto.</td>
                     </tr>
                 </tbody>
             </table>
             <div class="highlight-box animate" style="margin-top: 20px;">
-                <p><strong>Flujo de <code>g ecosystem</code>:</strong> 1) Resuelve la raíz del proyecto (donde está <code>pubspec.yaml</code>). 2) Busca <code>lib/omega/omega_setup.dart</code>; si no existe, pide ejecutar <code>omega init</code>. 3) Crea los archivos del ecosistema <strong>en el directorio actual</strong>. 4) Actualiza <code>omega_setup.dart</code>: quita imports viejos de ese ecosistema, pone los nuevos con la ruta correcta, y registra agente y flow en <code>OmegaConfig</code> (añade la sección <code>flows:</code> si faltaba).</p>
+                <p><strong>Flujo de <code>g ecosystem</code>:</strong> 1) Resuelve la raíz del proyecto (donde está <code>pubspec.yaml</code>). 2) Busca <code>lib/omega/omega_setup.dart</code>; si no existe, pide ejecutar <code>omega init</code>. 3) Crea los archivos <strong>en el directorio actual</strong>. 4) Actualiza <code>omega_setup.dart</code>: quita imports viejos de ese ecosistema, pone los nuevos, y registra agente y flow. <strong><code>g agent</code> y <code>g flow</code></strong> solo modifican su propio import y registro, así que puedes crear agente y flow por separado para el mismo nombre sin que uno borre al otro.</p>
             </div>
             <p class="animate" style="color: var(--text-dim); margin-top: 16px;">Opciones globales: <code>-h, --help</code> · <code>-v, --version</code></p>
             <pre class="glass animate" style="margin-top: 16px;"><code>dart run omega_architecture:omega init
-dart run omega_architecture:omega g ecosystem Auth</code></pre>
+dart run omega_architecture:omega g ecosystem Auth
+dart run omega_architecture:omega g agent Orders
+dart run omega_architecture:omega g flow Orders
+dart run omega_architecture:omega validate</code></pre>
         </section>
 
         <!-- Uso: Agent y Behavior -->

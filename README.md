@@ -71,6 +71,8 @@ When you run `omega g ecosystem <Name>` from your host app:
 3. It creates the ecosystem files (agent, flow, behavior, page) in the **current directory** (the folder where you opened the terminal).
 4. It **updates** `omega_setup.dart`: removes any existing imports for that ecosystem and adds the new imports (package or relative path depending on location). It registers the **agent** and **flow** in `OmegaConfig`; if the file has no `flows:` section, it adds it with the new flow.
 
+**`g agent` and `g flow`:** When you generate only the agent or only the flow, the CLI updates **only** that artifact’s import and registration in `omega_setup.dart`. It does not remove the other (e.g. running `g flow Orders` after `g agent Orders` keeps the agent import and only adds/refreshes the flow import). So you can create agent and flow separately for the same name without overwriting each other.
+
 Aliases: `generate` and `create` are equivalent to `g`.
 
 ### Global options
