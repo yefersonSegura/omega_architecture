@@ -10,6 +10,7 @@ import '../core/events/omega_event.dart';
 import 'omega_flow_state.dart';
 import 'omega_flow_expression.dart';
 import 'omega_flow_context.dart';
+import 'omega_flow_snapshot.dart';
 
 /// [OmegaFlow] representa un flujo de negocio (ej. login, checkout).
 ///
@@ -34,6 +35,8 @@ abstract class OmegaFlow {
 
   /// Memoria interna del flujo (datos que persisten durante su ejecución).
   final Map<String, dynamic> memory = {};
+
+  OmegaFlowExpression? _lastExpression;
 
   OmegaFlow({required this.id, required this.channel}) {
     channel.events.listen(_handleEvent);
@@ -120,7 +123,22 @@ abstract class OmegaFlow {
   /// Emite una expresión (un mensaje o cambio de estado visual) que la UI debe procesar.
   void emitExpression(String type, {dynamic payload}) {
     if (!_expressions.isClosed) {
-      _expressions.add(OmegaFlowExpression(type, payload: payload));
+      final expr = OmegaFlowExpression(type, payload: payload);
+      _lastExpression = expr;
+      _expressions.add(expr);
     }
   }
+
+  // -----------------------------------------------------------
+  // 5. Snapshot (estado actual)
+  // -----------------------------------------------------------
+
+  /// Devuelve una foto del estado actual del flow (id, state, copia de memory, última expresión).
+  /// Útil para depuración, persistencia o time-travel.
+  OmegaFlowSnapshot getSnapshot() => OmegaFlowSnapshot(
+        flowId: id,
+        state: state,
+        memory: Map<String, dynamic>.from(memory),
+        lastExpression: _lastExpression,
+      );
 }

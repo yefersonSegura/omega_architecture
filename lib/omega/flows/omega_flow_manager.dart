@@ -6,6 +6,7 @@ import 'package:omega_architecture/omega/ui/navigation/omega_navigator.dart';
 
 import '../core/channel/omega_channel.dart';
 import 'omega_flow.dart';
+import 'omega_flow_snapshot.dart';
 import 'omega_flow_state.dart';
 
 /// [OmegaFlowManager] registra y coordina todos los [OmegaFlow].
@@ -37,6 +38,23 @@ class OmegaFlowManager {
   // -----------------------------------------------------------
 
   OmegaFlow? getFlow(String id) => _flows[id];
+
+  // -----------------------------------------------------------
+  // Snapshot (estado actual)
+  // -----------------------------------------------------------
+
+  /// Devuelve el snapshot del flow [id], o null si no está registrado.
+  OmegaFlowSnapshot? getFlowSnapshot(String id) => _flows[id]?.getSnapshot();
+
+  /// Devuelve el snapshot de todos los flows registrados.
+  List<OmegaFlowSnapshot> getSnapshots() =>
+      _flows.values.map((f) => f.getSnapshot()).toList();
+
+  /// Devuelve un snapshot a nivel de app: [activeFlowId] más snapshots de todos los flows.
+  OmegaAppSnapshot getAppSnapshot() => OmegaAppSnapshot(
+        activeFlowId: activeFlowId,
+        flows: getSnapshots(),
+      );
 
   // -----------------------------------------------------------
   // Manejar Intent

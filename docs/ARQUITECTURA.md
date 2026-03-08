@@ -185,6 +185,22 @@ También ofrece `pause`, `sleep`, `end` por flow. Es idempotente: activar dos ve
 
 ---
 
+### OmegaFlowSnapshot / OmegaAppSnapshot
+
+**Qué es:** [OmegaFlowSnapshot] es una **foto** del estado de un flow: `flowId`, `state`, copia de `memory` y última expresión emitida. [OmegaAppSnapshot] agrupa el `activeFlowId` y la lista de snapshots de todos los flows. No modifican nada; solo **leen** el estado.
+
+**Qué hace:** [OmegaFlow.getSnapshot] devuelve el snapshot de un flow. [OmegaFlowManager.getFlowSnapshot(id)], [getSnapshots] y [getAppSnapshot] exponen el estado actual. La memoria en el snapshot es una copia superficial (no se debe modificar el flow desde fuera).
+
+**Para qué sirve (en resumen):**
+
+- **Depuración:** Cuando algo falla, puedes obtener un snapshot y ver en qué estado estaba cada flow, qué había en la memoria y cuál fue la última “pantalla” que el flow le dijo a la UI. Así entiendes qué estaba pasando sin llenar el código de prints.
+- **Persistencia:** Si quieres que al cerrar la app no se pierda todo, antes de cerrar llamas a `getAppSnapshot()` (o los `getSnapshot()` que necesites), guardas ese dato (disco, backend, etc.) y al reabrir lo lees y reconstruyes el estado. El snapshot te dice *qué había*; tú decides cómo guardarlo y restaurarlo.
+- **Time-travel (avanzado):** En herramientas de desarrollo a veces se guarda un historial de snapshots; si algo sale mal, “vuelves atrás” a un snapshot anterior y ves cómo estaba la app. Es como un guardado de partida, pero del estado de tus flows.
+
+En una frase: la finalidad es **poder ver (y opcionalmente guardar) el estado actual de los flows y de la app sin modificar nada**, para depurar, persistir o inspeccionar.
+
+---
+
 ## UI (Flutter)
 
 ### OmegaScope
