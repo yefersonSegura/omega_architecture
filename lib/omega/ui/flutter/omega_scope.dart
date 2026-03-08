@@ -17,10 +17,15 @@ class OmegaScope extends InheritedWidget {
   /// El gestor de flujos del sistema.
   final OmegaFlowManager flowManager;
 
+  /// Id del flow a activar al inicio, si se definió en [OmegaConfig.initialFlowId].
+  /// Usar en addPostFrameCallback para llamar a [OmegaFlowManager.switchTo].
+  final String? initialFlowId;
+
   const OmegaScope({
     super.key,
     required this.channel,
     required this.flowManager,
+    this.initialFlowId,
     required super.child,
   });
 
@@ -34,6 +39,8 @@ class OmegaScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(OmegaScope oldWidget) {
-    return channel != oldWidget.channel || flowManager != oldWidget.flowManager;
+    return channel != oldWidget.channel ||
+        flowManager != oldWidget.flowManager ||
+        initialFlowId != oldWidget.initialFlowId;
   }
 }

@@ -1,11 +1,13 @@
 import 'omega_agent_message.dart';
 
-/// [OmegaAgentInbox] gestiona los mensajes directos recibidos por un agente.
-/// Implementa una cola simple de tipo FIFO.
+/// [OmegaAgentInbox] es la cola de mensajes directos de un agente (FIFO).
+///
+/// Cuando llega un mensaje vía [OmegaAgentProtocol.send], se llama a [receive].
+/// El agente puede consumir con [next] o comprobar [hasMessages].
 class OmegaAgentInbox {
   final _queue = <OmegaAgentMessage>[];
 
-  /// Añade un mensaje a la cola de entrada.
+  /// Añade un mensaje a la cola.
   void receive(OmegaAgentMessage message) {
     _queue.add(message);
   }

@@ -6,10 +6,15 @@ import '../../core/semantics/omega_intent.dart';
 import 'omega_route.dart';
 import 'omega_navigation_entry.dart';
 
-/// [OmegaNavigator] gestiona la navegación de la aplicación basada en intenciones.
-/// Mantiene un registro de rutas y utiliza una [GlobalKey] para interactuar con el Navigator de Flutter.
+/// [OmegaNavigator] traduce intents de navegación a rutas de Flutter.
+///
+/// Registras rutas con [registerRoute]. Cuando el canal emite un evento
+/// "navigation.intent" o "navigate.xxx" con un [OmegaIntent], el [OmegaFlowManager]
+/// (vía [wireNavigator]) llama a [handleIntent]. El navegador hace push/pushReplacement
+/// según la ruta cuyo [OmegaRoute.id] coincida con el destino (ej. intent name "navigate.login" → id "login").
+/// Debes pasar [navigatorKey] al [MaterialApp.navigatorKey].
 class OmegaNavigator {
-  /// Llave global para acceder al estado del Navigator de Flutter.
+  /// Llave global para el [Navigator] de Flutter; asignar a [MaterialApp.navigatorKey].
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   final Map<String, OmegaNavigationEntry> _routes = {};

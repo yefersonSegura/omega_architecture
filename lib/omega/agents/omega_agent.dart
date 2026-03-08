@@ -11,9 +11,11 @@ import 'behavior/omega_agent_reaction.dart';
 import 'protocol/omega_agent_inbox.dart';
 import 'protocol/omega_agent_message.dart';
 
-/// [OmegaAgent] es la unidad básica de procesamiento y lógica en la arquitectura.
-/// Cada agente tiene su propio identificador [id], acceso al [channel] global,
-/// y un motor de comportamiento [behavior].
+/// [OmegaAgent] es la unidad de lógica autónoma: tiene [id], [channel] y un motor [behavior].
+///
+/// Se suscribe al canal; cuando llega un evento o un mensaje directo, [behavior] evalúa
+/// y devuelve una reacción. El agente ejecuta la acción en [onAction]. Puedes emitir
+/// eventos al canal con [emit]. Llamar a [dispose] al cerrar para cancelar la suscripción.
 abstract class OmegaAgent {
   /// Identificador único del agente.
   final String id;

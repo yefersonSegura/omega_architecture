@@ -11,26 +11,28 @@ import 'omega_flow_state.dart';
 import 'omega_flow_expression.dart';
 import 'omega_flow_context.dart';
 
-/// [OmegaFlow] representa un flujo de lógica o un proceso de negocio complejo.
-/// Puede mantener estado, reaccionar a eventos y emitir expresiones para la UI.
+/// [OmegaFlow] representa un flujo de negocio (ej. login, checkout).
+///
+/// Se suscribe al [OmegaChannel]. Solo cuando [state] es [OmegaFlowState.running]
+/// procesa eventos ([onEvent]) e intents ([onIntent]). La UI escucha [expressions]
+/// para actualizarse. Se activa con [OmegaFlowManager.activate] o [OmegaFlowManager.switchTo].
 abstract class OmegaFlow {
-  /// Identificador único del flujo.
+  /// Identificador único del flujo (ej. "auth", "cart").
   final String id;
 
-  /// El canal de comunicación global.
+  /// Canal global; el flow escucha eventos aquí.
   final OmegaChannel channel;
 
-  /// El estado actual del flujo (ej: running, paused, ended).
+  /// Estado actual: solo en [OmegaFlowState.running] se procesan eventos e intents.
   OmegaFlowState state = OmegaFlowState.idle;
 
-  // Stream dinámico para que la UI observe los cambios emitidos por el flujo.
   final StreamController<OmegaFlowExpression> _expressions =
       StreamController.broadcast();
 
-  /// Un flujo de expresiones que la UI puede escuchar.
+  /// Stream de expresiones que la UI puede escuchar para reconstruirse.
   Stream<OmegaFlowExpression> get expressions => _expressions.stream;
 
-  /// Memoria interna del flujo para persistir datos durante su ejecución.
+  /// Memoria interna del flujo (datos que persisten durante su ejecución).
   final Map<String, dynamic> memory = {};
 
   OmegaFlow({required this.id, required this.channel}) {

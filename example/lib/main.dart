@@ -9,6 +9,7 @@ void main() {
     OmegaScope(
       channel: runtime.channel,
       flowManager: runtime.flowManager,
+      initialFlowId: runtime.initialFlowId,
       child: MyApp(navigator: runtime.navigator),
     ),
   );
@@ -42,11 +43,12 @@ class _RootHandlerState extends State<_RootHandler> {
   void initState() {
     super.initState();
 
-    // Disparamos la navegación al login cuando el árbol ya está montado
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final scope = OmegaScope.of(context);
+      if (scope.initialFlowId != null) {
+        scope.flowManager.switchTo(scope.initialFlowId!);
+      }
       final intent = OmegaIntent(id: "goLogin", name: "navigate.login");
-
       scope.channel.emit(
         OmegaEvent(
           id: "nav:${DateTime.now().millisecondsSinceEpoch}",

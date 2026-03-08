@@ -8,13 +8,18 @@ import '../core/channel/omega_channel.dart';
 import 'omega_flow.dart';
 import 'omega_flow_state.dart';
 
+/// [OmegaFlowManager] registra y coordina todos los [OmegaFlow].
+///
+/// Responsabilidades: registrar flows, activar/pausar/cambiar de flow,
+/// enrutar [OmegaIntent] a los flows en [OmegaFlowState.running], y conectar
+/// el canal al [OmegaNavigator] con [wireNavigator]. Llamar a [dispose] al cerrar la app.
 class OmegaFlowManager {
   final OmegaChannel channel;
 
   final Map<String, OmegaFlow> _flows = {};
   StreamSubscription? _navSubscription;
 
-  /// Flow actualmente activo (modo principal)
+  /// Id del flow que se considera "principal" (tras [switchTo] o [activateExclusive]).
   String? activeFlowId;
 
   OmegaFlowManager({required this.channel});
@@ -52,11 +57,16 @@ class OmegaFlowManager {
   /// Activa el flow [id] sin pausar los demás. Permite tener varios flows
   /// en [OmegaFlowState.running] a la vez; todos recibirán intents vía [handleIntent].
   /// Para un único flow activo (y pausar el resto), usar [switchTo] o [activateExclusive].
-  void activate(String id) {
+  ///
+  /// Idempotente: si el flow ya está en [OmegaFlowState.running], no hace nada.
+  /// Devuelve true si el flow se activó (o ya estaba activo), false si [id] no está registrado.
+  bool activate(String id) {
     final flow = _flows[id];
-    if (flow == null) return;
+    if (flow == null) return false;
+    if (flow.state == OmegaFlowState.running) return true;
 
     flow.start();
+    return true;
   }
 
   // -----------------------------------------------------------
@@ -83,8 +93,21 @@ class OmegaFlowManager {
 
   /// Cambia al flow [id] (debe estar registrado), lo activa y pausa el resto.
   /// Más seguro que [activateExclusive] porque ignora ids no registrados.
-  void switchTo(String id) {
-    if (!_flows.containsKey(id)) return;
+  ///
+  /// Idempotente: si [id] ya es el único flow en ejecución, no hace nada.
+  /// Devuelve true si se cambió al flow (o ya estaba activo), false si [id] no está registrado.
+  bool switchTo(String id) {
+    if (!_flows.containsKey(id)) return false;
+
+    final target = _flows[id]!;
+    final alreadyOnlyRunning =
+        target.state == OmegaFlowState.running &&
+        _flows.values.every((f) =>
+            f.id == id || f.state != OmegaFlowState.running);
+    if (alreadyOnlyRunning) {
+      activeFlowId = id;
+      return true;
+    }
 
     for (final flow in _flows.values) {
       if (flow.id == id) {
@@ -94,6 +117,7 @@ class OmegaFlowManager {
         flow.pause();
       }
     }
+    return true;
   }
 
   // -----------------------------------------------------------
@@ -136,7 +160,7 @@ class OmegaFlowManager {
   }
 
   // -----------------------------------------------------------
-  // Navigator wiring
+  // Conexión del navegador
   // -----------------------------------------------------------
 
   void wireNavigator(OmegaNavigator nav) {

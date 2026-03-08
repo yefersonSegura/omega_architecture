@@ -33,6 +33,24 @@ void main() {
     channel.dispose();
   });
 
+  test("FlowManager activate is idempotent (second call no-op)", () {
+    final channel = OmegaChannel();
+    final manager = OmegaFlowManager(channel: channel);
+    final flow = DummyFlow(channel);
+    manager.registerFlow(flow);
+
+    expect(manager.activate("dummy"), isTrue);
+    expect(flow.state, OmegaFlowState.running);
+
+    expect(manager.activate("dummy"), isTrue);
+    expect(flow.state, OmegaFlowState.running);
+
+    expect(manager.activate("nonexistent"), isFalse);
+
+    manager.dispose();
+    channel.dispose();
+  });
+
   test("FlowManager switchTo ignores unregistered flow id", () {
     final channel = OmegaChannel();
     final manager = OmegaFlowManager(channel: channel);

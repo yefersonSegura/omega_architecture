@@ -1,12 +1,12 @@
 import 'package:omega_architecture/omega/agents/behavior/omega_agent_behavior_context.dart';
 import 'package:omega_architecture/omega/agents/behavior/omega_agent_reaction.dart';
 
-/// [OmegaAgentBehaviorRule] define una condición y la reacción correspondiente.
+/// [OmegaAgentBehaviorRule] define una regla: cuándo aplica ([condition]) y qué reacción devolver ([reaction]).
 class OmegaAgentBehaviorRule {
-  /// Función que determina si la regla debe aplicarse en un contexto dado.
+  /// Devuelve true si la regla aplica para este contexto.
   final bool Function(OmegaAgentBehaviorContext context) condition;
 
-  /// Función que genera la reacción si la condición se cumple.
+  /// Devuelve la reacción (acción + payload) si [condition] es true.
   final OmegaAgentReaction Function(OmegaAgentBehaviorContext context) reaction;
 
   const OmegaAgentBehaviorRule({

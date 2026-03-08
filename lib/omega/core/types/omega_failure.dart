@@ -3,12 +3,14 @@
 import 'omega_object.dart';
 
 /// [OmegaFailure] representa un error o fallo dentro del sistema.
-/// Extiende de [OmegaObject] para mantener consistencia en la jerarquía.
+///
+/// Útil para emitir errores semánticos por el canal o devolverlos desde
+/// agentes/flows. Extiende [OmegaObject] (tiene [id] y [meta]).
 class OmegaFailure extends OmegaObject {
-  /// Un mensaje legible que describe el fallo.
+  /// Mensaje legible que describe el fallo.
   final String message;
 
-  /// Detalles adicionales sobre el error, opcional.
+  /// Detalles adicionales (stack trace, código, etc.), opcional.
   final dynamic details;
 
   const OmegaFailure({

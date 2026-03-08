@@ -2,12 +2,14 @@ import 'omega_agent_behavior_rule.dart';
 import 'omega_agent_behavior_context.dart';
 import 'omega_agent_reaction.dart';
 
-/// [OmegaAgentBehaviorEngine] es el motor de reglas que determina cómo reacciona un agente.
-/// Contiene una lista de reglas que se evalúan secuencialmente.
+/// [OmegaAgentBehaviorEngine] determina cómo reacciona un agente a eventos e intents.
+///
+/// Evalúa [OmegaAgentBehaviorContext] frente a las reglas añadidas con [addRule].
+/// Devuelve la primera [OmegaAgentReaction] cuya condición se cumpla, o null.
 class OmegaAgentBehaviorEngine {
   final List<OmegaAgentBehaviorRule> _rules = [];
 
-  /// Añade una nueva regla al motor de comportamiento.
+  /// Añade una regla (condición + reacción) al motor.
   void addRule(OmegaAgentBehaviorRule rule) {
     _rules.add(rule);
   }

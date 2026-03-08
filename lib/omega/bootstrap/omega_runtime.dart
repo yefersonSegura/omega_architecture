@@ -4,13 +4,28 @@ import 'package:omega_architecture/omega/core/channel/omega_channel.dart';
 import 'package:omega_architecture/omega/flows/omega_flow_manager.dart';
 import 'package:omega_architecture/omega/ui/navigation/omega_navigator.dart';
 
+/// [OmegaRuntime] es el resultado del arranque: canal, flow manager, protocolo, navegador y flow inicial.
+///
+/// Se obtiene con [OmegaRuntime.bootstrap]. La app usa [channel], [flowManager], [navigator]
+/// y opcionalmente [initialFlowId] para montar [OmegaScope] y [MaterialApp], y activar el flow inicial.
 class OmegaRuntime {
   final OmegaChannel channel;
   final OmegaFlowManager flowManager;
   final OmegaAgentProtocol protocol;
   final OmegaNavigator navigator;
 
-  OmegaRuntime._(this.channel, this.flowManager, this.protocol, this.navigator);
+  /// Id del flow a activar al inicio, si se definió en [OmegaConfig.initialFlowId].
+  /// Úsalo en tu widget raíz (ej. en addPostFrameCallback) para activar
+  /// el flow inicial sin hardcodear su id.
+  final String? initialFlowId;
+
+  OmegaRuntime._(
+    this.channel,
+    this.flowManager,
+    this.protocol,
+    this.navigator,
+    this.initialFlowId,
+  );
 
   /// Inicializa el runtime de Omega a partir de una función que construye
   /// el [OmegaConfig] usando el [OmegaChannel] interno.
@@ -26,23 +41,29 @@ class OmegaRuntime {
     final protocol = OmegaAgentProtocol(channel);
     final navigator = OmegaNavigator();
 
-    /// Agents
+    // Agentes
     for (final agent in config.agents) {
       protocol.register(agent);
     }
 
-    /// Flows
+    // Flows
     for (final flow in config.flows) {
       flowManager.registerFlow(flow);
     }
 
-    /// Routes
+    // Rutas
     for (final route in config.routes) {
       navigator.registerRoute(route);
     }
 
     flowManager.wireNavigator(navigator);
 
-    return OmegaRuntime._(channel, flowManager, protocol, navigator);
+    return OmegaRuntime._(
+      channel,
+      flowManager,
+      protocol,
+      navigator,
+      config.initialFlowId,
+    );
   }
 }

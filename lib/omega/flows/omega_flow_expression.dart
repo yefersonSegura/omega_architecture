@@ -1,12 +1,14 @@
 // lib/omega/flows/omega_flow_expression.dart
 
-/// [OmegaFlowExpression] es un mensaje reactivo enviado desde un flujo hacia la UI.
-/// Representa un cambio en el estado visual o una información que la interfaz debe mostrar.
+/// [OmegaFlowExpression] es un mensaje que un [OmegaFlow] emite hacia la UI.
+///
+/// El flow llama a [OmegaFlow.emitExpression]. La UI se suscribe a
+/// [OmegaFlow.expressions] y reconstruye según [type] y [payload] (ej. "loading", "success").
 class OmegaFlowExpression {
-  /// El tipo de expresión (ej: "loading", "success", "error").
+  /// Tipo de expresión (ej. "loading", "success", "error", "idle").
   final String type;
 
-  /// La carga útil de datos asociada a la expresión.
+  /// Datos opcionales asociados (objeto, mapa, etc.).
   final dynamic payload;
 
   const OmegaFlowExpression(this.type, {this.payload});

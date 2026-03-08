@@ -16,5 +16,6 @@ OmegaConfig createOmegaConfig(OmegaChannel channel) {
       OmegaRoute(id: "login", builder: (context) => const OmegaLoginPage()),
       OmegaRoute(id: "home", builder: (context) => const HomePage()),
     ],
+    initialFlowId: "authFlow",
   );
 }

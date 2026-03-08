@@ -1,5 +1,6 @@
-/// [OmegaAgentReaction] representa el resultado de una regla de comportamiento.
-/// Define qué [action] debe realizar el agente y con qué [payload].
+/// [OmegaAgentReaction] es el resultado de una regla: la [action] que el agente debe ejecutar y su [payload].
+///
+/// El agente recibe la reacción y la ejecuta en [OmegaAgent.onAction].
 class OmegaAgentReaction {
   /// El nombre de la acción a ejecutar.
   final String action;

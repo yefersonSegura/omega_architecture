@@ -2,26 +2,26 @@ import 'dart:async';
 import '../events/omega_event.dart';
 
 /// [OmegaChannel] es el bus de eventos central del sistema.
-/// Permite la comunicación reactiva entre agentes y flujos.
 ///
-/// Quien cree el canal debe llamar a [dispose] al cerrar la app para liberar recursos.
-/// Los agentes que escuchen [events] deben llamar a su propio [OmegaAgent.dispose] para
+/// Permite la comunicación reactiva: agentes y flows se suscriben a [events]
+/// y cualquiera puede [emit] un [OmegaEvent]. Es el "sistema nervioso" de la app.
+///
+/// **Ciclo de vida:** Quien cree el canal debe llamar a [dispose] al cerrar la app.
+/// Los agentes que escuchen [events] deben llamar a [OmegaAgent.dispose] para
 /// cancelar suscripciones.
 class OmegaChannel {
   final _controller = StreamController<OmegaEvent>.broadcast();
 
-  /// Callback opcional para registrar errores de emisión (p. ej. canal cerrado).
+  /// Callback opcional al emitir y fallar (p. ej. canal ya cerrado).
   final void Function(Object error, StackTrace? stackTrace)? onEmitError;
 
   OmegaChannel({this.onEmitError});
 
-  /// Un flujo de eventos [OmegaEvent] a los que cualquiera puede suscribirse.
+  /// Stream de eventos al que se suscriben agentes, flows y la UI.
   Stream<OmegaEvent> get events => _controller.stream;
 
-  /// Emite un nuevo evento al canal para ser procesado por los suscriptores.
-  /// Si el canal está cerrado, se notifica con [onEmitError] y no se emite.
-  /// Si [add] falla (p. ej. cerrado entre comprobaciones), se notifica con [onEmitError]
-  /// y se propaga el error a los suscriptores vía [Stream.addError].
+  /// Publica [event] en el canal. Los suscriptores de [events] lo reciben.
+  /// Si el canal está cerrado, se llama [onEmitError] y no se emite.
   void emit(OmegaEvent event) {
     if (_controller.isClosed) {
       onEmitError?.call(
