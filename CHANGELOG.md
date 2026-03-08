@@ -1,3 +1,9 @@
+## 0.0.11
+
+- **Documentación:** [docs/COMPARATIVA.md](docs/COMPARATIVA.md) con comparativa Omega vs BLoC vs Riverpod y cuándo elegir cada uno. Web (presentation) declarada como documentación completa; enlace "Comparativa" en la navegación. README y ROADMAP actualizados.
+- **Inspector:** Diseño moderno (tema azul, gradientes, tarjetas con sombra, pills para estado y conteos). Mismo estilo en overlay y ventana remota (web).
+- **Inspector web:** Al cerrar la ventana del inspector y volver a abrir, se usa un nombre de ventana único para que el navegador abra una ventana nueva correctamente.
+
 ## 0.0.10
 
 - **Pub.dev static analysis:** Inspector web migrado de `dart:html` a `package:web` y `dart:js_interop` para eliminar el INFO de deprecación y recuperar los 10 puntos en "Pass static analysis". Dependencia `web: ^1.0.0` añadida.
