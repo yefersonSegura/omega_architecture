@@ -35,7 +35,10 @@ class _OmegaInspectorLauncherWebState extends State<OmegaInspectorLauncher> {
     final base = '${loc.origin}${loc.pathname}${loc.search}';
     final sep = base.contains('?') ? '&' : '?';
     final url = '$base${sep}omega_inspector=1';
-    web.window.open(url, 'omega_inspector', 'width=400,height=500');
+    // Nombre único cada vez para que, si el usuario cerró la ventana anterior,
+    // el navegador abra una ventana nueva en lugar de reusar la referencia cerrada.
+    final windowName = 'omega_inspector_${DateTime.now().millisecondsSinceEpoch}';
+    web.window.open(url, windowName, 'width=400,height=500');
     _sending = true;
     _sendOnce();
     _timer = Timer.periodic(const Duration(milliseconds: 500), (_) => _sendOnce());
