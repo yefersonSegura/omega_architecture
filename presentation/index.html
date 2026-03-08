@@ -19,6 +19,7 @@
                 <a href="#vision">Inicio</a>
                 <a href="#about">Documentación</a>
                 <a href="#architecture-diagram">Arquitectura</a>
+                <a href="#comparison">Comparativa</a>
                 <a href="#cli">CLI</a>
                 <a href="#usage-flows">Flows</a>
                 <a href="https://pub.dev/packages/omega_architecture" target="_blank" rel="noopener noreferrer">pub.dev</a>
@@ -35,10 +36,11 @@
                 <p class="highlight-text">
                     El sistema nervioso autónomo para aplicaciones de alta complejidad en Flutter.
                 </p>
-                <p class="subtitle" style="margin-top: 20px; max-width: 640px; font-size: 13px;">
-                    Esta web es la puerta de entrada a Omega: aquí se explica qué es el framework,
-                    en qué se diferencia de BLoC/Riverpod, se muestra el diagrama de arquitectura
-                    y se detalla cómo integrarlo en tu app host (flows, agentes, navegación y CLI).
+                <p class="subtitle" style="margin-top: 20px; max-width: 680px; font-size: 13px;">
+                    <strong>Esta web es la documentación completa de Omega.</strong> Aquí encontrarás: qué es el framework,
+                    comparativa Omega vs BLoC vs Riverpod y cuándo elegir cada uno, diagrama de arquitectura,
+                    instalación, CLI (init, g ecosystem, g agent, g flow, validate), uso de agentes, behaviors y flows,
+                    integración en la app host, persistencia/snapshot, inspector (incl. ventana separada en web) y enlaces a pub.dev y al repo.
                 </p>
                 <div class="divider"></div>
                 <div class="author-info">
@@ -186,10 +188,11 @@ class AuthFlow extends OmegaFlow {
             </div>
         </section>
 
-        <!-- Comparativa -->
+        <!-- Comparativa: Omega vs BLoC vs Riverpod -->
         <section id="comparison" class="slide">
-            <span class="section-tag">Market Analysis</span>
-            <h2 class="animate">Omega vs <span class="gradient-text">El Mercado</span></h2>
+            <span class="section-tag">Comparativa</span>
+            <h2 class="animate">Omega vs BLoC vs <span class="gradient-text">Riverpod</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 20px;">Estado observable, persistible y reproducible; agentes, flows e intents en el centro; la UI solo refleja. Con snapshot, inspector y persistencia/restore.</p>
             <table class="comparison-table animate">
                 <thead>
                     <tr>
@@ -224,6 +227,7 @@ class AuthFlow extends OmegaFlow {
             <div class="highlight-box animate" style="margin-top: 32px;">
                 <p><strong>Omega vs BLoC:</strong> La lógica en Omega vive en agentes que no conocen la UI; en BLoC está en Blocs atados a Streams y widgets. Omega desacopla la navegación (intents); BLoC suele usar <code>BuildContext</code>.</p>
                 <p style="margin-top: 12px;"><strong>Omega vs Riverpod:</strong> Riverpod es muy flexible (providers, ref); Omega fija un modelo (agentes + flows + canal) y da trazabilidad explícita (eventos/intents con nombre). Navegación en Omega sin depender de <code>context</code>.</p>
+                <p style="margin-top: 12px; font-size: 13px; color: var(--text-dim);">Documentación ampliada (tabla detallada y cuándo elegir cada uno): <code>docs/COMPARATIVA.md</code> en el repo.</p>
             </div>
         </section>
 

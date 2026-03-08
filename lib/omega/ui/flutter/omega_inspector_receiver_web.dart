@@ -1,5 +1,6 @@
 // Implementación web: recibe datos del canal principal por BroadcastChannel y muestra el inspector.
 // Usa package:web en lugar de dart:html (recomendado por pub.dev).
+// Mismo tema visual que OmegaInspector (overlay) para consistencia.
 
 import 'dart:convert';
 import 'dart:js_interop';
@@ -8,6 +9,15 @@ import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 
 const String _kChannelName = 'omega_inspector';
+
+// Tema visual (alineado con omega_inspector.dart).
+const Color _kInspectorPrimary = Color(0xFF1565C0);
+const Color _kInspectorPrimaryDark = Color(0xFF0D47A1);
+const Color _kInspectorSurface = Color(0xFFF5F7FA);
+const Color _kInspectorCard = Color(0xFFFFFFFF);
+const Color _kInspectorText = Color(0xFF1A237E);
+const Color _kInspectorTextMuted = Color(0xFF546E7A);
+const double _kCardRadius = 12.0;
 
 /// En la ventana abierta con ?omega_inspector=1, este widget escucha BroadcastChannel y muestra el inspector.
 class OmegaInspectorReceiver extends StatefulWidget {
@@ -70,24 +80,36 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
   Widget build(BuildContext context) {
     return Material(
       child: Container(
-        color: Colors.orange.shade50,
+        color: _kInspectorSurface,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildHeader(),
             if (_error.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Text(_error, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              Container(
+                margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(_kCardRadius),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline_rounded, size: 18, color: Colors.red.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_error, style: TextStyle(color: Colors.red.shade700, fontSize: 12))),
+                  ],
+                ),
               ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildEventsSection(),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     _buildFlowsSection(),
                   ],
                 ),
@@ -101,18 +123,47 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
 
   Widget _buildHeader() {
     return Container(
-      color: Colors.orange.shade700,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      child: const Row(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [_kInspectorPrimary, _kInspectorPrimaryDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      child: Row(
         children: [
-          Icon(Icons.bug_report, color: Colors.white, size: 22),
-          SizedBox(width: 8),
-          Expanded(
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.insights, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
             child: Text(
               'Omega Inspector (ventana remota)',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.3),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, String? subtitle) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kInspectorText, letterSpacing: 0.2)),
+          if (subtitle != null && subtitle.isNotEmpty) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: _kInspectorPrimary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+              child: Text(subtitle, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _kInspectorPrimary)),
+            ),
+          ],
         ],
       ),
     );
@@ -122,79 +173,165 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Eventos (${_events.length})', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 4),
+        _buildSectionTitle('Eventos', '${_events.length}'),
         if (_events.isEmpty)
-          const Text('Esperando datos del canal…', style: TextStyle(color: Colors.grey, fontSize: 12))
+          _emptyState('Esperando datos del canal…')
         else
-          ..._events.take(20).map((e) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 72,
-                      child: Text(
-                        _formatTime(e['time'] as String?),
-                        style: const TextStyle(fontSize: 10, color: Colors.grey),
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(e['name'] as String? ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                          Text((e['payload'] as String? ?? '').toString(), style: const TextStyle(fontSize: 10, color: Colors.grey), maxLines: 2, overflow: TextOverflow.ellipsis),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              )),
+          ..._events.take(20).map((e) => _eventTile(e)),
       ],
     );
   }
 
+  Widget _emptyState(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      alignment: Alignment.center,
+      child: Text(text, style: const TextStyle(fontSize: 12, color: _kInspectorTextMuted)),
+    );
+  }
+
+  Widget _eventTile(Map<String, dynamic> e) {
+    final name = e['name'] as String? ?? '';
+    final timeStr = _formatTime(e['time'] as String?);
+    final payload = (e['payload'] as String? ?? '').toString();
+    final hasPayload = payload.isNotEmpty;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: _kInspectorCard,
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: 4,
+                decoration: BoxDecoration(color: _kInspectorPrimary.withValues(alpha: 0.5)),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: _kInspectorSurface, borderRadius: BorderRadius.circular(6)),
+                            child: Text(timeStr, style: const TextStyle(fontSize: 10, color: _kInspectorTextMuted, fontFamily: 'monospace')),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kInspectorText, fontFamily: 'monospace'),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (hasPayload) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          payload,
+                          style: const TextStyle(fontSize: 10, color: _kInspectorTextMuted, height: 1.3),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildFlowsSection() {
+    final subtitle = _activeFlowId != null ? 'activo: $_activeFlowId' : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Flows${_activeFlowId != null ? " (activo: $_activeFlowId)" : ""}', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 4),
+        _buildSectionTitle('Flows', subtitle),
         if (_flows.isEmpty)
-          const Text('Ninguno aún', style: TextStyle(color: Colors.grey, fontSize: 12))
+          _emptyState('Ninguno aún')
         else
-          ..._flows.map((f) => Card(
-                margin: const EdgeInsets.only(bottom: 4),
+          ..._flows.map((f) => _flowTile(f)),
+      ],
+    );
+  }
+
+  Widget _flowTile(Map<String, dynamic> f) {
+    final flowId = f['flowId'] as String? ?? '';
+    final stateStr = f['state'] as String? ?? '';
+    final stateColor = _colorForState(stateStr);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: _kInspectorCard,
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: 4,
+                decoration: BoxDecoration(color: stateColor),
+              ),
+              Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Expanded(child: Text(f['flowId'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: _colorForState(f['state'] as String?),
-                              borderRadius: BorderRadius.circular(4),
+                          Expanded(
+                            child: Text(
+                              flowId,
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: _kInspectorText),
                             ),
-                            child: Text(f['state'] as String? ?? '', style: const TextStyle(fontSize: 10, color: Colors.white)),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: stateColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(stateStr, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: stateColor)),
                           ),
                         ],
                       ),
                       if (f['lastExpressionType'] != null) ...[
-                        const SizedBox(height: 4),
-                        Text('Última expresión: ${f['lastExpressionType']}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Última expresión: ${f['lastExpressionType']}',
+                          style: const TextStyle(fontSize: 11, color: _kInspectorTextMuted),
+                        ),
                       ],
                       if ((f['memoryKeys'] as int? ?? 0) > 0)
-                        Text('memory: ${f['memoryKeys']} keys', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        Text('memory: ${f['memoryKeys']} keys', style: const TextStyle(fontSize: 10, color: _kInspectorTextMuted)),
                     ],
                   ),
                 ),
-              )),
-      ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

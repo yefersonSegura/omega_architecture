@@ -12,6 +12,16 @@ import 'omega_scope.dart';
 /// Número por defecto de eventos recientes que muestra el inspector.
 const int kOmegaInspectorDefaultEventLimit = 30;
 
+// Tema visual del inspector (moderno, alto contraste).
+const Color _kInspectorPrimary = Color(0xFF1565C0);
+const Color _kInspectorPrimaryDark = Color(0xFF0D47A1);
+const Color _kInspectorSurface = Color(0xFFF5F7FA);
+const Color _kInspectorCard = Color(0xFFFFFFFF);
+const Color _kInspectorText = Color(0xFF1A237E);
+const Color _kInspectorTextMuted = Color(0xFF546E7A);
+const double _kInspectorRadius = 16.0;
+const double _kCardRadius = 12.0;
+
 /// Panel mínimo de inspección para Omega: eventos recientes del canal y estado de los flows.
 ///
 /// Usa [OmegaScope.of](context) para obtener el canal y el flow manager. Muestra los últimos
@@ -96,17 +106,28 @@ class _OmegaInspectorState extends State<OmegaInspector> {
   Widget build(BuildContext context) {
     if (_collapsed) {
       return Material(
-        elevation: 2,
+        elevation: 4,
+        borderRadius: BorderRadius.circular(20),
+        shadowColor: _kInspectorPrimary.withValues(alpha: 0.3),
         child: InkWell(
           onTap: () => setState(() => _collapsed = false),
+          borderRadius: BorderRadius.circular(20),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [_kInspectorPrimary, _kInspectorPrimaryDark],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.bug_report, size: 18, color: Colors.orange.shade800),
-                const SizedBox(width: 6),
-                const Text('Omega', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                const Icon(Icons.insights, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text('Omega Inspector', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12)),
               ],
             ),
           ),
@@ -115,29 +136,35 @@ class _OmegaInspectorState extends State<OmegaInspector> {
     }
 
     return Material(
-      elevation: 8,
-      child: Container(
-        width: 320,
-        height: 400,
-        constraints: const BoxConstraints(maxWidth: 320, maxHeight: 400),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildEventsSection(),
-                    const SizedBox(height: 12),
-                    _buildFlowsSection(),
-                  ],
+      elevation: 12,
+      shadowColor: Colors.black26,
+      borderRadius: BorderRadius.circular(_kInspectorRadius),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(_kInspectorRadius),
+        child: Container(
+          width: 360,
+          height: 480,
+          constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
+          decoration: const BoxDecoration(color: _kInspectorSurface),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildEventsSection(),
+                      const SizedBox(height: 16),
+                      _buildFlowsSection(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -145,25 +172,58 @@ class _OmegaInspectorState extends State<OmegaInspector> {
 
   Widget _buildHeader() {
     return Container(
-      color: Colors.orange.shade700,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [_kInspectorPrimary, _kInspectorPrimaryDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          const Icon(Icons.bug_report, color: Colors.white, size: 20),
-          const SizedBox(width: 8),
-          const Expanded(child: Text('Omega Inspector', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.insights, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Omega Inspector',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15, letterSpacing: 0.3),
+            ),
+          ),
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
             onPressed: _refreshSnapshot,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: 0.15)),
           ),
+          const SizedBox(width: 4),
           IconButton(
-            icon: const Icon(Icons.close, color: Colors.white, size: 20),
+            icon: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
             onPressed: () => setState(() => _collapsed = true),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: 0.15)),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, String? subtitle) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kInspectorText, letterSpacing: 0.2)),
+          if (subtitle != null && subtitle.isNotEmpty) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: _kInspectorPrimary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+              child: Text(subtitle, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _kInspectorPrimary)),
+            ),
+          ],
         ],
       ),
     );
@@ -173,34 +233,87 @@ class _OmegaInspectorState extends State<OmegaInspector> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Eventos (${_events.length})', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 4),
+        _buildSectionTitle('Eventos', '${_events.length}'),
         if (_events.isEmpty)
-          const Text('Ninguno aún', style: TextStyle(color: Colors.grey, fontSize: 12))
+          _emptyState('Ningún evento aún')
         else
-          ..._events.take(15).map((e) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 70,
-                      child: Text(e.time.toString().substring(11, 19), style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+          ..._events.take(15).map((e) => _eventTile(e)),
+      ],
+    );
+  }
+
+  Widget _emptyState(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      alignment: Alignment.center,
+      child: Text(text, style: const TextStyle(fontSize: 12, color: _kInspectorTextMuted)),
+    );
+  }
+
+  Widget _eventTile(_EventEntry e) {
+    final hasPayload = e.event.payload != null;
+    final payloadStr = hasPayload ? _payloadSummary(e.event.payload) : null;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: _kInspectorCard,
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: 4,
+                decoration: BoxDecoration(color: _kInspectorPrimary.withValues(alpha: 0.5)),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(e.event.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                          if (e.event.payload != null)
-                            Text(_payloadSummary(e.event.payload), style: const TextStyle(fontSize: 10, color: Colors.grey), maxLines: 2, overflow: TextOverflow.ellipsis),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: _kInspectorSurface, borderRadius: BorderRadius.circular(6)),
+                            child: Text(
+                              e.time.toString().substring(11, 19),
+                              style: const TextStyle(fontSize: 10, color: _kInspectorTextMuted, fontFamily: 'monospace'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              e.event.name,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kInspectorText, fontFamily: 'monospace'),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
-                    ),
-                  ],
+                      if (payloadStr != null && payloadStr.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          payloadStr,
+                          style: const TextStyle(fontSize: 10, color: _kInspectorTextMuted, height: 1.3),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              )),
-      ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -209,10 +322,9 @@ class _OmegaInspectorState extends State<OmegaInspector> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Flows${snap != null ? " (active: ${snap.activeFlowId ?? "—"})" : ""}', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 4),
+        _buildSectionTitle('Flows', snap != null && snap.activeFlowId != null ? 'activo: ${snap.activeFlowId}' : null),
         if (snap == null || snap.flows.isEmpty)
-          const Text('Ninguno registrado', style: TextStyle(color: Colors.grey, fontSize: 12))
+          _emptyState('Ninguno registrado')
         else
           ...snap.flows.map((f) => _flowTile(f)),
       ],
@@ -221,30 +333,63 @@ class _OmegaInspectorState extends State<OmegaInspector> {
 
   Widget _flowTile(OmegaFlowSnapshot f) {
     final stateLabel = _stateLabel(f.state);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 4),
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(child: Text(f.flowId, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: _stateColor(f.state), borderRadius: BorderRadius.circular(4)),
-                  child: Text(stateLabel, style: const TextStyle(fontSize: 10, color: Colors.white)),
+    final stateColor = _stateColor(f.state);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: _kInspectorCard,
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: 4,
+                decoration: BoxDecoration(color: stateColor),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              f.flowId,
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: _kInspectorText),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: stateColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(stateLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: stateColor)),
+                          ),
+                        ],
+                      ),
+                      if (f.lastExpression != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'Última expresión: ${f.lastExpression!.type}',
+                          style: const TextStyle(fontSize: 11, color: _kInspectorTextMuted),
+                        ),
+                      ],
+                      if (f.memory.isNotEmpty)
+                        Text('memory: ${f.memory.length} keys', style: const TextStyle(fontSize: 10, color: _kInspectorTextMuted)),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-            if (f.lastExpression != null) ...[
-              const SizedBox(height: 4),
-              Text('Última expresión: ${f.lastExpression!.type}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+              ),
             ],
-            if (f.memory.isNotEmpty)
-              Text('memory: ${f.memory.length} keys', style: const TextStyle(fontSize: 10, color: Colors.grey)),
-          ],
+          ),
         ),
       ),
     );

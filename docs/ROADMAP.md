@@ -68,8 +68,8 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 
 ## 7. Diferenciación (mensaje)
 
-- [ ] **Un párrafo claro:** “Omega es la única arquitectura en Flutter donde el estado es observable, persistible y reproducible: eventos, flows y agentes en el centro; la UI solo refleja. Con snapshot, DevTools y módulos, inspeccionas, recuperas y reutilizas como en ningún otro stack.”
-- [ ] **Comparativa honesta:** página “Omega vs BLoC vs Riverpod” que diga qué problema resuelve cada uno y **cuándo elegir Omega** (apps complejas, múltiples flujos, inspección/persistencia/módulos).
+- [x] **Un párrafo claro:** “En [COMPARATIVA.md](COMPARATIVA.md) y en la web (presentation): estado observable, persistible y reproducible; agentes, flows e intents en el centro; la UI solo refleja.”
+- [x] **Comparativa honesta:** [docs/COMPARATIVA.md](COMPARATIVA.md) y sección en la web: "Omega vs BLoC vs Riverpod", tabla y **cuándo elegir Omega**. README enlaza la web como documentación completa.
 
 **Objetivo:** Que la comunidad entienda por qué y cuándo elegir Omega.
 

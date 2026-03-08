@@ -12,7 +12,7 @@ A reactive, agent-based architecture framework for Flutter applications.
 - **Persistence & restore** — Serialize [OmegaAppSnapshot] to JSON and restore on launch ([toJson]/[fromJson], [OmegaFlowManager.restoreFromSnapshot], optional [OmegaSnapshotStorage]).
 - **CLI** — Scaffold setup and generate ecosystems (agent, flow, behavior, page) from the command line.
 
-For a detailed description of what each component does and how they fit together, see **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**. To test agents and flows without Flutter (unit tests), see **[docs/TESTING.md](docs/TESTING.md)**. For the long-term vision (DevTools, persistence, modules, etc.), see **[docs/ROADMAP.md](docs/ROADMAP.md)**.
+**Full documentation:** The **[presentation/index.html](presentation/index.html)** web (in this repo) is the complete Omega documentation: architecture, **comparison (Omega vs BLoC vs Riverpod)** and when to choose each, CLI, flows, installation, inspector, and more. For a detailed technical description of each component, see **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**. For **when to choose Omega** and the full comparison table, see **[docs/COMPARATIVA.md](docs/COMPARATIVA.md)**. To test agents and flows without Flutter (unit tests), see **[docs/TESTING.md](docs/TESTING.md)**. For the long-term vision, see **[docs/ROADMAP.md](docs/ROADMAP.md)**.
 
 ## Core Concepts
 
