@@ -27,8 +27,8 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 
 ## 3. Persistencia y recuperación (app state)
 
-- [ ] **API para serializar/restaurar** OmegaAppSnapshot (y opcionalmente por flow): a JSON, disco o backend.
-- [ ] **Restore on launch:** “al abrir la app, restaurar el snapshot de la última sesión” (o del último estado conocido de un flow).
+- [x] **API para serializar/restaurar** OmegaAppSnapshot: toJson/fromJson, restoreMemory, restoreFromSnapshot, OmegaSnapshotStorage.
+- [x] **Restore on launch:** “al abrir la app, restaurar el snapshot de la última sesión” (o del último estado conocido de un flow).
 - [ ] **Offline-first:** flows que persisten su memory y se reconcilian al volver online.
 
 **Objetivo:** La arquitectura que “no pierde estado” por defecto.

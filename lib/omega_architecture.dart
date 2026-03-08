@@ -37,6 +37,7 @@ export 'omega/flows/omega_flow_state.dart';
 export 'omega/flows/omega_flow_expression.dart';
 export 'omega/flows/omega_flow_context.dart';
 export 'omega/flows/omega_flow_snapshot.dart';
+export 'omega/flows/omega_snapshot_storage.dart';
 
 // UI NAVIGATION
 export 'omega/ui/navigation/omega_navigator.dart';

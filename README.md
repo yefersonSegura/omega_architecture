@@ -9,6 +9,7 @@ A reactive, agent-based architecture framework for Flutter applications.
 - **Event-Driven** — Global communication through `OmegaChannel`.
 - **Flow Management** — Orchestrate complex state transitions and business logic flows; run one or multiple flows at once.
 - **Semantic Intents** — High-level abstraction for user or system requests.
+- **Persistence & restore** — Serialize [OmegaAppSnapshot] to JSON and restore on launch ([toJson]/[fromJson], [OmegaFlowManager.restoreFromSnapshot], optional [OmegaSnapshotStorage]).
 - **CLI** — Scaffold setup and generate ecosystems (agent, flow, behavior, page) from the command line.
 
 For a detailed description of what each component does and how they fit together, see **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**. To test agents and flows without Flutter (unit tests), see **[docs/TESTING.md](docs/TESTING.md)**. For the long-term vision (DevTools, persistence, modules, etc.), see **[docs/ROADMAP.md](docs/ROADMAP.md)**.
@@ -173,6 +174,14 @@ In debug you can inspect the channel (last N events) and flow snapshots in two w
 
 - **Several flows at once:** use `flowManager.activate("flowId")` for each. All stay in `running` and receive intents via `handleIntent`.
 - **Single “main” flow:** use `flowManager.switchTo("flowId")` to activate one and pause the others.
+
+### Persistence (restore on launch)
+
+To save app state and restore it when the user reopens the app:
+
+1. **Serialize:** `final json = flowManager.getAppSnapshot().toJson()` then save (e.g. `jsonEncode(json)` to a file or `SharedPreferences`). Flow `memory` values must be JSON-serializable.
+2. **Restore:** On startup, load the saved map, then `final snapshot = OmegaAppSnapshot.fromJson(jsonDecode(loaded)); flowManager.restoreFromSnapshot(snapshot);`. This restores each flow's memory and activates the previous active flow.
+3. **Optional:** Implement [OmegaSnapshotStorage] (`save` / `load`) with your preferred backend (file, prefs, API) and call it from app lifecycle. See [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) for details.
 
 ### Lifecycle and dispose
 

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:omega_architecture/omega/flows/omega_flow_context.dart';
 import 'package:omega_architecture/omega_architecture.dart';
@@ -105,6 +107,34 @@ void main() {
 
     manager.switchTo("dummy");
     expect(manager.getAppSnapshot().activeFlowId, "dummy");
+
+    manager.dispose();
+    channel.dispose();
+  });
+
+  test("FlowManager restoreFromSnapshot restores memory and active flow", () {
+    final channel = OmegaChannel();
+    final manager = OmegaFlowManager(channel: channel);
+    final flow = DummyFlow(channel);
+    manager.registerFlow(flow);
+    manager.switchTo("dummy"); // activa y marca como flow principal
+    flow.memory["saved"] = "data";
+    flow.memory["count"] = 42;
+
+    final snapshot = manager.getAppSnapshot();
+    final json = snapshot.toJson();
+    final decoded = jsonDecode(jsonEncode(json)) as Map<String, dynamic>;
+    final restored = OmegaAppSnapshot.fromJson(decoded);
+
+    manager.end("dummy");
+    flow.memory.clear(); // simula app recién abierta sin estado
+    expect(manager.activeFlowId, isNull);
+
+    manager.restoreFromSnapshot(restored);
+    expect(flow.memory["saved"], "data");
+    expect(flow.memory["count"], 42);
+    expect(manager.activeFlowId, "dummy");
+    expect(flow.state, OmegaFlowState.running);
 
     manager.dispose();
     channel.dispose();

@@ -65,7 +65,7 @@ Para que Omega sea la arquitectura más visionaria y única, ver **[docs/ROADMAP
 
 - [ ] **Omega DevTools** — Inspección en tiempo real (canal, flows, agentes), time-travel, replay.
 - [ ] **Contratos y semántica** — Eventos/intents tipados o registrados, contratos por flow, versionado.
-- [ ] **Persistencia y recuperación** — Serializar/restaurar snapshot, restore on launch, offline-first.
+- [x] **Persistencia y recuperación** — toJson/fromJson, restoreMemory, restoreFromSnapshot, OmegaSnapshotStorage; restore on launch documentado (offline-first pendiente). Ver ROADMAP §3.
 - [ ] **Módulos (OmegaModule)** — Ecosistemas reutilizables entre apps, eventos namespaced.
 - [ ] **IA y asistencia** — Generación desde descripción, sugerencias de reglas, documentación viva.
 - [ ] **Testing avanzado** — Record/replay, property-based, assertions de contrato.

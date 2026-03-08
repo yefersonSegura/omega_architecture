@@ -1,6 +1,9 @@
 import 'omega_flow_expression.dart';
 import 'omega_flow_state.dart';
 
+// Serialización: para persistencia, [memory] y [lastExpression.payload] deben ser
+// JSON-serializables (primitivos, List, Map). Ver [toJson] y [fromJson].
+
 /// [OmegaFlowSnapshot] es una foto del estado actual de un [OmegaFlow].
 ///
 /// Incluye [flowId], [state], una copia de [memory] y la última [lastExpression]
@@ -36,6 +39,47 @@ class OmegaFlowSnapshot {
     this.lastExpression,
   });
 
+  /// Serializa el snapshot a un mapa JSON-serializable (para disco, backend, etc.).
+  /// [memory] y [lastExpression.payload] deben contener solo valores JSON-serializables.
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'flowId': flowId,
+        'state': state.name,
+        'memory': Map<String, dynamic>.from(memory),
+        if (lastExpression != null)
+          'lastExpression': <String, dynamic>{
+            'type': lastExpression!.type,
+            if (lastExpression!.payload != null) 'payload': lastExpression!.payload,
+          },
+      };
+
+  /// Reconstruye un snapshot desde un mapa (p. ej. [jsonDecode] de disco).
+  static OmegaFlowSnapshot fromJson(Map<String, dynamic> json) {
+    final stateStr = json['state'] as String? ?? 'idle';
+    final state = OmegaFlowState.values.firstWhere(
+      (e) => e.name == stateStr,
+      orElse: () => OmegaFlowState.idle,
+    );
+    final mem = json['memory'];
+    final memory = mem is Map
+        ? Map<String, dynamic>.from(mem)
+        : <String, dynamic>{};
+    OmegaFlowExpression? lastExpression;
+    final le = json['lastExpression'];
+    if (le is Map) {
+      final m = Map<String, dynamic>.from(le);
+      lastExpression = OmegaFlowExpression(
+        m['type'] as String? ?? '',
+        payload: m['payload'],
+      );
+    }
+    return OmegaFlowSnapshot(
+      flowId: json['flowId'] as String? ?? '',
+      state: state,
+      memory: memory,
+      lastExpression: lastExpression,
+    );
+  }
+
   @override
   String toString() =>
       'OmegaFlowSnapshot(flowId: $flowId, state: $state, memory: ${memory.length} keys, lastExpression: ${lastExpression?.type})';
@@ -58,6 +102,27 @@ class OmegaAppSnapshot {
     this.activeFlowId,
     required this.flows,
   });
+
+  /// Serializa el snapshot de la app a un mapa JSON-serializable.
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'activeFlowId': activeFlowId,
+        'flows': flows.map((f) => f.toJson()).toList(),
+      };
+
+  /// Reconstruye un snapshot de app desde un mapa (p. ej. [jsonDecode] de disco).
+  static OmegaAppSnapshot fromJson(Map<String, dynamic> json) {
+    final activeFlowId = json['activeFlowId'] as String?;
+    final flowsList = json['flows'];
+    final flows = flowsList is List
+        ? flowsList
+            .map((e) => e is Map
+                ? OmegaFlowSnapshot.fromJson(Map<String, dynamic>.from(e))
+                : null)
+            .whereType<OmegaFlowSnapshot>()
+            .toList()
+        : <OmegaFlowSnapshot>[];
+    return OmegaAppSnapshot(activeFlowId: activeFlowId, flows: flows);
+  }
 
   @override
   String toString() =>

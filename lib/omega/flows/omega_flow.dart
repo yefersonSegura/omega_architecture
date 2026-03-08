@@ -141,4 +141,11 @@ abstract class OmegaFlow {
         memory: Map<String, dynamic>.from(memory),
         lastExpression: _lastExpression,
       );
+
+  /// Restaura la [memory] del flow desde un mapa (p. ej. tras cargar un [OmegaFlowSnapshot]).
+  /// Borra el contenido actual y reemplaza por [data]. Usado en restore on launch.
+  void restoreMemory(Map<String, dynamic> data) {
+    memory.clear();
+    memory.addAll(Map<String, dynamic>.from(data));
+  }
 }

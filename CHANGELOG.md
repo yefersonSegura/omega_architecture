@@ -1,3 +1,8 @@
+## 0.0.8
+
+- **Persistencia y restore:** Serialización de snapshots con `OmegaFlowSnapshot.toJson`/`fromJson` y `OmegaAppSnapshot.toJson`/`fromJson`. `OmegaFlow.restoreMemory` y `OmegaFlowManager.restoreFromSnapshot` para recuperar estado al abrir la app. Interfaz opcional `OmegaSnapshotStorage` (save/load). Documentación en README, ARQUITECTURA y ROADMAP.
+- **Pub.dev:** `dependency_overrides: meta: ^1.18.1` para pasar "Support up-to-date dependencies" en el análisis estático.
+
 ## 0.0.7
 
 - **Inspector en ventana separada (web, estilo Isar):** [OmegaInspectorLauncher] abre el inspector en otra pestaña/ventana del navegador; la app envía datos por BroadcastChannel. [OmegaInspectorReceiver] muestra eventos y snapshots en esa ventana. En plataformas no-web el launcher abre el inspector en un diálogo. Documentación en README y ARQUITECTURA.

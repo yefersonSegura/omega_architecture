@@ -56,6 +56,22 @@ class OmegaFlowManager {
         flows: getSnapshots(),
       );
 
+  /// Restaura el estado de la app desde un [snapshot] (p. ej. cargado de disco al abrir la app).
+  /// Restaura la [memory] de cada flow registrado que aparezca en el snapshot, asigna
+  /// [activeFlowId] y activa ese flow. Llamar tras [OmegaAppSnapshot.fromJson] al iniciar.
+  void restoreFromSnapshot(OmegaAppSnapshot snapshot) {
+    for (final flowSnapshot in snapshot.flows) {
+      final flow = _flows[flowSnapshot.flowId];
+      if (flow != null) {
+        flow.restoreMemory(flowSnapshot.memory);
+      }
+    }
+    activeFlowId = snapshot.activeFlowId;
+    if (snapshot.activeFlowId != null) {
+      switchTo(snapshot.activeFlowId!);
+    }
+  }
+
   // -----------------------------------------------------------
   // Manejar Intent
   // -----------------------------------------------------------

@@ -199,6 +199,13 @@ También ofrece `pause`, `sleep`, `end` por flow. Es idempotente: activar dos ve
 
 En una frase: la finalidad es **poder ver (y opcionalmente guardar) el estado actual de los flows y de la app sin modificar nada**, para depurar, persistir o inspeccionar.
 
+**Persistencia y restore (guardar / recuperar al abrir):**
+
+- **[OmegaFlowSnapshot.toJson]** y **[OmegaAppSnapshot.toJson]** serializan a un mapa JSON-serializable. **[OmegaFlowSnapshot.fromJson]** y **[OmegaAppSnapshot.fromJson]** reconstruyen desde un mapa (p. ej. `jsonDecode` de disco). Para que la persistencia funcione, los valores que guardes en la [memory] de un flow (y el payload de expresiones si lo persistes) deben ser JSON-serializables (números, strings, bools, listas, mapas).
+- **[OmegaFlow.restoreMemory]** reemplaza la memoria del flow por un mapa cargado; así cada flow puede recuperar su estado.
+- **[OmegaFlowManager.restoreFromSnapshot]** restaura el estado de la app: rellena la memoria de cada flow registrado que venga en el snapshot, asigna el flow activo y lo activa. Úsalo al iniciar la app tras cargar un snapshot (p. ej. de disco).
+- **[OmegaSnapshotStorage]** es una interfaz opcional: `save(OmegaAppSnapshot)` y `load() -> OmegaAppSnapshot?`. La app la implementa con el almacenamiento que quiera (archivo con `path_provider`, `shared_preferences`, backend). Flujo típico: al cerrar o en puntos clave, `getAppSnapshot()` y `storage.save(snapshot)`. Al abrir, `snapshot = await storage.load()` y si no es null, `flowManager.restoreFromSnapshot(snapshot)`.
+
 ---
 
 ## UI (Flutter)
