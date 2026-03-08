@@ -1,3 +1,7 @@
+## 0.0.7
+
+- **Inspector en ventana separada (web, estilo Isar):** [OmegaInspectorLauncher] abre el inspector en otra pestaña/ventana del navegador; la app envía datos por BroadcastChannel. [OmegaInspectorReceiver] muestra eventos y snapshots en esa ventana. En plataformas no-web el launcher abre el inspector en un diálogo. Documentación en README y ARQUITECTURA.
+
 ## 0.0.6
 
 - **CLI fix:** When running `g agent <Name>` or `g flow <Name>` separately, the CLI now only removes and re-adds the import for the artifact being registered (agent or flow), so the other import is preserved. Previously, running `g flow Orders` after `g agent Orders` could remove the agent import.
