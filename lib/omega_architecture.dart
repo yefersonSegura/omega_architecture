@@ -4,7 +4,7 @@
 /// - [OmegaChannel]: bus de eventos.
 /// - [OmegaAgent] / [OmegaAgentBehaviorEngine]: lógica en agentes.
 /// - [OmegaFlow] / [OmegaFlowManager]: flujos de negocio y orquestación.
-/// - [OmegaScope] / [OmegaBuilder]: integración con la UI.
+/// - [OmegaScope] / [OmegaBuilder] / [OmegaInspector] / [OmegaInspectorLauncher] / [OmegaInspectorReceiver]: integración con la UI.
 /// - [OmegaNavigator] / [OmegaRoute]: navegación por intents.
 ///
 /// Para arrancar la app usa [OmegaRuntime.bootstrap] (ver paquete omega/bootstrap).
@@ -46,3 +46,6 @@ export 'omega/ui/navigation/omega_navigation_entry.dart';
 // UI INTEGRATION (FLUTTER)
 export 'omega/ui/flutter/omega_scope.dart';
 export 'omega/ui/flutter/omega_builder.dart';
+export 'omega/ui/flutter/omega_inspector.dart';
+export 'omega/ui/flutter/omega_inspector_launcher.dart';
+export 'omega/ui/flutter/omega_inspector_receiver.dart';

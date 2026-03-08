@@ -59,6 +59,22 @@ Lista de mejoras propuestas para Omega. No se cierran hasta que se implementen o
 
 ---
 
+## Visión y roadmap (próximos horizontes)
+
+Para que Omega sea la arquitectura más visionaria y única, ver **[docs/ROADMAP.md](ROADMAP.md)**. Resumen de bloques:
+
+- [ ] **Omega DevTools** — Inspección en tiempo real (canal, flows, agentes), time-travel, replay.
+- [ ] **Contratos y semántica** — Eventos/intents tipados o registrados, contratos por flow, versionado.
+- [ ] **Persistencia y recuperación** — Serializar/restaurar snapshot, restore on launch, offline-first.
+- [ ] **Módulos (OmegaModule)** — Ecosistemas reutilizables entre apps, eventos namespaced.
+- [ ] **IA y asistencia** — Generación desde descripción, sugerencias de reglas, documentación viva.
+- [ ] **Testing avanzado** — Record/replay, property-based, assertions de contrato.
+- [ ] **Diferenciación** — Mensaje claro y comparativa Omega vs BLoC vs Riverpod.
+
+Orden sugerido de impacto: DevTools → Persistencia → Módulos → Eventos tipados → Mensaje.
+
+---
+
 ## Notas
 
 - Los ítems con `[ ]` siguen abiertos; cuando se implementen, marcar con `[x]`.

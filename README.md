@@ -11,7 +11,7 @@ A reactive, agent-based architecture framework for Flutter applications.
 - **Semantic Intents** — High-level abstraction for user or system requests.
 - **CLI** — Scaffold setup and generate ecosystems (agent, flow, behavior, page) from the command line.
 
-For a detailed description of what each component does and how they fit together, see **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**. To test agents and flows without Flutter (unit tests), see **[docs/TESTING.md](docs/TESTING.md)**.
+For a detailed description of what each component does and how they fit together, see **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**. To test agents and flows without Flutter (unit tests), see **[docs/TESTING.md](docs/TESTING.md)**. For the long-term vision (DevTools, persistence, modules, etc.), see **[docs/ROADMAP.md](docs/ROADMAP.md)**.
 
 ## Core Concepts
 
@@ -163,6 +163,11 @@ OmegaBuilder(
   },
 )
 ```
+
+In debug you can inspect the channel (last N events) and flow snapshots in two ways:
+
+- **Overlay:** Add **`OmegaInspector`** in a `Stack` (only when `kDebugMode`).
+- **Separate browser window (web):** Add **`OmegaInspectorLauncher`** (e.g. in the AppBar). On web it opens a new window; the app must show **`OmegaInspectorReceiver`** when loaded with `?omega_inspector=1` (see [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)).
 
 ### Activating flows
 

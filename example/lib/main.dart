@@ -1,9 +1,19 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:omega_architecture/omega/bootstrap/omega_runtime.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 import 'omega/omega_setup.dart';
 
 void main() {
+  // Si se abre con ?omega_inspector=1 (p. ej. desde OmegaInspectorLauncher en web), mostrar solo el receiver.
+  if (Uri.base.queryParameters['omega_inspector'] == '1') {
+    runApp(MaterialApp(
+      title: 'Omega Inspector',
+      theme: ThemeData(primarySwatch: Colors.orange),
+      home: const OmegaInspectorReceiver(),
+    ));
+    return;
+  }
   final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
   runApp(
     OmegaScope(
@@ -63,6 +73,14 @@ class _RootHandlerState extends State<_RootHandler> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text("Omega Running")));
+    return Scaffold(
+      appBar: kDebugMode
+          ? AppBar(
+              title: const Text('Omega Example'),
+              actions: const [OmegaInspectorLauncher()],
+            )
+          : null,
+      body: const Center(child: Text("Omega Running")),
+    );
   }
 }
