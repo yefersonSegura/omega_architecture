@@ -69,7 +69,7 @@ Para que Omega sea la arquitectura más visionaria y única, ver **[docs/ROADMAP
 - [ ] **Módulos (OmegaModule)** — Ecosistemas reutilizables entre apps, eventos namespaced.
 - [ ] **IA y asistencia** — Generación desde descripción, sugerencias de reglas, documentación viva.
 - [ ] **Testing avanzado** — Record/replay, property-based, assertions de contrato.
-- [ ] **Diferenciación** — Mensaje claro y comparativa Omega vs BLoC vs Riverpod.
+- [x] **Diferenciación** — Mensaje claro y comparativa Omega vs BLoC vs Riverpod en [COMPARATIVA.md](COMPARATIVA.md) y sección en la web. Inspector: diseño moderno (tema azul, tarjetas); launcher web usa nombre de ventana único para poder cerrar y volver a abrir.
 
 Orden sugerido de impacto: DevTools → Persistencia → Módulos → Eventos tipados → Mensaje.
 

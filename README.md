@@ -30,7 +30,7 @@ Add the dependency to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  omega_architecture: ^0.0.10
+  omega_architecture: ^0.0.11
 ```
 
 ## Omega CLI
@@ -167,8 +167,8 @@ OmegaBuilder(
 
 In debug you can inspect the channel (last N events) and flow snapshots in two ways:
 
-- **Overlay:** Add **`OmegaInspector`** in a `Stack` (only when `kDebugMode`).
-- **Separate browser window (web):** Add **`OmegaInspectorLauncher`** (e.g. in the AppBar). On web it opens a new window; the app must show **`OmegaInspectorReceiver`** when loaded with `?omega_inspector=1` (see [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)).
+- **Overlay:** Add **`OmegaInspector`** in a `Stack` (only when `kDebugMode`). The panel uses a modern theme (blue gradient header, cards with subtle shadow, pills for event count and flow state).
+- **Separate browser window (web):** Add **`OmegaInspectorLauncher`** (e.g. in the AppBar). On web it opens a new window; the app must show **`OmegaInspectorReceiver`** when loaded with `?omega_inspector=1` (see [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)). Each time you tap the launcher, a new window is opened (unique name), so you can close the inspector and open it again without issues.
 
 ### Activating flows
 

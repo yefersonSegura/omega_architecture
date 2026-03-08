@@ -234,11 +234,14 @@ En una frase: la finalidad es **poder ver (y opcionalmente guardar) el estado ac
 
 **Qué hace:** Usa [OmegaScope.of](context). Lista los últimos N eventos (nombre, payload resumido, hora) y, cada 2 s, un snapshot de los flows (id, estado, última expresión, tamaño de memory). Incluye botón para colapsar/expandir y refrescar. Pensado para **debug**; en release se puede ocultar con `kDebugMode`. Colócalo en un [Stack] o en un [Drawer] para inspeccionar sin interferir con la app.
 
+**Diseño:** Tema moderno con header en gradiente azul, tarjetas con sombra suave y bordes redondeados, y “pills” para el conteo de eventos y el estado de cada flow. El mismo estilo se usa en el overlay y en la ventana remota (web).
+
 **Inspector en otra ventana del navegador (estilo Isar):** En **web** puedes abrir el inspector en una pestaña/ventana aparte:
 
 1. Añade **`OmegaInspectorLauncher`** (p. ej. en la AppBar, solo en debug). Al pulsar, en web se abre una nueva ventana con la misma app y `?omega_inspector=1`.
 2. En el `main()` de tu app, si la URL tiene `omega_inspector=1`, muestra solo **`OmegaInspectorReceiver`** como pantalla inicial (ej.: `if (Uri.base.queryParameters['omega_inspector'] == '1') runApp(MaterialApp(home: OmegaInspectorReceiver()));`).
 3. La ventana principal envía eventos y snapshots al receiver por **BroadcastChannel**; la ventana del inspector los muestra en tiempo real.
+4. Cada vez que pulsas el launcher se usa un **nombre de ventana único**; así, si cierras la ventana del inspector y vuelves a abrirla, el navegador abre una ventana nueva correctamente (no reutiliza la referencia cerrada).
 
 En plataformas no-web, el launcher abre el [OmegaInspector] en un diálogo.
 
