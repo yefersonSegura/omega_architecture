@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:omega_architecture/example/lib/omega/omega_setup.dart';
 import 'package:omega_architecture/omega/bootstrap/omega_runtime.dart';
 import 'package:omega_architecture/omega_architecture.dart';
+import 'omega/omega_setup.dart';
 
 void main() {
   final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigator.navigatorKey,
-      title: 'Omega Example',
+      title: "Omega Example",
       theme: ThemeData(primarySwatch: Colors.blue),
       home: const _RootHandler(),
     );
@@ -42,15 +42,15 @@ class _RootHandlerState extends State<_RootHandler> {
   void initState() {
     super.initState();
 
-    // Navegación inicial al login cuando el árbol ya está montado.
+    // Disparamos la navegación al login cuando el árbol ya está montado
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final scope = OmegaScope.of(context);
-      final intent = OmegaIntent(id: 'goLogin', name: 'navigate.login');
+      final intent = OmegaIntent(id: "goLogin", name: "navigate.login");
 
       scope.channel.emit(
         OmegaEvent(
-          id: 'nav:${DateTime.now().millisecondsSinceEpoch}',
-          name: 'navigation.intent',
+          id: "nav:${DateTime.now().millisecondsSinceEpoch}",
+          name: "navigation.intent",
           payload: intent,
         ),
       );
@@ -59,7 +59,6 @@ class _RootHandlerState extends State<_RootHandler> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text('Omega example running')));
+    return const Scaffold(body: Center(child: Text("Omega Running")));
   }
 }
-
