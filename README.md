@@ -29,7 +29,7 @@ Add the dependency to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  omega_architecture: ^0.0.5
+  omega_architecture: ^0.0.6
 ```
 
 ## Omega CLI
@@ -202,6 +202,16 @@ lib/
 ├── examples/          # Full examples and feature demos
 └── omega_architecture.dart  # Barrel exports
 ```
+
+## Releasing (publishing to pub.dev)
+
+Before publishing a new version:
+
+1. Update [CHANGELOG.md](CHANGELOG.md) with the new version and changes.
+2. Bump `version` in [pubspec.yaml](pubspec.yaml).
+3. Update the version in this README and in `presentation/index.html` if you show the dependency snippet.
+4. Run `flutter test` and `dart analyze lib`.
+5. Run `dart pub publish` (dry-run first with `dart pub publish --dry-run`).
 
 ## License
 

@@ -1,3 +1,12 @@
+## 0.0.6
+
+- **Snapshot (Paso 2):** `OmegaFlowSnapshot` and `OmegaAppSnapshot` for debugging, persistence, and time-travel. `OmegaFlow.getSnapshot()`, `OmegaFlowManager.getFlowSnapshot`, `getSnapshots`, `getAppSnapshot`. Documentation of purpose in dartdoc and ARQUITECTURA.
+- **Logging (Paso 3):** Replaced `print` with `debugPrint` in `omega_navigator.dart` and `omega_bootstrap.dart` (lib) so diagnostics only appear in debug mode.
+- **Navigation (Paso 4):** Contract documented (`navigation.intent`, `navigate.*`). `navigate.<id>` = pushReplacement, `navigate.push.<id>` = push. Intent payload passed as `RouteSettings.arguments`. Constant `navigationIntentEvent`.
+- **Testing (Paso 5):** More unit tests (agent receiveIntent, flow receiveIntent running/idle, OmegaFlowExpression). `example/README.md` for minimal login flow. `docs/TESTING.md` for testing agents and flows without Flutter.
+- **CLI (Paso 6):** Clearer error messages (prefix "Error:", absolute paths). New generators: `omega g agent <Name>`, `omega g flow <Name>`. `omega validate` checks omega_setup.dart (structure, duplicate ids). All generators create files in the terminal’s current directory (CWD).
+- **Docs:** ARQUITECTURA.md and README kept in sync with snapshot, navigation, testing, and CLI.
+
 ## 0.0.5
 
 - Fix static analysis: enclose `while` body in a block in `bin/omega.dart` (pub.dev lint).

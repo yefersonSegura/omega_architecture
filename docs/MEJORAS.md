@@ -51,11 +51,11 @@ Lista de mejoras propuestas para Omega. No se cierran hasta que se implementen o
 
 ---
 
-## Paso 7 – Documentación y pub
+## Paso 7 – Documentación y pub ✅ (hecho)
 
-- [ ] Mantener README y ARQUITECTURA.md al día con cada cambio
-- [ ] Publicar en pub.dev cuando corresponda (ej. 0.0.5 con la doc nueva)
-- [ ] Changelog por versión
+- [x] Mantener README y ARQUITECTURA.md al día con cada cambio
+- [x] Publicar en pub.dev cuando corresponda (versión 0.0.6 preparada en CHANGELOG y pubspec)
+- [x] Changelog por versión
 
 ---
 
