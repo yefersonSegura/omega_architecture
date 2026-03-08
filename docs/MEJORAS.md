@@ -43,11 +43,11 @@ Lista de mejoras propuestas para Omega. No se cierran hasta que se implementen o
 
 ---
 
-## Paso 6 – DX y CLI
+## Paso 6 – DX y CLI ✅ (hecho)
 
-- [ ] Mejoras en mensajes del CLI (paths, errores claros)
-- [ ] Opcional: `omega g` para más artefactos (solo agent, solo flow, etc.)
-- [ ] Validación de `omega_setup.dart` (imports, ids únicos)
+- [x] Mejoras en mensajes del CLI (paths absolutos, prefijo "Error:", mensajes claros)
+- [x] Opcional: `omega g` para más artefactos (solo agent, solo flow, etc.)
+- [x] Validación de `omega_setup.dart` (omega validate: estructura, ids duplicados)
 
 ---
 

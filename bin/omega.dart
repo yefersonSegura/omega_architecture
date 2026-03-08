@@ -2,6 +2,14 @@ import 'dart:io';
 
 const String _version = "0.0.1";
 
+void _err(String message) {
+  print("Error: $message");
+}
+
+String _absPath(String path) {
+  return File(path).absolute.path;
+}
+
 void main(List<String> args) {
   if (args.isEmpty) {
     printHelp();
@@ -29,8 +37,12 @@ void main(List<String> args) {
       OmegaGenerateCommand.run(args.length > 1 ? args.sublist(1) : []);
       break;
 
+    case "validate":
+      OmegaValidateCommand.run(args.length > 1 ? args.sublist(1) : []);
+      break;
+
     default:
-      print("Unknown command: $arg");
+      _err("Unknown command: $arg");
       print("");
       printHelp();
   }
@@ -44,10 +56,19 @@ void printHelp() {
   print("");
   print("Commands:");
   print(
-    "  init [--force]     Create lib/omega/omega_setup.dart in your app (use --force to overwrite)",
+    "  init [--force]       Create lib/omega/omega_setup.dart (use --force to overwrite)",
   );
   print(
-    "  g ecosystem <Name>  Generate agent, flow, behavior, page in the current directory",
+    "  g ecosystem <Name>    Generate agent, flow, behavior and page in the current directory",
+  );
+  print(
+    "  g agent <Name>       Generate only agent + behavior in current directory",
+  );
+  print(
+    "  g flow <Name>        Generate only flow in current directory",
+  );
+  print(
+    "  validate             Check omega_setup.dart (structure, duplicate ids)",
   );
   print("");
   print("Options:");
@@ -57,11 +78,13 @@ void printHelp() {
   print("Examples:");
   print("  omega init");
   print("  omega init --force");
-  print("  omega g ecosystem Auth   # creates auth/ in the folder where you run this");
-  print("  omega generate ecosystem Orders");
+  print("  omega g ecosystem Auth    # auth_agent, auth_flow, auth_behavior, auth_page");
+  print("  omega g agent Orders      # orders_agent, orders_behavior only");
+  print("  omega g flow Orders       # orders_flow only");
+  print("  omega validate");
   print("");
-  print("  init: run from your app root (where pubspec.yaml is).");
-  print("  g ecosystem: run from the folder where you want the ecosystem (e.g. lib/features).");
+  print("  init / validate: run from app root (where pubspec.yaml is).");
+  print("  g ecosystem / agent / flow: run from the folder where you want the files.");
   print("");
 }
 
@@ -73,10 +96,9 @@ class OmegaInitCommand {
     try {
       root = findProjectRoot();
     } catch (_) {
-      print("No Flutter project found. Current directory: $cwd");
-      print(
-        "Open the terminal in your app root (where pubspec.yaml is), then run: omega init",
-      );
+      _err("No Flutter project found.");
+      print("  Current directory: ${_absPath(cwd)}");
+      print("  Run from your app root (where pubspec.yaml is), then: omega init");
       return;
     }
     final lib = "$root/lib";
@@ -87,8 +109,9 @@ class OmegaInitCommand {
 
     final file = File("$lib/omega/omega_setup.dart");
     if (file.existsSync() && !force) {
-      print("omega_setup.dart already exists at ${file.absolute.path}");
-      print("Use --force to overwrite.");
+      _err("omega_setup.dart already exists.");
+      print("  Path: ${_absPath(file.path)}");
+      print("  Use --force to overwrite.");
       return;
     }
 
@@ -107,75 +130,79 @@ OmegaConfig createOmegaConfig(OmegaChannel channel) {
 
     _formatFile(file.path);
 
-    print("Project root: $root");
-    print("Omega setup created at ${file.absolute.path}");
+    print("Omega setup created.");
+    print("  Project root: ${_absPath(root)}");
+    print("  File: ${_absPath(file.path)}");
   }
 }
 
 class OmegaGenerateCommand {
   static void run(List<String> args) {
-    if (args.isEmpty || args.length < 2) {
-      print("Usage: omega g ecosystem <Name>");
-      print("");
-      print(
-        "  ecosystem <Name>  Create agent, flow, behavior and page for ecosystem [Name]",
-      );
+    if (args.isEmpty) {
+      _err("Missing generator and name.");
+      print("  Usage: omega g <ecosystem|agent|flow> <Name>");
+      return;
+    }
+    if (args.length < 2 && args[0] != "-h" && args[0] != "--help") {
+      _err("Missing name for generator '${args[0]}'.");
+      print("  Usage: omega g ${args[0]} <Name>");
       return;
     }
     if (args[0] == "-h" || args[0] == "--help") {
-      print("Usage: omega g ecosystem <Name>");
+      print("Usage: omega g <ecosystem|agent|flow> <Name>");
       print("");
-      print(
-        "  ecosystem <Name>  Create agent, flow, behavior and page for ecosystem [Name]",
-      );
+      print("  ecosystem <Name>  Agent, flow, behavior and page");
+      print("  agent <Name>      Agent + behavior only");
+      print("  flow <Name>      Flow only");
       return;
     }
 
     final type = args[0];
     final name = args[1];
 
-    if (type == "ecosystem") {
-      _createEcosystem(name);
-    } else {
-      print("Unknown generator: $type");
-      print("Available: ecosystem");
+    switch (type) {
+      case "ecosystem":
+        _createEcosystem(name);
+        break;
+      case "agent":
+        _createAgentOnly(name);
+        break;
+      case "flow":
+        _createFlowOnly(name);
+        break;
+      default:
+        _err("Unknown generator: $type");
+        print("  Available: ecosystem, agent, flow");
     }
   }
 
   static void _createEcosystem(String name) {
-    final cwd = Directory.current.absolute.path;
+    // Crear en la ruta donde está abierta la terminal (CWD)
+    final baseDir = Directory.current.absolute.path;
     String root;
     try {
       root = findProjectRoot();
     } catch (_) {
-      print("No Flutter project found. Current directory: $cwd");
-      print(
-        "Open the terminal in your app root (where pubspec.yaml is) and run:",
-      );
-      print("  omega init");
-      print("  omega g ecosystem $name");
+      _err("No Flutter project found.");
+      print("  Current directory: ${_absPath(baseDir)}");
+      print("  Run from your app root, then: omega init");
       return;
     }
 
     final lib = "$root/lib";
     final setupFile = File("$lib/omega/omega_setup.dart");
     if (!setupFile.existsSync()) {
-      print("omega_setup.dart not found.");
-      print("  Looked at: ${setupFile.absolute.path}");
-      print("  Current directory: $cwd");
-      print("");
-      print("Run from your app root (where pubspec.yaml is), then:");
-      print("  omega init");
-      print("  omega g ecosystem $name");
+      _err("omega_setup.dart not found.");
+      print("  Looked at: ${_absPath(setupFile.path)}");
+      print("  Current directory: ${_absPath(baseDir)}");
+      print("  Run from app root: omega init");
       return;
     }
 
-    // Crear siempre en el directorio donde abriste la terminal (CWD)
-    final base = cwd;
-    final ecoPath = "$base/${name.toLowerCase()}";
+    final ecoPath = "$baseDir/${name.toLowerCase()}";
 
-    print("Creating in current directory: $base");
-    print("Ecosystem path: $ecoPath");
+    print("Creating in current directory: ${_absPath(baseDir)}");
+    print("Ecosystem path: ${_absPath(ecoPath)}");
 
     Directory(ecoPath).createSync(recursive: true);
     Directory("$ecoPath/ui").createSync(recursive: true);
@@ -187,13 +214,77 @@ class OmegaGenerateCommand {
       _createPage(name, ecoPath),
     ];
 
-    registerInOmegaSetup(name, ecoPath, root);
+    registerInOmegaSetup(name, ecoPath, root, registerAgent: true, registerFlow: true);
 
     for (final path in createdFiles) {
       _formatFile(path);
     }
 
-    print("Ecosystem $name created at $ecoPath");
+    print("Ecosystem $name created.");
+    print("  Path: ${_absPath(ecoPath)}");
+  }
+
+  static void _createAgentOnly(String name) {
+    // Crear en la ruta donde está abierta la terminal (CWD)
+    final baseDir = Directory.current.absolute.path;
+    String root;
+    try {
+      root = findProjectRoot();
+    } catch (_) {
+      _err("No Flutter project found.");
+      print("  Current directory: ${_absPath(baseDir)}");
+      print("  Run from your app root, then: omega init");
+      return;
+    }
+    final setupFile = File("$root/lib/omega/omega_setup.dart");
+    if (!setupFile.existsSync()) {
+      _err("omega_setup.dart not found.");
+      print("  Looked at: ${_absPath(setupFile.path)}");
+      print("  Run from app root: omega init");
+      return;
+    }
+    final ecoPath = "$baseDir/${name.toLowerCase()}";
+    print("Creating in current directory: ${_absPath(baseDir)}");
+    Directory(ecoPath).createSync(recursive: true);
+    final created = <String>[
+      _createAgent(name, ecoPath),
+      _createBehavior(name, ecoPath),
+    ];
+    registerInOmegaSetup(name, ecoPath, root, registerAgent: true, registerFlow: false);
+    for (final p in created) {
+      _formatFile(p);
+    }
+    print("Agent $name created.");
+    print("  Path: ${_absPath(ecoPath)}");
+  }
+
+  static void _createFlowOnly(String name) {
+    // Crear en la ruta donde está abierta la terminal (CWD)
+    final baseDir = Directory.current.absolute.path;
+    String root;
+    try {
+      root = findProjectRoot();
+    } catch (_) {
+      _err("No Flutter project found.");
+      print("  Current directory: ${_absPath(baseDir)}");
+      print("  Run from your app root, then: omega init");
+      return;
+    }
+    final setupFile = File("$root/lib/omega/omega_setup.dart");
+    if (!setupFile.existsSync()) {
+      _err("omega_setup.dart not found.");
+      print("  Looked at: ${_absPath(setupFile.path)}");
+      print("  Run from app root: omega init");
+      return;
+    }
+    final ecoPath = "$baseDir/${name.toLowerCase()}";
+    print("Creating in current directory: ${_absPath(baseDir)}");
+    Directory(ecoPath).createSync(recursive: true);
+    final path = _createFlow(name, ecoPath);
+    registerInOmegaSetup(name, ecoPath, root, registerAgent: false, registerFlow: true);
+    _formatFile(path);
+    print("Flow $name created.");
+    print("  Path: ${_absPath(ecoPath)}");
   }
 
   static String _createAgent(String name, String base) {
@@ -323,7 +414,13 @@ String _relativePath(String fromDir, String toPath) {
   return parts.join("/");
 }
 
-void registerInOmegaSetup(String name, String path, String projectRoot) {
+void registerInOmegaSetup(
+  String name,
+  String path,
+  String projectRoot, {
+  bool registerAgent = true,
+  bool registerFlow = true,
+}) {
   final lib = "$projectRoot/lib";
   final libNorm = _normPath(lib);
   final pathNorm = _normPath(path);
@@ -332,7 +429,9 @@ void registerInOmegaSetup(String name, String path, String projectRoot) {
   final setupDir = _normPath("$lib/omega");
 
   if (!setupFile.existsSync()) {
-    print("Run omega init first. Looked at: ${setupFile.absolute.path}");
+    _err("omega_setup.dart not found.");
+    print("  Looked at: ${_absPath(setupFile.path)}");
+    print("  Run from app root: omega init");
     return;
   }
 
@@ -357,39 +456,48 @@ void registerInOmegaSetup(String name, String path, String projectRoot) {
     flowImport = "import '${_relativePath(setupDir, flowPath)}';";
   }
 
-  // Refrescar path: quitar imports viejos de este ecosistema y poner los nuevos
   final agentFile = nameLower + "_agent.dart";
   final flowFile = nameLower + "_flow.dart";
   final agentPattern = RegExp("import\\s+['\"].*" + RegExp.escape(agentFile) + "['\"];\\s*");
   final flowPattern = RegExp("import\\s+['\"].*" + RegExp.escape(flowFile) + "['\"];\\s*");
   content = content.replaceFirst(agentPattern, "");
   content = content.replaceFirst(flowPattern, "");
-  content = agentImport + "\n" + flowImport + "\n" + content;
 
-  if (!content.contains("${pascal}Agent(channel)")) {
+  final newImports = <String>[];
+  if (registerAgent) newImports.add(agentImport);
+  if (registerFlow) newImports.add(flowImport);
+  if (newImports.isNotEmpty) {
+    content = newImports.join("\n") + "\n" + content;
+  }
+
+  if (registerAgent && !content.contains("${pascal}Agent(channel)")) {
     content = content.replaceFirst(
       "<OmegaAgent>[",
       "<OmegaAgent>[\n      ${pascal}Agent(channel),",
     );
   }
 
-  // Asegurar que exista flows en OmegaConfig y registrar el Flow
-  if (!content.contains("flows:") || !content.contains("<OmegaFlow>")) {
-    // omega_setup sin flows: añadir flows: <OmegaFlow>[XFlow(channel)] antes del cierre );
-    content = content.replaceFirst(
-      "]);",
-      "],\n    flows: <OmegaFlow>[\n      ${pascal}Flow(channel),]\n  );",
-    );
-  } else if (!content.contains("${pascal}Flow(channel)")) {
-    content = content.replaceFirst(
-      "<OmegaFlow>[",
-      "<OmegaFlow>[\n      ${pascal}Flow(channel),",
-    );
+  if (registerFlow) {
+    if (!content.contains("flows:") || !content.contains("<OmegaFlow>")) {
+      content = content.replaceFirst(
+        "]);",
+        "],\n    flows: <OmegaFlow>[\n      ${pascal}Flow(channel),]\n  );",
+      );
+    } else if (!content.contains("${pascal}Flow(channel)")) {
+      content = content.replaceFirst(
+        "<OmegaFlow>[",
+        "<OmegaFlow>[\n      ${pascal}Flow(channel),",
+      );
+    }
   }
 
   setupFile.writeAsStringSync(content);
 
-  print("Registered $pascal (agent, flow) in omega_setup.dart");
+  final what = [
+    if (registerAgent) "agent",
+    if (registerFlow) "flow",
+  ].join(", ");
+  print("Registered $pascal ($what) in omega_setup.dart");
 }
 
 String toPascalCase(String name) {
@@ -432,5 +540,90 @@ String getPackageName([String? projectRoot]) {
   }
 
   return "app";
+}
+
+class OmegaValidateCommand {
+  static void run(List<String> args) {
+    String root;
+    try {
+      root = findProjectRoot();
+    } catch (_) {
+      _err("No Flutter project found.");
+      print("  Current directory: ${_absPath(Directory.current.path)}");
+      print("  Run from your app root (where pubspec.yaml is).");
+      return;
+    }
+
+    final setupPath = "$root/lib/omega/omega_setup.dart";
+    final setupFile = File(setupPath);
+    if (!setupFile.existsSync()) {
+      _err("omega_setup.dart not found.");
+      print("  Looked at: ${_absPath(setupPath)}");
+      print("  Run: omega init");
+      return;
+    }
+
+    final content = setupFile.readAsStringSync();
+    var ok = true;
+
+    if (!content.contains("createOmegaConfig")) {
+      _err("omega_setup.dart must define createOmegaConfig(OmegaChannel).");
+      print("  File: ${_absPath(setupPath)}");
+      ok = false;
+    }
+    if (!content.contains("OmegaConfig")) {
+      _err("omega_setup.dart must return OmegaConfig.");
+      ok = false;
+    }
+    if (!content.contains("agents:")) {
+      _err("OmegaConfig should have agents: list.");
+      ok = false;
+    }
+
+    // Duplicate ids: find all XAgent(channel) and XFlow(channel)
+    final agentReg = RegExp(r"(\w+)Agent\s*\(\s*channel\s*\)");
+    final flowReg = RegExp(r"(\w+)Flow\s*\(\s*channel\s*\)");
+    final agentMatches = agentReg.allMatches(content);
+    final flowMatches = flowReg.allMatches(content);
+    final agentNames = <String>[];
+    final flowNames = <String>[];
+    for (final m in agentMatches) {
+      agentNames.add(m.group(1)!);
+    }
+    for (final m in flowMatches) {
+      flowNames.add(m.group(1)!);
+    }
+    final duplicateAgents = _duplicates(agentNames);
+    final duplicateFlows = _duplicates(flowNames);
+    if (duplicateAgents.isNotEmpty) {
+      _err("Duplicate agent registration: ${duplicateAgents.join(", ")}.");
+      print("  Remove duplicate XAgent(channel) from omega_setup.dart.");
+      ok = false;
+    }
+    if (duplicateFlows.isNotEmpty) {
+      _err("Duplicate flow registration: ${duplicateFlows.join(", ")}.");
+      print("  Remove duplicate XFlow(channel) from omega_setup.dart.");
+      ok = false;
+    }
+
+    if (ok) {
+      print("Valid.");
+      print("  File: ${_absPath(setupPath)}");
+      print("  Agents: ${agentNames.length}, Flows: ${flowNames.length}");
+    }
+  }
+
+  static List<String> _duplicates(List<String> list) {
+    final seen = <String>{};
+    final dupes = <String>{};
+    for (final x in list) {
+      if (seen.contains(x)) {
+        dupes.add(x);
+      } else {
+        seen.add(x);
+      }
+    }
+    return dupes.toList()..sort();
+  }
 }
 
