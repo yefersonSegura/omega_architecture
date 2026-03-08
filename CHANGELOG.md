@@ -1,3 +1,10 @@
+## 0.0.4
+
+- CLI `g ecosystem`: create files in the **current directory** (where you run the command), not forced under `lib/`.
+- CLI: refresh imports in `omega_setup.dart` (replace old paths with the correct one for the ecosystem).
+- CLI: register both **Agent** and **Flow** in `OmegaConfig`; add `flows:` section if missing in `omega_setup.dart`.
+- Docs: README and web updated with CLI behavior (CWD, path refresh, flow registration).
+
 ## 0.0.3
 
 - Add official example in `example/lib/main.dart` for pub.dev scoring.
