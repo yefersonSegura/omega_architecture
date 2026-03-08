@@ -1,3 +1,7 @@
+## 0.0.5
+
+- Fix static analysis: enclose `while` body in a block in `bin/omega.dart` (pub.dev lint).
+
 ## 0.0.4
 
 - CLI `g ecosystem`: create files in the **current directory** (where you run the command), not forced under `lib/`.

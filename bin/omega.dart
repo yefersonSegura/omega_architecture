@@ -311,7 +311,9 @@ String _relativePath(String fromDir, String toPath) {
   final to = _normPath(toPath).split(sep);
   if (to.isEmpty || (to.length == 1 && to[0].isEmpty)) return ".";
   int i = 0;
-  while (i < from.length && i < to.length && from[i].toLowerCase() == to[i].toLowerCase()) i++;
+  while (i < from.length && i < to.length && from[i].toLowerCase() == to[i].toLowerCase()) {
+    i++;
+  }
   final up = from.length - i;
   final rest = to.sublist(i);
   final parts = <String>[
