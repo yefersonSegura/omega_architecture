@@ -11,7 +11,7 @@ A reactive, agent-based architecture framework for Flutter applications.
 - **Semantic Intents** — High-level abstraction for user or system requests.
 - **CLI** — Scaffold setup and generate ecosystems (agent, flow, behavior, page) from the command line.
 
-For a detailed description of what each component does and how they fit together, see **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
+For a detailed description of what each component does and how they fit together, see **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**. To test agents and flows without Flutter (unit tests), see **[docs/TESTING.md](docs/TESTING.md)**.
 
 ## Core Concepts
 

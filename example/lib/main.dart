@@ -45,9 +45,11 @@ class _RootHandlerState extends State<_RootHandler> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final scope = OmegaScope.of(context);
+      // 1) Activar el flow inicial (ej. authFlow)
       if (scope.initialFlowId != null) {
         scope.flowManager.switchTo(scope.initialFlowId!);
       }
+      // 2) Navegar a la pantalla de login (contrato: navigation.intent + OmegaIntent)
       final intent = OmegaIntent(id: "goLogin", name: "navigate.login");
       scope.channel.emit(
         OmegaEvent(

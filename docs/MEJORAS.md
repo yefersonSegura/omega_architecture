@@ -35,11 +35,11 @@ Lista de mejoras propuestas para Omega. No se cierran hasta que se implementen o
 
 ---
 
-## Paso 5 – Testing y ejemplos
+## Paso 5 – Testing y ejemplos ✅ (hecho)
 
-- [ ] Más tests unitarios (agentes, flows, expresiones)
-- [ ] Ejemplo mínimo en `example/` que recorra login + navegación + flow inicial
-- [ ] Documentar cómo testear flows y agentes sin Flutter
+- [x] Más tests unitarios (agentes, flows, expresiones)
+- [x] Ejemplo mínimo en `example/` que recorra login + navegación + flow inicial
+- [x] Documentar cómo testear flows y agentes sin Flutter
 
 ---
 

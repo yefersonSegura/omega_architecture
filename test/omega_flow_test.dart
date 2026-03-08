@@ -51,4 +51,38 @@ void main() {
     expect(expression.type, "received_intent");
     expect(expression.payload, "do.something");
   });
+
+  test("OmegaFlow receiveIntent emits expression when running", () async {
+    final channel = OmegaChannel();
+    final flow = TestFlow(channel);
+    flow.start();
+
+    late OmegaFlowExpression expression;
+    flow.expressions.listen((exp) => expression = exp);
+
+    flow.receiveIntent(
+      const OmegaIntent(id: "i2", name: "do.something", payload: null),
+    );
+
+    await Future.delayed(const Duration(milliseconds: 10));
+
+    expect(expression.type, "received_intent");
+    expect(expression.payload, "do.something");
+  });
+
+  test("OmegaFlow receiveIntent does nothing when not running", () async {
+    final channel = OmegaChannel();
+    final flow = TestFlow(channel);
+    assert(flow.state != OmegaFlowState.running);
+
+    var received = 0;
+    flow.expressions.listen((_) => received++);
+
+    flow.receiveIntent(
+      const OmegaIntent(id: "i3", name: "do.something"),
+    );
+
+    await Future.delayed(const Duration(milliseconds: 20));
+    expect(received, 0);
+  });
 }
