@@ -495,8 +495,9 @@ void registerInOmegaSetup(
         .substring(libNorm.length)
         .replaceAll(Platform.pathSeparator, "/")
         .replaceFirst(RegExp(r"^[/\\]"), "");
-    if (relative.endsWith("/"))
+    if (relative.endsWith("/")) {
       relative = relative.substring(0, relative.length - 1);
+    }
     agentImport = "import 'package:$pkg/$relative/${nameLower}_agent.dart';";
     flowImport = "import 'package:$pkg/$relative/${nameLower}_flow.dart';";
   } else {

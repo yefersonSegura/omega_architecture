@@ -1,6 +1,6 @@
 # Ω Omega Architecture
 
-[![pub package](https://img.shields.io/pub/v/omega_architecture.svg)](https://pub.dev/packages/omega_architecture) [![documentation](https://img.shields.io/badge/docs-web%20doc-blue)](http://yefersonsegura.com/proyects/omega/)
+[![pub package](https://img.shields.io/pub/v/omega_architecture.svg)](https://pub.dev/packages/omega_architecture) [![documentation](https://img.shields.io/badge/docs-API%20%26%20web-blue)](https://pub.dev/documentation/omega_architecture/latest)
 
 A reactive, agent-based architecture framework for Flutter applications.
 
@@ -19,7 +19,7 @@ A reactive, agent-based architecture framework for Flutter applications.
 
 **Documentation:**  
 - **[docs/GUIA.md](docs/GUIA.md)** — What each Omega component does, with **code examples** (channel, event, intent, agent, flow, manager, scope, navigator, routes, persistence, inspector). Start here to see how everything fits together.  
-- **[Web documentation](http://yefersonsegura.com/proyects/omega/)** — Full doc online (architecture, API reference, comparison vs BLoC/Riverpod, CLI, installation, inspector, breadcrumbs, dark/light theme). Local copy: [presentation/index.html](presentation/index.html). Run `dart run omega_architecture:omega doc` to open the local file or the official site.  
+- **Documentation** — [API reference](https://pub.dev/documentation/omega_architecture/latest) (pub.dev). Full web doc (architecture, comparison, CLI, inspector): `yefersonsegura.com/proyects/omega/`. Local copy: [presentation/index.html](presentation/index.html). Run `dart run omega_architecture:omega doc` to open the doc in the browser.  
 - **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)** — Technical reference for each component.  
 - **[docs/COMPARATIVA.md](docs/COMPARATIVA.md)** — When to choose Omega; full comparison table.  
 - **[docs/TESTING.md](docs/TESTING.md)** — Testing agents and flows without Flutter.  
