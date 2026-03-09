@@ -1,3 +1,10 @@
+## 0.0.12
+
+- **Favicon:** Favicon SVG con símbolo Omega dibujado por path (sin depender de fuentes). Enlace en `presentation/index.html`.
+- **CLI:** Comando `omega doc` abre la documentación web oficial en el navegador.
+- **Documentación web:** Barra de progreso de lectura, botón copiar en bloques de código, tema claro/oscuro con persistencia, botón scroll-to-top, meta SEO, breadcrumbs, footer con versión, accesibilidad (skip-link, focus-visible). Iconos Font Awesome en sidebar y navegación.
+- **Docs:** GUIA.md, README con badge de documentación, example con enlace a la doc. pubspec: documentation, issue_tracker.
+
 ## 0.0.11
 
 - **Documentación:** [docs/COMPARATIVA.md](docs/COMPARATIVA.md) con comparativa Omega vs BLoC vs Riverpod y cuándo elegir cada uno. Web (presentation) declarada como documentación completa; enlace "Comparativa" en la navegación. README y ROADMAP actualizados.
