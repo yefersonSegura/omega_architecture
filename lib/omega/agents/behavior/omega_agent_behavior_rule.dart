@@ -1,12 +1,14 @@
 import 'package:omega_architecture/omega/agents/behavior/omega_agent_behavior_context.dart';
 import 'package:omega_architecture/omega/agents/behavior/omega_agent_reaction.dart';
 
-/// [OmegaAgentBehaviorRule] define una regla: cuándo aplica ([condition]) y qué reacción devolver ([reaction]).
+/// Behavior engine rule: [condition] indicates if it applies; [reaction] returns the action to run.
+///
+/// **Example:** `OmegaAgentBehaviorRule(condition: (ctx) => ctx.event?.name == "auth.login.request", reaction: (ctx) => OmegaAgentReaction("login", ctx.event?.payload));`
 class OmegaAgentBehaviorRule {
-  /// Devuelve true si la regla aplica para este contexto.
+  /// True if this rule applies for the context (current event or intent).
   final bool Function(OmegaAgentBehaviorContext context) condition;
 
-  /// Devuelve la reacción (acción + payload) si [condition] es true.
+  /// Reaction to run in [OmegaAgent.onAction] when [condition] is true.
   final OmegaAgentReaction Function(OmegaAgentBehaviorContext context) reaction;
 
   const OmegaAgentBehaviorRule({

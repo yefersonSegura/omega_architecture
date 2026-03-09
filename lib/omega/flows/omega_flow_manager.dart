@@ -9,56 +9,63 @@ import 'omega_flow.dart';
 import 'omega_flow_snapshot.dart';
 import 'omega_flow_state.dart';
 
-/// [OmegaFlowManager] registra y coordina todos los [OmegaFlow].
+/// Manages all flows: registers them, activates/pauses, and routes intents to those in running state.
 ///
-/// Responsabilidades: registrar flows, activar/pausar/cambiar de flow,
-/// enrutar [OmegaIntent] a los flows en [OmegaFlowState.running], y conectar
-/// el canal al [OmegaNavigator] con [wireNavigator]. Llamar a [dispose] al cerrar la app.
+/// **Why use it:** The UI and agents don't know which flow should receive an intent; the manager
+/// sends it only to flows in [OmegaFlowState.running]. With [wireNavigator] you connect the channel to the navigator.
+///
+/// **Example:** `manager.registerFlow(AuthFlow(channel)); manager.switchTo("authFlow"); manager.handleIntent(intent);`
 class OmegaFlowManager {
   final OmegaChannel channel;
 
   final Map<String, OmegaFlow> _flows = {};
   StreamSubscription? _navSubscription;
 
-  /// Id del flow que se considera "principal" (tras [switchTo] o [activateExclusive]).
+  /// Id of the main flow (the one last activated with [switchTo]). Useful for snapshot and restore.
   String? activeFlowId;
 
   OmegaFlowManager({required this.channel});
 
   // -----------------------------------------------------------
-  // Registrar Flow
+  // Register Flow
   // -----------------------------------------------------------
 
+  /// Registers a flow so it can be activated and receive intents. Call at bootstrap (omega_setup).
+  ///
+  /// **Example:** `flowManager.registerFlow(AuthFlow(channel));`
   void registerFlow(OmegaFlow flow) {
     _flows[flow.id] = flow;
   }
 
   // -----------------------------------------------------------
-  // Obtener Flow
+  // Get Flow
   // -----------------------------------------------------------
 
+  /// Returns the flow registered with [id]. Use so the UI can listen to its [expressions] (e.g. flow.expressions.listen(...)).
   OmegaFlow? getFlow(String id) => _flows[id];
 
   // -----------------------------------------------------------
-  // Snapshot (estado actual)
+  // Snapshot (current state)
   // -----------------------------------------------------------
 
-  /// Devuelve el snapshot del flow [id], o null si no está registrado.
+  /// Snapshot of a flow by id. For debugging or per-flow persistence.
   OmegaFlowSnapshot? getFlowSnapshot(String id) => _flows[id]?.getSnapshot();
 
-  /// Devuelve el snapshot de todos los flows registrados.
+  /// List of snapshots for all flows. For inspection or persistence.
   List<OmegaFlowSnapshot> getSnapshots() =>
       _flows.values.map((f) => f.getSnapshot()).toList();
 
-  /// Devuelve un snapshot a nivel de app: [activeFlowId] más snapshots de todos los flows.
+  /// Snapshot of app state (active flow + all flows). For save/restore on close/open.
+  ///
+  /// **Example:** `final json = flowManager.getAppSnapshot().toJson(); await save(jsonEncode(json));`
   OmegaAppSnapshot getAppSnapshot() => OmegaAppSnapshot(
         activeFlowId: activeFlowId,
         flows: getSnapshots(),
       );
 
-  /// Restaura el estado de la app desde un [snapshot] (p. ej. cargado de disco al abrir la app).
-  /// Restaura la [memory] de cada flow registrado que aparezca en el snapshot, asigna
-  /// [activeFlowId] y activa ese flow. Llamar tras [OmegaAppSnapshot.fromJson] al iniciar.
+  /// Restores each flow's memory and activates the flow that was active. Call when opening the app after loading the snapshot.
+  ///
+  /// **Example:** `final snapshot = OmegaAppSnapshot.fromJson(jsonDecode(loaded)); flowManager.restoreFromSnapshot(snapshot);`
   void restoreFromSnapshot(OmegaAppSnapshot snapshot) {
     for (final flowSnapshot in snapshot.flows) {
       final flow = _flows[flowSnapshot.flowId];
@@ -73,9 +80,13 @@ class OmegaFlowManager {
   }
 
   // -----------------------------------------------------------
-  // Manejar Intent
+  // Handle Intent
   // -----------------------------------------------------------
 
+  /// Sends the [intent] to all flows that are running. The UI calls this when emitting an action.
+  ///
+  /// **Why use it:** The screen doesn't know the flow; it just calls handleIntent(OmegaIntent.fromName(AppIntent.authLogin, payload: creds)).
+  /// **Example:** `flowManager.handleIntent(OmegaIntent.fromName(AppIntent.authLogin, payload: creds));`
   void handleIntent(OmegaIntent intent) {
     for (final flow in _flows.values) {
       if (flow.state == OmegaFlowState.running) {
@@ -85,15 +96,13 @@ class OmegaFlowManager {
   }
 
   // -----------------------------------------------------------
-  // Activar Flow (sin afectar otros)
+  // Activate Flow (without affecting others)
   // -----------------------------------------------------------
 
-  /// Activa el flow [id] sin pausar los demás. Permite tener varios flows
-  /// en [OmegaFlowState.running] a la vez; todos recibirán intents vía [handleIntent].
-  /// Para un único flow activo (y pausar el resto), usar [switchTo] o [activateExclusive].
+  /// Activates the flow [id] without pausing others. Multiple flows can be running and all receive intents.
   ///
-  /// Idempotente: si el flow ya está en [OmegaFlowState.running], no hace nada.
-  /// Devuelve true si el flow se activó (o ya estaba activo), false si [id] no está registrado.
+  /// **Why use it:** When you want more than one flow to react (e.g. auth + cart). For a single active flow, use [switchTo].
+  /// **Example:** `flowManager.activate("authFlow"); flowManager.activate("cartFlow");`
   bool activate(String id) {
     final flow = _flows[id];
     if (flow == null) return false;
@@ -104,12 +113,9 @@ class OmegaFlowManager {
   }
 
   // -----------------------------------------------------------
-  // Activar Flow exclusivo
+  // Activate Flow exclusively
   // -----------------------------------------------------------
 
-  /// Activa el flow [id] y pausa los demás. No comprueba si [id] está registrado;
-  /// si no existe, [activeFlowId] puede quedar asignado sin flow activo.
-  /// Preferir [switchTo] cuando el id deba existir.
   void activateExclusive(String id) {
     for (final flow in _flows.values) {
       if (flow.id == id) {
@@ -122,14 +128,13 @@ class OmegaFlowManager {
   }
 
   // -----------------------------------------------------------
-  // Cambiar Flow principal
+  // Switch main Flow
   // -----------------------------------------------------------
 
-  /// Cambia al flow [id] (debe estar registrado), lo activa y pausa el resto.
-  /// Más seguro que [activateExclusive] porque ignora ids no registrados.
+  /// Activates the flow [id] and pauses the rest. Only one "main" flow receives intents.
   ///
-  /// Idempotente: si [id] ya es el único flow en ejecución, no hace nada.
-  /// Devuelve true si se cambió al flow (o ya estaba activo), false si [id] no está registrado.
+  /// **Why use it:** After login you want only AuthFlow (or HomeFlow) to be active.
+  /// **Example:** `flowManager.switchTo("authFlow");` on startup. Idempotent.
   bool switchTo(String id) {
     if (!_flows.containsKey(id)) return false;
 
@@ -155,7 +160,7 @@ class OmegaFlowManager {
   }
 
   // -----------------------------------------------------------
-  // Pausar Flow
+  // Pause Flow
   // -----------------------------------------------------------
 
   void pause(String id) {
@@ -164,7 +169,7 @@ class OmegaFlowManager {
   }
 
   // -----------------------------------------------------------
-  // Dormir Flow
+  // Sleep Flow
   // -----------------------------------------------------------
 
   void sleep(String id) {
@@ -173,7 +178,7 @@ class OmegaFlowManager {
   }
 
   // -----------------------------------------------------------
-  // Finalizar Flow
+  // End Flow
   // -----------------------------------------------------------
 
   void end(String id) {
@@ -194,9 +199,13 @@ class OmegaFlowManager {
   }
 
   // -----------------------------------------------------------
-  // Conexión del navegador
+  // Navigator connection
   // -----------------------------------------------------------
 
+  /// Connects the channel to the navigator: when "navigation.intent" or "navigate.xxx" is emitted, the navigator does push/pushReplacement.
+  ///
+  /// **Why use it:** Flows navigate by emitting events; they don't use BuildContext. Call once at bootstrap.
+  /// **Example:** `flowManager.wireNavigator(runtime.navigator);`
   void wireNavigator(OmegaNavigator nav) {
     _navSubscription?.cancel();
     _navSubscription = channel.events.listen((event) {
@@ -212,7 +221,7 @@ class OmegaFlowManager {
     });
   }
 
-  /// Cancela suscripciones (p. ej. navegación). Llamar al cerrar la app.
+  /// Cancels subscriptions (e.g. navigation). Call when closing the app.
   void dispose() {
     _navSubscription?.cancel();
     _navSubscription = null;

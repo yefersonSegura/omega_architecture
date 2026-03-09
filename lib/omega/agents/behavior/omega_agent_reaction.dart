@@ -1,11 +1,11 @@
-/// [OmegaAgentReaction] es el resultado de una regla: la [action] que el agente debe ejecutar y su [payload].
+/// Result of a rule: [action] name and [payload]. The agent receives it in [OmegaAgent.onAction].
 ///
-/// El agente recibe la reacción y la ejecuta en [OmegaAgent.onAction].
+/// **Example:** `OmegaAgentReaction("login", payload: creds);` → in onAction: action == "login", payload == creds.
 class OmegaAgentReaction {
-  /// El nombre de la acción a ejecutar.
+  /// Action name (e.g. "login"). In [onAction] you compare by this value.
   final String action;
 
-  /// Datos asociados a la acción.
+  /// Data for the action (e.g. credentials).
   final dynamic payload;
 
   const OmegaAgentReaction(this.action, {this.payload});

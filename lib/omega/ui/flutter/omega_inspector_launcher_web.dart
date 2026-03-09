@@ -1,5 +1,5 @@
-// Implementación web: abre el inspector en una nueva ventana del navegador (estilo Isar).
-// Usa package:web en lugar de dart:html (recomendado por pub.dev).
+// Web implementation: opens the inspector in a new browser window (Isar-style).
+// Uses package:web instead of dart:html (recommended by pub.dev).
 
 import 'dart:async';
 import 'dart:convert';
@@ -13,7 +13,7 @@ import 'omega_scope.dart';
 
 const String _kChannelName = 'omega_inspector';
 
-/// Botón que abre el inspector en una **nueva ventana** del navegador y envía datos por BroadcastChannel.
+/// Button that opens the inspector in a **new browser window** and sends data via BroadcastChannel.
 class OmegaInspectorLauncher extends StatefulWidget {
   final int eventLimit;
 

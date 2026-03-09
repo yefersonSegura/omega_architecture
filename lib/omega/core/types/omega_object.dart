@@ -1,14 +1,14 @@
 // lib/omega/core/types/omega_object.dart
 
-/// [OmegaObject] es la clase base de los objetos del sistema Omega.
+/// Base class for Omega system objects.
 ///
-/// Proporciona [id] (identificador único) y [meta] (mapa de metadatos opcional).
-/// [OmegaEvent], [OmegaIntent] y [OmegaFailure] extienden de esta clase.
+/// Provides [id] (unique identifier) and [meta] (optional metadata map).
+/// [OmegaEvent], [OmegaIntent] and [OmegaFailure] extend this class.
 abstract class OmegaObject {
-  /// Identificador único del objeto.
+  /// Unique object identifier.
   final String id;
 
-  /// Metadatos opcionales (clave-valor).
+  /// Optional metadata (key-value).
   final Map<String, dynamic> meta;
 
   const OmegaObject({required this.id, this.meta = const {}});

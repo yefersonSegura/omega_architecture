@@ -1,24 +1,28 @@
 import '../types/omega_object.dart';
 import 'omega_intent_name.dart';
 
-/// [OmegaIntent] representa una intención semántica o petición de acción en el sistema.
+/// Represents a request for action (login, navigate, etc.) without coupling who asks and who executes.
 ///
-/// La UI no llama métodos directamente; emite intents. [OmegaFlowManager] los enruta
-/// a los flows en ejecución. También se usan para navegación (ej. name "navigate.login").
-/// Extiende [OmegaObject] (tiene [id] y [meta]).
+/// **Why use it:** The UI emits intents instead of calling methods; [OmegaFlowManager]
+/// routes them to flows that are running. Also used for navigation (name "navigate.xxx").
 ///
-/// Para evitar strings mágicos, usa [OmegaIntentName] y [fromName]:
-/// `OmegaIntent.fromName(AppIntent.goLogin, payload: args)`
+/// **Example:** Emit from UI and read payload in the flow:
+/// ```dart
+/// flowManager.handleIntent(OmegaIntent.fromName(AppIntent.authLogin, payload: creds));
+/// // In flow onIntent: final c = ctx.intent!.payloadAs<LoginCredentials>();
+/// ```
 class OmegaIntent extends OmegaObject {
-  /// Nombre de la intención (ej. "auth.login", "navigate.login", "cart.add").
+  /// Intent name (e.g. "auth.login", "navigate.home"). Defines the action.
   final String name;
 
-  /// Información necesaria para procesar la intención (credenciales, id de ruta, etc.).
+  /// Data to execute the action. Use [payloadAs] to read with type.
   final dynamic payload;
 
   const OmegaIntent({required super.id, required this.name, this.payload});
 
-  /// Crea un intent a partir de un nombre tipado ([OmegaIntentName]). Si [id] es null, se genera uno.
+  /// Creates an intent with a typed name ([OmegaIntentName]). Generates [id] if not provided.
+  ///
+  /// **Why use it:** Avoids magic strings; safe refactors and autocomplete.
   factory OmegaIntent.fromName(
     OmegaIntentName intentName, {
     dynamic payload,
@@ -29,4 +33,13 @@ class OmegaIntent extends OmegaObject {
         name: intentName.name,
         payload: payload,
       );
+}
+
+/// Extension to read the payload with type safety.
+extension OmegaIntentPayloadExtension on OmegaIntent {
+  /// Returns [payload] as [T] if compatible at runtime; otherwise null.
+  ///
+  /// **Example:** `final creds = intent.payloadAs<LoginCredentials>(); if (creds != null) ...`
+  T? payloadAs<T>() =>
+      payload != null && payload is T ? payload as T : null;
 }

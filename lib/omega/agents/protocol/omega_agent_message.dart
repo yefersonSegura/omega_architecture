@@ -1,17 +1,17 @@
-/// [OmegaAgentMessage] es un mensaje directo de un agente ([from]) a otro ([to]).
+/// Direct message from one agent ([from]) to another ([to]).
 ///
-/// Se envía con [OmegaAgentProtocol.send]. El receptor lo procesa en [OmegaAgent.onMessage].
+/// Sent with [OmegaAgentProtocol.send]. The receiver handles it in [OmegaAgent.onMessage].
 class OmegaAgentMessage {
-  /// Id del agente emisor.
+  /// Sender agent id.
   final String from;
 
-  /// Id del agente receptor.
+  /// Receiver agent id.
   final String to;
 
-  /// Acción o comando (ej. "login", "validate").
+  /// Action or command (e.g. "login", "validate").
   final String action;
 
-  /// Datos opcionales para la acción.
+  /// Optional data for the action.
   final dynamic payload;
 
   const OmegaAgentMessage({

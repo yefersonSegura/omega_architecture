@@ -9,10 +9,10 @@ import '../../flows/omega_flow_snapshot.dart';
 import '../../flows/omega_flow_state.dart';
 import 'omega_scope.dart';
 
-/// Número por defecto de eventos recientes que muestra el inspector.
+/// Default number of recent events shown by the inspector.
 const int kOmegaInspectorDefaultEventLimit = 30;
 
-// Tema visual del inspector (moderno, alto contraste).
+// Inspector visual theme (modern, high contrast).
 const Color _kInspectorPrimary = Color(0xFF1565C0);
 const Color _kInspectorPrimaryDark = Color(0xFF0D47A1);
 const Color _kInspectorSurface = Color(0xFFF5F7FA);
@@ -22,13 +22,13 @@ const Color _kInspectorTextMuted = Color(0xFF546E7A);
 const double _kInspectorRadius = 16.0;
 const double _kCardRadius = 12.0;
 
-/// Panel mínimo de inspección para Omega: eventos recientes del canal y estado de los flows.
+/// Minimal inspection panel for Omega: recent channel events and flow state.
 ///
-/// Usa [OmegaScope.of](context) para obtener el canal y el flow manager. Muestra los últimos
-/// [eventLimit] eventos emitidos y un snapshot de todos los flows (id, estado, última expresión).
-/// Pensado para **modo debug**; en release puedes ocultarlo con [kDebugMode].
+/// Uses [OmegaScope.of](context) to get the channel and flow manager. Shows the last
+/// [eventLimit] emitted events and a snapshot of all flows (id, state, last expression).
+/// Intended for **debug mode**; in release you can hide it with [kDebugMode].
 ///
-/// Ejemplo:
+/// Example:
 /// ```dart
 /// if (kDebugMode)
 ///   Stack(
@@ -39,10 +39,10 @@ const double _kCardRadius = 12.0;
 ///   )
 /// ```
 class OmegaInspector extends StatefulWidget {
-  /// Máximo de eventos recientes a mostrar (por defecto [kOmegaInspectorDefaultEventLimit]).
+  /// Maximum recent events to show (default [kOmegaInspectorDefaultEventLimit]).
   final int eventLimit;
 
-  /// Si true, el panel se muestra colapsado (solo un botón para expandir).
+  /// If true, the panel is shown collapsed (only a button to expand).
   final bool initiallyCollapsed;
 
   const OmegaInspector({
@@ -233,9 +233,9 @@ class _OmegaInspectorState extends State<OmegaInspector> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Eventos', '${_events.length}'),
+        _buildSectionTitle('Events', '${_events.length}'),
         if (_events.isEmpty)
-          _emptyState('Ningún evento aún')
+          _emptyState('No events yet')
         else
           ..._events.take(15).map((e) => _eventTile(e)),
       ],
@@ -322,9 +322,9 @@ class _OmegaInspectorState extends State<OmegaInspector> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Flows', snap != null && snap.activeFlowId != null ? 'activo: ${snap.activeFlowId}' : null),
+        _buildSectionTitle('Flows', snap != null && snap.activeFlowId != null ? 'active: ${snap.activeFlowId}' : null),
         if (snap == null || snap.flows.isEmpty)
-          _emptyState('Ninguno registrado')
+          _emptyState('None registered')
         else
           ...snap.flows.map((f) => _flowTile(f)),
       ],

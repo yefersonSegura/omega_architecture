@@ -74,10 +74,36 @@ class _RootHandlerState extends State<_RootHandler> {
       appBar: kDebugMode
           ? AppBar(
               title: const Text('Omega Example'),
-              actions: const [OmegaInspectorLauncher()],
+              actions: const [
+                _DocsLink(),
+                OmegaInspectorLauncher(),
+              ],
             )
           : null,
       body: const Center(child: Text("Omega Running")),
+    );
+  }
+}
+
+/// Button that shows the documentation link (web doc or run `omega doc`).
+class _DocsLink extends StatelessWidget {
+  const _DocsLink();
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.menu_book),
+      tooltip: 'Documentación',
+      onPressed: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Documentación web: yefersonsegura.com/proyects/omega/ · O ejecuta: omega doc',
+            ),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      },
     );
   }
 }

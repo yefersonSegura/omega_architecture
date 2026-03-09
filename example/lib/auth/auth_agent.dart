@@ -2,6 +2,7 @@ import 'package:omega_architecture/omega_architecture.dart';
 
 import '../omega/app_semantics.dart';
 import 'auth_behavior.dart';
+import 'models.dart';
 
 class AuthAgent extends OmegaAgent {
   AuthAgent(OmegaChannel channel)
@@ -32,20 +33,22 @@ class AuthAgent extends OmegaAgent {
     }
   }
 
-  Future<void> _login(dynamic credentials) async {
+  Future<void> _login(dynamic payload) async {
+    if (payload is! LoginCredentials) return;
+    final creds = payload; // Tipo promocionado a LoginCredentials
+
     channel.emit(OmegaEvent.fromName(AppEvent.authLoginStarted));
 
     await Future.delayed(const Duration(seconds: 1));
 
-    final email = credentials["email"];
-    final pass = credentials["password"];
-
-    if (email == "admin@admin.com" && pass == "123456") {
+    if (creds.email == "admin@admin.com" && creds.password == "123456") {
       token = "FAKE_TOKEN_ABC123";
-      user = {"name": "Admin", "email": email};
+      user = {"name": "Admin", "email": creds.email};
       channel.emit(
-        OmegaEvent.fromName(AppEvent.authLoginSuccess,
-            payload: {"token": token, "user": user}),
+        OmegaEvent.fromName(
+          AppEvent.authLoginSuccess,
+          payload: LoginSuccessPayload(token: token!, user: user!),
+        ),
       );
     } else {
       channel.emit(
@@ -54,7 +57,7 @@ class AuthAgent extends OmegaAgent {
           payload: OmegaFailure(
             id: "auth.invalid_credentials",
             message: "Credenciales inválidas",
-            details: {"email": email},
+            details: {"email": creds.email},
           ),
         ),
       );

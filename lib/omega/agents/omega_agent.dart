@@ -11,27 +11,28 @@ import 'behavior/omega_agent_reaction.dart';
 import 'protocol/omega_agent_inbox.dart';
 import 'protocol/omega_agent_message.dart';
 
-/// [OmegaAgent] es la unidad de lógica autónoma: tiene [id], [channel] y un motor [behavior].
+/// Autonomous logic unit: reacts to channel events and intents according to a [behavior].
 ///
-/// Se suscribe al canal; cuando llega un evento o un mensaje directo, [behavior] evalúa
-/// y devuelve una reacción. El agente ejecuta la acción en [onAction]. Puedes emitir
-/// eventos al canal con [emit]. Llamar a [dispose] al cerrar para cancelar la suscripción.
+/// **Why use it:** Encapsulates a responsibility (e.g. API login). The flow emits "auth.login.request";
+/// the agent receives it, calls the API and emits "auth.login.success" or "auth.login.error".
+///
+/// **Example:** In [onAction] you receive the behavior's reaction; you emit events with [emit]. Call [dispose] on close.
 abstract class OmegaAgent {
-  /// Identificador único del agente.
+  /// Unique agent identifier.
   final String id;
 
-  /// El canal de comunicación global.
+  /// Global communication channel.
   final OmegaChannel channel;
 
-  /// El motor que define cómo reacciona el agente a eventos e intenciones.
+  /// Engine that defines how the agent reacts to events and intents.
   final OmegaAgentBehaviorEngine behavior;
 
   StreamSubscription? _eventSubscription;
 
-  /// Bandeja de entrada para mensajes directos entre agentes.
+  /// Inbox for direct messages between agents.
   late final OmegaAgentInbox inbox;
 
-  /// Estado interno mutable del agente.
+  /// Agent's mutable internal state.
   final Map<String, dynamic> state = {};
 
   OmegaAgent({
@@ -41,31 +42,31 @@ abstract class OmegaAgent {
   }) {
     inbox = OmegaAgentInbox();
 
-    // Escuchar eventos del sistema y guardar la suscripción
+    // Listen to system events and keep the subscription
     _eventSubscription = channel.events.listen(_handleEvent);
   }
 
-  /// Limpiar recursos y cancelar suscripciones
+  /// Cleans up resources and cancels subscriptions.
   void dispose() {
     _eventSubscription?.cancel();
     _eventSubscription = null;
   }
 
   // -----------------------------------------------------------
-  // 1. Procesar mensajes DIRECTOS de otros agentes
+  // 1. Process DIRECT messages from other agents
   // -----------------------------------------------------------
 
-  /// Recibe un mensaje directo de otro agente y lo añade a la bandeja de entrada.
+  /// Adds a message to the inbox and calls [onMessage]. For agent-to-agent communication.
   void receiveMessage(OmegaAgentMessage msg) {
     inbox.receive(msg);
-    onMessage(msg); // Cada agente implementa su reacción
+    onMessage(msg);
   }
 
-  /// Método abstracto que cada agente debe implementar para responder a mensajes.
+  /// Abstract method each agent must implement to respond to messages.
   void onMessage(OmegaAgentMessage msg);
 
   // -----------------------------------------------------------
-  // 2. Procesar eventos globales (OmegaChannel)
+  // 2. Process global events (OmegaChannel)
   // -----------------------------------------------------------
 
   void _handleEvent(OmegaEvent event) {
@@ -73,10 +74,12 @@ abstract class OmegaAgent {
   }
 
   // -----------------------------------------------------------
-  // 3. Procesar intenciones semánticas
+  // 3. Process semantic intents
   // -----------------------------------------------------------
 
-  /// Recibe una [OmegaIntent] y la evalúa a través del motor de comportamiento.
+  /// Evaluates the intent with [behavior] and runs the reaction in [onAction]. Called by the flow when it delegates to the agent.
+  ///
+  /// **Example:** Flow receives intent "auth.login"; calls agent.receiveIntent(intent); agent performs login and emits events.
   void receiveIntent(OmegaIntent intent) {
     _evaluateBehavior(OmegaAgentBehaviorContext(intent: intent, state: state));
   }
@@ -89,7 +92,7 @@ abstract class OmegaAgent {
   }
 
   // -----------------------------------------------------------
-  // 4. Ejecutar reacciones producidas por el BehaviorEngine
+  // 4. Execute reactions from the BehaviorEngine
   // -----------------------------------------------------------
 
   void _executeReaction(OmegaAgentReaction reaction) {
@@ -97,17 +100,21 @@ abstract class OmegaAgent {
   }
 
   // -----------------------------------------------------------
-  // 5. Cada agente define sus acciones internas
+  // 5. Each agent defines its internal actions
   // -----------------------------------------------------------
 
-  /// Método abstracto donde el agente ejecuta la lógica ligada a una acción específica.
+  /// Implement the logic for each action (e.g. "login": call API, then [emit] success/error).
+  ///
+  /// **Example:** `if (action == "login") { await api.login(payload); emit("auth.login.success", payload: user); }`
   void onAction(String action, dynamic payload);
 
   // -----------------------------------------------------------
-  // 6. Emitir eventos globales
+  // 6. Emit global events
   // -----------------------------------------------------------
 
-  /// Emite un evento al canal global con un nombre y carga útil opcional.
+  /// Publishes an event on the channel. Use to notify the flow and other listeners of the result (success, error).
+  ///
+  /// **Example:** `emit("auth.login.success", payload: LoginSuccessPayload(token: t, user: u));`
   void emit(String name, {dynamic payload}) {
     channel.emit(
       OmegaEvent(

@@ -1,6 +1,6 @@
 # Arquitectura Omega
 
-Este documento describe qué hace cada parte del framework Omega para que quien lo use sepa cómo encaja todo.
+Este documento describe **qué hace cada parte** del framework Omega para que quien lo use sepa cómo encaja todo. Para una **guía con ejemplos de código** de cada componente, ver **[GUIA.md](GUIA.md)**.
 
 ---
 
@@ -36,6 +36,8 @@ Omega es un framework **reactivo y basado en agentes** para Flutter. La lógica 
 
 **Qué hace:** Expone un `Stream<OmegaEvent>` al que te suscribes. Cualquiera puede llamar a `emit(OmegaEvent)` para publicar. Los agentes y flows escuchan eventos y reaccionan.
 
+**Ejemplo:** `channel.emit(OmegaEvent(id: "1", name: "auth.login.request", payload: creds));` y `channel.events.listen((e) => ...)`.
+
 **Responsabilidad de ciclo de vida:** Quien crea el canal debe llamar a `dispose()` al cerrar la app.
 
 ---
@@ -46,6 +48,8 @@ Omega es un framework **reactivo y basado en agentes** para Flutter. La lógica 
 
 **Qué hace:** Representa “algo que pasó” en el sistema. Los agentes y flows escuchan por `event.name` y leen `event.payload` para actuar.
 
+**Payload tipado al leer:** Para evitar casts a mano, usa la extensión `payloadAs<T>()`: devuelve `payload` casteado a `T` si el runtime es compatible, o `null` si no. Ej. `event.payloadAs<User>()` en un listener.
+
 ---
 
 ### OmegaIntent
@@ -53,6 +57,8 @@ Omega es un framework **reactivo y basado en agentes** para Flutter. La lógica 
 **Qué es:** Una intención o petición de acción. Tiene `id`, `name` (ej. `"navigate.login"`) y `payload` opcional.
 
 **Qué hace:** La UI (u otro componente) no llama directamente a métodos; emite un intent. El [OmegaFlowManager] enruta los intents a los flows que estén en `running`. También se usan para navegación: el canal emite un evento con payload [OmegaIntent] y el navegador reacciona.
+
+**Payload tipado al leer:** Usa la extensión `payloadAs<T>()` para leer [payload] con un tipo concreto: `intent.payloadAs<LoginArgs>()`.
 
 **Nombres tipados (menos strings mágicos):** Para evitar escribir el nombre del evento o intent a mano y tener autocompletado y refactors seguros, implementa [OmegaEventName] o [OmegaIntentName] (p. ej. con un enum) y usa [OmegaEvent.fromName] / [OmegaIntent.fromName]. Así defines una sola vez los nombres (ej. `enum AppEvent implements OmegaEventName { authLoginSuccess('auth.login.success'); ... }`) y el resto del código usa `OmegaEvent.fromName(AppEvent.authLoginSuccess, payload: data)`. En el **example** del paquete (carpeta `example/`, archivo `lib/omega/app_semantics.dart`) hay un uso completo: enums `AppEvent` y `AppIntent` usados en main, flow, agente, behavior y pantalla de login.
 
@@ -159,6 +165,8 @@ Omega es un framework **reactivo y basado en agentes** para Flutter. La lógica 
 
 También ofrece `pause`, `sleep`, `end` por flow. Es idempotente: activar dos veces el mismo flow no hace nada extra.
 
+**Ejemplo:** `flowManager.registerFlow(AuthFlow(channel)); flowManager.switchTo("authFlow"); flowManager.handleIntent(OmegaIntent.fromName(AppIntent.authLogin, payload: creds));`
+
 **Ciclo de vida:** Llamar a `dispose()` para cancelar la suscripción usada en `wireNavigator`.
 
 ---
@@ -176,6 +184,8 @@ También ofrece `pause`, `sleep`, `end` por flow. Es idempotente: activar dos ve
 **Qué es:** Un mensaje que un flow emite hacia la UI (ej. `"loading"`, `"success"`, `"error"` con payload).
 
 **Qué hace:** El flow llama a `emitExpression(tipo, payload)`. La UI se suscribe a `flow.expressions` y reconstruye según la última expresión. Así la UI no pregunta “¿cuál es el estado?”; el flow lo anuncia.
+
+**Payload tipado al leer:** Usa la extensión `payloadAs<T>()` para leer el payload con un tipo concreto.
 
 ---
 
@@ -258,7 +268,7 @@ En plataformas no-web, el launcher abre el [OmegaInspector] en un diálogo.
 **Comportamiento de handleIntent:**
 - **"navigate.&lt;id&gt;"** (ej. `navigate.login`) → reemplaza la pantalla actual (pushReplacement).
 - **"navigate.push.&lt;id&gt;"** (ej. `navigate.push.detail`) → apila la pantalla (push). Útil para flujos donde el usuario puede volver atrás.
-- El [OmegaIntent.payload] se pasa a la pantalla como [RouteSettings.arguments]; en el builder puedes leerlo con `ModalRoute.of(context)?.settings.arguments`.
+- El [OmegaIntent.payload] se pasa a la pantalla como [RouteSettings.arguments]. Para que la vista reciba el tipo sin castear, usa [OmegaRoute.typed] o [routeArguments].
 
 **Qué hace:** Registras rutas con `registerRoute(OmegaRoute)`. Los mensajes de diagnóstico usan `debugPrint` (solo en debug).
 
@@ -269,6 +279,10 @@ En plataformas no-web, el launcher abre el [OmegaInspector] en un diálogo.
 **Qué es:** Una ruta registrada en el navegador: `id` (ej. `"login"`) y un `builder` que devuelve el widget de la pantalla.
 
 **Qué hace:** Define las pantallas que el navegador puede mostrar. "navigate.login" o "navigate.push.login" llevan a la ruta con `id: "login"`. Los argumentos del intent (payload) están en `RouteSettings.arguments` para el builder.
+
+**Ruta tipada (OmegaRoute.typed):** Para que la vista reciba el payload con un tipo concreto sin castear, registra la ruta con `OmegaRoute.typed<T>(id: "productoForm", builder: (context, product) => ProductoFormPage(producto: product))`. El segundo parámetro del builder es `T?` (el payload del intent). Navegación desde un flow: `OmegaIntent.fromName(AppIntent.navigateProductoForm, payload: product)`. Ver el **example** (ruta `home` con `LoginSuccessPayload` en `omega_setup.dart` y navegación en `auth_flow.dart`).
+
+**Helper routeArguments:** Si no usas `OmegaRoute.typed`, dentro del builder puedes hacer `final product = routeArguments<Producto>(context);` para leer los argumentos con tipo.
 
 ---
 

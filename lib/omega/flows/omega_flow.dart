@@ -12,28 +12,34 @@ import 'omega_flow_expression.dart';
 import 'omega_flow_context.dart';
 import 'omega_flow_snapshot.dart';
 
-/// [OmegaFlow] representa un flujo de negocio (ej. login, checkout).
+/// Business flow (login, checkout, etc.): orchestrates events, intents and communication with the UI.
 ///
-/// Se suscribe al [OmegaChannel]. Solo cuando [state] es [OmegaFlowState.running]
-/// procesa eventos ([onEvent]) e intents ([onIntent]). La UI escucha [expressions]
-/// para actualizarse. Se activa con [OmegaFlowManager.activate] o [OmegaFlowManager.switchTo].
+/// **Why use it:** Centralizes use-case logic. Listens to channel events and UI intents;
+/// decides which expressions to emit and when to navigate. The UI only listens to [expressions].
+///
+/// **Example:** In [onIntent] you receive credentials, emit "loading", ask the agent to login;
+/// in [onEvent] you receive "auth.login.success" and emit "success" + navigation intent.
+///
+/// Only processes when [state] is [OmegaFlowState.running]. Activated via [OmegaFlowManager.activate] or [switchTo].
 abstract class OmegaFlow {
-  /// Identificador único del flujo (ej. "auth", "cart").
+  /// Flow identifier (e.g. "authFlow"). Must match the one used in the manager.
   final String id;
 
-  /// Canal global; el flow escucha eventos aquí.
+  /// Global channel; the flow listens to [channel.events] and can emit events.
   final OmegaChannel channel;
 
-  /// Estado actual: solo en [OmegaFlowState.running] se procesan eventos e intents.
+  /// Current state. [onEvent] and [onIntent] are only called when [OmegaFlowState.running].
   OmegaFlowState state = OmegaFlowState.idle;
 
   final StreamController<OmegaFlowExpression> _expressions =
       StreamController.broadcast();
 
-  /// Stream de expresiones que la UI puede escuchar para reconstruirse.
+  /// Stream the UI listens to for updates (loading, success, error, etc.).
+  ///
+  /// **Example:** `flow.expressions.listen((e) => setState(() { uiState = e.type; }));`
   Stream<OmegaFlowExpression> get expressions => _expressions.stream;
 
-  /// Memoria interna del flujo (datos que persisten durante su ejecución).
+  /// Flow memory (key/value). Persists while the flow is active; can be restored with [restoreMemory].
   final Map<String, dynamic> memory = {};
 
   OmegaFlowExpression? _lastExpression;
@@ -43,42 +49,42 @@ abstract class OmegaFlow {
   }
 
   // -----------------------------------------------------------
-  // 1. Ciclo de vida
+  // 1. Lifecycle
   // -----------------------------------------------------------
 
-  /// Inicia la ejecución del flujo si no está ya en ejecución.
+  /// Puts the flow in [OmegaFlowState.running] and calls [onStart]. Invoked by the manager (activate/switchTo).
   void start() {
     if (state == OmegaFlowState.running) return;
     state = OmegaFlowState.running;
     onStart();
   }
 
-  /// Pone el flujo en modo "dormido", reduciendo su actividad pero manteniendo el estado.
+  /// Puts the flow in "sleep" mode, reducing activity but keeping state.
   void sleep() {
     state = OmegaFlowState.sleeping;
     onSleep();
   }
 
-  /// Despierta un flujo que estaba en modo sleep.
+  /// Wakes up a flow that was in sleep mode.
   void wakeUp() {
     state = OmegaFlowState.running;
     onWakeUp();
   }
 
-  /// Pausa el flujo temporalmente.
+  /// Pauses the flow temporarily.
   void pause() {
     state = OmegaFlowState.paused;
     onPause();
   }
 
-  /// Finaliza el flujo definitivamente y cierra sus flujos de datos.
+  /// Ends the flow and closes its streams.
   void end() {
     state = OmegaFlowState.ended;
     onEnd();
     _expressions.close();
   }
 
-  // Hooks opcionales
+  // Optional hooks
   void onStart() {}
   void onSleep() {}
   void onWakeUp() {}
@@ -86,7 +92,7 @@ abstract class OmegaFlow {
   void onEnd() {}
 
   // -----------------------------------------------------------
-  // 2. Manejo de eventos globales
+  // 2. Global event handling
   // -----------------------------------------------------------
 
   void _handleEvent(OmegaEvent event) {
@@ -97,14 +103,14 @@ abstract class OmegaFlow {
     onEvent(context);
   }
 
-  /// Método llamado cuando el flujo recibe un evento global al estar en ejecución.
+  /// Implement the reaction to channel events (e.g. "auth.login.success"). Only called when the flow is running.
   void onEvent(OmegaFlowContext ctx);
 
   // -----------------------------------------------------------
-  // 3. Manejo de intenciones desde UI u otros agentes
+  // 3. Intent handling from UI or other agents
   // -----------------------------------------------------------
 
-  /// Recibe una [OmegaIntent] y la procesa si el flujo está activo.
+  /// Sends the intent to this flow. Only processed if [state] is running; then [onIntent] is called.
   void receiveIntent(OmegaIntent intent) {
     if (state != OmegaFlowState.running) return;
 
@@ -113,14 +119,17 @@ abstract class OmegaFlow {
     onIntent(context);
   }
 
-  /// Método abstracto que define cómo reacciona el flujo a una intención específica.
+  /// Implement the reaction to intents (e.g. login, logout). Only called when the flow is running.
   void onIntent(OmegaFlowContext ctx);
 
   // -----------------------------------------------------------
-  // 4. Emitir expresiones hacia la UI
+  // 4. Emit expressions to the UI
   // -----------------------------------------------------------
 
-  /// Emite una expresión (un mensaje o cambio de estado visual) que la UI debe procesar.
+  /// Notifies the UI of a state change (loading, success, error). The UI listens to [expressions].
+  ///
+  /// **Why use it:** The UI doesn't ask "are you loading?"; the flow announces state.
+  /// **Example:** `emitExpression("loading");` then `emitExpression("success", payload: user);`
   void emitExpression(String type, {dynamic payload}) {
     if (!_expressions.isClosed) {
       final expr = OmegaFlowExpression(type, payload: payload);
@@ -130,11 +139,12 @@ abstract class OmegaFlow {
   }
 
   // -----------------------------------------------------------
-  // 5. Snapshot (estado actual)
+  // 5. Snapshot (current state)
   // -----------------------------------------------------------
 
-  /// Devuelve una foto del estado actual del flow (id, state, copia de memory, última expresión).
-  /// Útil para depuración, persistencia o time-travel.
+  /// Snapshot of current state (id, state, memory, last expression). For debugging, persistence or restore.
+  ///
+  /// **Example:** `final snap = flow.getSnapshot(); await save(snap.toJson());`
   OmegaFlowSnapshot getSnapshot() => OmegaFlowSnapshot(
         flowId: id,
         state: state,
@@ -142,8 +152,9 @@ abstract class OmegaFlow {
         lastExpression: _lastExpression,
       );
 
-  /// Restaura la [memory] del flow desde un mapa (p. ej. tras cargar un [OmegaFlowSnapshot]).
-  /// Borra el contenido actual y reemplaza por [data]. Usado en restore on launch.
+  /// Replaces [memory] with [data]. Use after loading a snapshot (restore on launch).
+  ///
+  /// **Example:** `flow.restoreMemory(snapshot.memory);`
   void restoreMemory(Map<String, dynamic> data) {
     memory.clear();
     memory.addAll(Map<String, dynamic>.from(data));

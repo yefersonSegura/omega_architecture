@@ -1,6 +1,6 @@
-// Implementación web: recibe datos del canal principal por BroadcastChannel y muestra el inspector.
-// Usa package:web en lugar de dart:html (recomendado por pub.dev).
-// Mismo tema visual que OmegaInspector (overlay) para consistencia.
+// Web implementation: receives data from the main window via BroadcastChannel and shows the inspector.
+// Uses package:web instead of dart:html (recommended by pub.dev).
+// Same visual theme as OmegaInspector (overlay) for consistency.
 
 import 'dart:convert';
 import 'dart:js_interop';
@@ -10,7 +10,7 @@ import 'package:web/web.dart' as web;
 
 const String _kChannelName = 'omega_inspector';
 
-// Tema visual (alineado con omega_inspector.dart).
+// Visual theme (aligned with omega_inspector.dart).
 const Color _kInspectorPrimary = Color(0xFF1565C0);
 const Color _kInspectorPrimaryDark = Color(0xFF0D47A1);
 const Color _kInspectorSurface = Color(0xFFF5F7FA);
@@ -19,7 +19,7 @@ const Color _kInspectorText = Color(0xFF1A237E);
 const Color _kInspectorTextMuted = Color(0xFF546E7A);
 const double _kCardRadius = 12.0;
 
-/// En la ventana abierta con ?omega_inspector=1, este widget escucha BroadcastChannel y muestra el inspector.
+/// In the window opened with ?omega_inspector=1, this widget listens to BroadcastChannel and displays the inspector.
 class OmegaInspectorReceiver extends StatefulWidget {
   const OmegaInspectorReceiver({super.key});
 
@@ -55,7 +55,7 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
         _error = '';
       });
     } catch (_) {
-      if (mounted) setState(() => _error = 'Error al decodificar');
+      if (mounted) setState(() => _error = 'Error decoding');
     }
   }
 
@@ -173,7 +173,7 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Eventos', '${_events.length}'),
+        _buildSectionTitle('Events', '${_events.length}'),
         if (_events.isEmpty)
           _emptyState('Esperando datos del canal…')
         else
@@ -263,7 +263,7 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
       children: [
         _buildSectionTitle('Flows', subtitle),
         if (_flows.isEmpty)
-          _emptyState('Ninguno aún')
+          _emptyState('None yet')
         else
           ..._flows.map((f) => _flowTile(f)),
       ],
@@ -318,7 +318,7 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
                       if (f['lastExpressionType'] != null) ...[
                         const SizedBox(height: 6),
                         Text(
-                          'Última expresión: ${f['lastExpressionType']}',
+                          'Last expression: ${f['lastExpressionType']}',
                           style: const TextStyle(fontSize: 11, color: _kInspectorTextMuted),
                         ),
                       ],

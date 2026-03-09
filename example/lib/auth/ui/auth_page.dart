@@ -3,6 +3,7 @@ import 'package:omega_architecture/omega_architecture.dart';
 
 import '../../omega/app_semantics.dart';
 import '../auth_flow.dart';
+import '../models.dart';
 
 class OmegaLoginPage extends StatefulWidget {
   const OmegaLoginPage({super.key});
@@ -25,17 +26,17 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // Obtener FlowManager desde OmegaScope
     flowManager = OmegaScope.of(context).flowManager;
 
     flowManager.activate("authFlow");
-    // Obtener el flow (id debe coincidir con el que se registró en AuthFlow)
     flow = flowManager.getFlow("authFlow") as AuthFlow;
-    // escuchar expresiones del Flow
     flow.expressions.listen((exp) {
       setState(() {
         uiState = exp.type;
-        uiPayload = exp.payload;
+        // Payload tipado: en "success" usar payloadAs<LoginSuccessPayload>()
+        uiPayload = exp.type == "success"
+            ? exp.payloadAs<LoginSuccessPayload>()
+            : exp.payload;
       });
     });
   }
@@ -43,10 +44,10 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
   void _login() {
     final intent = OmegaIntent.fromName(
       AppIntent.authLogin,
-      payload: {
-        "email": emailCtrl.text.trim(),
-        "password": passCtrl.text.trim(),
-      },
+      payload: LoginCredentials(
+        email: emailCtrl.text.trim(),
+        password: passCtrl.text.trim(),
+      ),
     );
     flowManager.handleIntent(intent);
   }
@@ -127,6 +128,8 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
   }
 
   Widget _buildSuccess() {
+    // uiPayload ya viene tipado por payloadAs<LoginSuccessPayload>() en el listener
+    final data = uiPayload as LoginSuccessPayload?;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -134,7 +137,9 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
           const Icon(Icons.check_circle, color: Colors.green, size: 100),
           const SizedBox(height: 20),
           Text(
-            "Bienvenido ${uiPayload["user"]["name"]}",
+            data != null
+                ? "Bienvenido ${data.user["name"]}"
+                : "Bienvenido",
             style: const TextStyle(fontSize: 20),
           ),
           const SizedBox(height: 40),

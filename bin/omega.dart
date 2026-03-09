@@ -1,6 +1,22 @@
 import 'dart:io';
 
 const String _version = "0.0.1";
+const String _docUrl = "http://yefersonsegura.com/proyects/omega/";
+
+void _openInBrowser(String urlOrPath) {
+  if (Platform.isWindows) {
+    Process.run("start", [urlOrPath], runInShell: true);
+  } else if (Platform.isMacOS) {
+    Process.run("open", [urlOrPath]);
+  } else {
+    Process.run("xdg-open", [urlOrPath]);
+  }
+}
+
+void _openDoc() {
+  _openInBrowser(_docUrl);
+  print("Opening documentation: $_docUrl");
+}
 
 void _err(String message) {
   print("Error: $message");
@@ -27,6 +43,10 @@ void main(List<String> args) {
   }
 
   switch (arg) {
+    case "doc":
+      _openDoc();
+      return;
+
     case "init":
       OmegaInitCommand.run(args.length > 1 ? args.sublist(1) : []);
       break;
@@ -56,6 +76,9 @@ void printHelp() {
   print("");
   print("Commands:");
   print(
+    "  doc                  Open the web documentation (official site in browser)",
+  );
+  print(
     "  init [--force]       Create lib/omega/omega_setup.dart (use --force to overwrite)",
   );
   print(
@@ -64,9 +87,7 @@ void printHelp() {
   print(
     "  g agent <Name>       Generate only agent + behavior in current directory",
   );
-  print(
-    "  g flow <Name>        Generate only flow in current directory",
-  );
+  print("  g flow <Name>        Generate only flow in current directory");
   print(
     "  validate             Check omega_setup.dart (structure, duplicate ids)",
   );
@@ -76,15 +97,20 @@ void printHelp() {
   print("  -v, --version  Show version");
   print("");
   print("Examples:");
+  print("  omega doc                 # open web documentation");
   print("  omega init");
   print("  omega init --force");
-  print("  omega g ecosystem Auth    # auth_agent, auth_flow, auth_behavior, auth_page");
+  print(
+    "  omega g ecosystem Auth    # auth_agent, auth_flow, auth_behavior, auth_page",
+  );
   print("  omega g agent Orders      # orders_agent, orders_behavior only");
   print("  omega g flow Orders       # orders_flow only");
   print("  omega validate");
   print("");
   print("  init / validate: run from app root (where pubspec.yaml is).");
-  print("  g ecosystem / agent / flow: run from the folder where you want the files.");
+  print(
+    "  g ecosystem / agent / flow: run from the folder where you want the files.",
+  );
   print("");
 }
 
@@ -98,7 +124,9 @@ class OmegaInitCommand {
     } catch (_) {
       _err("No Flutter project found.");
       print("  Current directory: ${_absPath(cwd)}");
-      print("  Run from your app root (where pubspec.yaml is), then: omega init");
+      print(
+        "  Run from your app root (where pubspec.yaml is), then: omega init",
+      );
       return;
     }
     final lib = "$root/lib";
@@ -214,7 +242,13 @@ class OmegaGenerateCommand {
       _createPage(name, ecoPath),
     ];
 
-    registerInOmegaSetup(name, ecoPath, root, registerAgent: true, registerFlow: true);
+    registerInOmegaSetup(
+      name,
+      ecoPath,
+      root,
+      registerAgent: true,
+      registerFlow: true,
+    );
 
     for (final path in createdFiles) {
       _formatFile(path);
@@ -250,7 +284,13 @@ class OmegaGenerateCommand {
       _createAgent(name, ecoPath),
       _createBehavior(name, ecoPath),
     ];
-    registerInOmegaSetup(name, ecoPath, root, registerAgent: true, registerFlow: false);
+    registerInOmegaSetup(
+      name,
+      ecoPath,
+      root,
+      registerAgent: true,
+      registerFlow: false,
+    );
     for (final p in created) {
       _formatFile(p);
     }
@@ -281,7 +321,13 @@ class OmegaGenerateCommand {
     print("Creating in current directory: ${_absPath(baseDir)}");
     Directory(ecoPath).createSync(recursive: true);
     final path = _createFlow(name, ecoPath);
-    registerInOmegaSetup(name, ecoPath, root, registerAgent: false, registerFlow: true);
+    registerInOmegaSetup(
+      name,
+      ecoPath,
+      root,
+      registerAgent: false,
+      registerFlow: true,
+    );
     _formatFile(path);
     print("Flow $name created.");
     print("  Path: ${_absPath(ecoPath)}");
@@ -391,7 +437,9 @@ void _formatFile(String path) {
 
 /// Normaliza path para comparación (unificado y sin trailing separator).
 String _normPath(String path) {
-  final p = Directory(path).absolute.path.replaceAll("/", Platform.pathSeparator);
+  final p = Directory(
+    path,
+  ).absolute.path.replaceAll("/", Platform.pathSeparator);
   return p.endsWith(Platform.pathSeparator) ? p.substring(0, p.length - 1) : p;
 }
 
@@ -402,15 +450,14 @@ String _relativePath(String fromDir, String toPath) {
   final to = _normPath(toPath).split(sep);
   if (to.isEmpty || (to.length == 1 && to[0].isEmpty)) return ".";
   int i = 0;
-  while (i < from.length && i < to.length && from[i].toLowerCase() == to[i].toLowerCase()) {
+  while (i < from.length &&
+      i < to.length &&
+      from[i].toLowerCase() == to[i].toLowerCase()) {
     i++;
   }
   final up = from.length - i;
   final rest = to.sublist(i);
-  final parts = <String>[
-    for (var j = 0; j < up; j++) "..",
-    ...rest,
-  ];
+  final parts = <String>[for (var j = 0; j < up; j++) "..", ...rest];
   return parts.join("/");
 }
 
@@ -448,7 +495,8 @@ void registerInOmegaSetup(
         .substring(libNorm.length)
         .replaceAll(Platform.pathSeparator, "/")
         .replaceFirst(RegExp(r"^[/\\]"), "");
-    if (relative.endsWith("/")) relative = relative.substring(0, relative.length - 1);
+    if (relative.endsWith("/"))
+      relative = relative.substring(0, relative.length - 1);
     agentImport = "import 'package:$pkg/$relative/${nameLower}_agent.dart';";
     flowImport = "import 'package:$pkg/$relative/${nameLower}_flow.dart';";
   } else {
@@ -458,8 +506,12 @@ void registerInOmegaSetup(
 
   final agentFile = nameLower + "_agent.dart";
   final flowFile = nameLower + "_flow.dart";
-  final agentPattern = RegExp("import\\s+['\"].*" + RegExp.escape(agentFile) + "['\"];\\s*");
-  final flowPattern = RegExp("import\\s+['\"].*" + RegExp.escape(flowFile) + "['\"];\\s*");
+  final agentPattern = RegExp(
+    "import\\s+['\"].*" + RegExp.escape(agentFile) + "['\"];\\s*",
+  );
+  final flowPattern = RegExp(
+    "import\\s+['\"].*" + RegExp.escape(flowFile) + "['\"];\\s*",
+  );
   // Solo quitar el import del artefacto que estamos registrando (no el del otro)
   if (registerAgent) content = content.replaceFirst(agentPattern, "");
   if (registerFlow) content = content.replaceFirst(flowPattern, "");
@@ -627,4 +679,3 @@ class OmegaValidateCommand {
     return dupes.toList()..sort();
   }
 }
-

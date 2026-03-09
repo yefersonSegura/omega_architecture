@@ -3,6 +3,7 @@ import 'package:omega_architecture/omega/bootstrap/omega_config.dart';
 
 import '../auth/auth_agent.dart';
 import '../auth/auth_flow.dart';
+import '../auth/models.dart';
 import '../auth/ui/auth_page.dart';
 import '../home/home.dart';
 import '../provider/provider_agent.dart';
@@ -14,7 +15,11 @@ OmegaConfig createOmegaConfig(OmegaChannel channel) {
     flows: <OmegaFlow>[ProviderFlow(channel), AuthFlow(channel)],
     routes: [
       OmegaRoute(id: "login", builder: (context) => const OmegaLoginPage()),
-      OmegaRoute(id: "home", builder: (context) => const HomePage()),
+      // Ruta tipada: la vista recibe LoginSuccessPayload? (ej. tras login desde el flow)
+      OmegaRoute.typed<LoginSuccessPayload>(
+        id: "home",
+        builder: (context, userData) => HomePage(userData: userData),
+      ),
     ],
     initialFlowId: "authFlow",
   );

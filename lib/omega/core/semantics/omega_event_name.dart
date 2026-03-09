@@ -1,10 +1,10 @@
-/// Contrato para nombres de evento tipados (evita strings mágicos y facilita refactors).
+/// Contract for typed event names (avoids magic strings and eases refactoring).
 ///
-/// Implementa esta interfaz con un enum o una clase para definir los eventos conocidos
-/// de tu app y usa [OmegaEvent.fromName] al emitir. Así tienes autocompletado y el
-/// analizador detecta usos rotos si cambias el nombre.
+/// Implement this interface with an enum or class to define your app's known
+/// events and use [OmegaEvent.fromName] when emitting. You get autocomplete and
+/// the analyzer catches broken usages when you change the name.
 ///
-/// Ejemplo con enum:
+/// Example with enum:
 /// ```dart
 /// enum AppEvent implements OmegaEventName {
 ///   authLoginSuccess('auth.login.success'),
@@ -14,9 +14,9 @@
 ///   @override
 ///   final String name;
 /// }
-/// // Uso: channel.emit(OmegaEvent.fromName(AppEvent.authLoginSuccess, payload: user));
+/// // Usage: channel.emit(OmegaEvent.fromName(AppEvent.authLoginSuccess, payload: user));
 /// ```
 abstract class OmegaEventName {
-  /// Nombre del evento (ej. "auth.login.success").
+  /// Event name (e.g. "auth.login.success").
   String get name;
 }

@@ -1,10 +1,10 @@
-/// Contrato para nombres de intent tipados (evita strings mágicos y facilita refactors).
+/// Contract for typed intent names (avoids magic strings and eases refactoring).
 ///
-/// Implementa esta interfaz con un enum o una clase para definir los intents conocidos
-/// de tu app y usa [OmegaIntent.fromName] al crear intents. Así tienes autocompletado
-/// y el analizador detecta usos rotos si cambias el nombre.
+/// Implement this interface with an enum or class to define your app's known
+/// intents and use [OmegaIntent.fromName] when creating intents. You get autocomplete
+/// and the analyzer catches broken usages when you change the name.
 ///
-/// Ejemplo con enum:
+/// Example with enum:
 /// ```dart
 /// enum AppIntent implements OmegaIntentName {
 ///   goLogin('navigate.login'),
@@ -14,9 +14,9 @@
 ///   @override
 ///   final String name;
 /// }
-/// // Uso: OmegaIntent.fromName(AppIntent.goLogin, payload: args);
+/// // Usage: OmegaIntent.fromName(AppIntent.goLogin, payload: args);
 /// ```
 abstract class OmegaIntentName {
-  /// Nombre del intent (ej. "navigate.login", "cart.add").
+  /// Intent name (e.g. "navigate.login", "cart.add").
   String get name;
 }

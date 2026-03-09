@@ -1,35 +1,32 @@
 import 'omega_flow_expression.dart';
 import 'omega_flow_state.dart';
 
-// Serialización: para persistencia, [memory] y [lastExpression.payload] deben ser
-// JSON-serializables (primitivos, List, Map). Ver [toJson] y [fromJson].
+// Serialization: for persistence, [memory] and [lastExpression.payload] must be
+// JSON-serializable (primitives, List, Map). See [toJson] and [fromJson].
 
-/// [OmegaFlowSnapshot] es una foto del estado actual de un [OmegaFlow].
+/// Snapshot of the current state of an [OmegaFlow].
 ///
-/// Incluye [flowId], [state], una copia de [memory] y la última [lastExpression]
-/// emitida (si hubo alguna). No modifica el flow; solo lee su estado.
+/// Includes [flowId], [state], a copy of [memory] and the last [lastExpression]
+/// emitted (if any). Does not modify the flow; only reads its state.
 ///
-/// **Para qué sirve:**
-/// - **Depuración:** Ver en qué estado está un flow, qué hay en [memory] y cuál
-///   fue la última expresión, sin poner prints por todo el código.
-/// - **Persistencia:** Guardar el snapshot (p. ej. en disco) al cerrar la app
-///   y luego restaurar el estado al reabrir.
-/// - **Time-travel:** En herramientas de desarrollo, guardar un historial de
-///   snapshots para "volver atrás" y ver cómo estaba la app en un momento dado.
+/// **Use cases:**
+/// - **Debugging:** See flow state, [memory] contents and last expression without prints everywhere.
+/// - **Persistence:** Save the snapshot (e.g. to disk) on app close and restore state on reopen.
+/// - **Time-travel:** In dev tools, keep a history of snapshots to "go back" and see app state at a point in time.
 ///
-/// Obtener snapshot de un flow: [OmegaFlow.getSnapshot].
-/// Snapshot de todos los flows: [OmegaFlowManager.getSnapshots] o [OmegaFlowManager.getAppSnapshot].
+/// Get snapshot of a flow: [OmegaFlow.getSnapshot].
+/// Snapshot of all flows: [OmegaFlowManager.getSnapshots] or [OmegaFlowManager.getAppSnapshot].
 class OmegaFlowSnapshot {
-  /// Id del flow.
+  /// Flow id.
   final String flowId;
 
-  /// Estado actual del flow (idle, running, paused, etc.).
+  /// Current flow state (idle, running, paused, etc.).
   final OmegaFlowState state;
 
-  /// Copia superficial de la memoria del flow en el momento del snapshot.
+  /// Shallow copy of the flow's memory at snapshot time.
   final Map<String, dynamic> memory;
 
-  /// Última expresión emitida por el flow, o null si no ha emitido ninguna.
+  /// Last expression emitted by the flow, or null if none.
   final OmegaFlowExpression? lastExpression;
 
   const OmegaFlowSnapshot({
@@ -39,8 +36,9 @@ class OmegaFlowSnapshot {
     this.lastExpression,
   });
 
-  /// Serializa el snapshot a un mapa JSON-serializable (para disco, backend, etc.).
-  /// [memory] y [lastExpression.payload] deben contener solo valores JSON-serializables.
+  /// Converts the snapshot to a map for saving (disk, SharedPreferences). memory and payload must be JSON-serializable.
+  ///
+  /// **Example:** `final json = flow.getSnapshot().toJson(); await storage.save(jsonEncode(json));`
   Map<String, dynamic> toJson() => <String, dynamic>{
         'flowId': flowId,
         'state': state.name,
@@ -52,7 +50,7 @@ class OmegaFlowSnapshot {
           },
       };
 
-  /// Reconstruye un snapshot desde un mapa (p. ej. [jsonDecode] de disco).
+  /// Creates a snapshot from a map (e.g. jsonDecode of saved data). Used when restoring state.
   static OmegaFlowSnapshot fromJson(Map<String, dynamic> json) {
     final stateStr = json['state'] as String? ?? 'idle';
     final state = OmegaFlowState.values.firstWhere(
@@ -85,17 +83,14 @@ class OmegaFlowSnapshot {
       'OmegaFlowSnapshot(flowId: $flowId, state: $state, memory: ${memory.length} keys, lastExpression: ${lastExpression?.type})';
 }
 
-/// [OmegaAppSnapshot] es una foto del estado de la app a nivel de flows.
+/// Snapshot of app state: active flow plus snapshots of all flows. For persistence or debugging.
 ///
-/// Incluye [activeFlowId] (flow considerado principal) y [flows] (snapshots de todos
-/// los flows registrados). Sirve para lo mismo que [OmegaFlowSnapshot] pero a nivel
-/// global: depuración (ver el estado de toda la app), persistencia (guardar/restaurar)
-/// o time-travel. Se obtiene con [OmegaFlowManager.getAppSnapshot].
+/// **Example:** `final snap = flowManager.getAppSnapshot(); await storage.save(jsonEncode(snap.toJson()));`
 class OmegaAppSnapshot {
-  /// Id del flow principal (tras [OmegaFlowManager.switchTo] o [activateExclusive]).
+  /// Id of the main flow.
   final String? activeFlowId;
 
-  /// Snapshots de todos los flows registrados (orden no garantizado).
+  /// Snapshots of each registered flow.
   final List<OmegaFlowSnapshot> flows;
 
   const OmegaAppSnapshot({
@@ -103,13 +98,13 @@ class OmegaAppSnapshot {
     required this.flows,
   });
 
-  /// Serializa el snapshot de la app a un mapa JSON-serializable.
+  /// JSON map for saving. Restore with [fromJson] and [OmegaFlowManager.restoreFromSnapshot].
   Map<String, dynamic> toJson() => <String, dynamic>{
         'activeFlowId': activeFlowId,
         'flows': flows.map((f) => f.toJson()).toList(),
       };
 
-  /// Reconstruye un snapshot de app desde un mapa (p. ej. [jsonDecode] de disco).
+  /// Creates snapshot from map (jsonDecode). Then flowManager.restoreFromSnapshot(snapshot).
   static OmegaAppSnapshot fromJson(Map<String, dynamic> json) {
     final activeFlowId = json['activeFlowId'] as String?;
     final flowsList = json['flows'];

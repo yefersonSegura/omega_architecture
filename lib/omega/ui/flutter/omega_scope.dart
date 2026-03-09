@@ -4,21 +4,20 @@ import 'package:flutter/widgets.dart';
 import 'package:omega_architecture/omega/core/channel/omega_channel.dart';
 import 'package:omega_architecture/omega/flows/omega_flow_manager.dart';
 
-/// [OmegaScope] es el contenedor principal de dependencias para la UI.
-/// Proporciona acceso al [OmegaChannel] y al [OmegaFlowManager] a través del árbol de widgets.
+/// Dependency container: exposes [channel] and [flowManager] to the whole UI via inheritance.
 ///
-/// **Ciclo de vida:** Este widget no hace [OmegaChannel.dispose] ni [OmegaFlowManager.dispose].
-/// Quien cree el [channel] y el [flowManager] debe llamar a sus `dispose()` al cerrar la app
-/// (p. ej. en el [State.dispose] del widget que los instancia).
+/// **Why use it:** Screens need the channel to emit events and the flowManager for
+/// [handleIntent] and [getFlow]. By wrapping the app with OmegaScope, any child can use [OmegaScope.of].
+///
+/// **Example:** `OmegaScope(channel: r.channel, flowManager: r.flowManager, initialFlowId: r.initialFlowId, child: MaterialApp(...));`
 class OmegaScope extends InheritedWidget {
-  /// El canal de eventos global.
+  /// Event channel. For emitting or listening to events from the UI.
   final OmegaChannel channel;
 
-  /// El gestor de flujos del sistema.
+  /// Flow manager. For handleIntent and getting the active flow (expressions).
   final OmegaFlowManager flowManager;
 
-  /// Id del flow a activar al inicio, si se definió en [OmegaConfig.initialFlowId].
-  /// Usar en addPostFrameCallback para llamar a [OmegaFlowManager.switchTo].
+  /// Id of the flow to activate on startup. On first frame call flowManager.switchTo(initialFlowId).
   final String? initialFlowId;
 
   const OmegaScope({
@@ -29,11 +28,13 @@ class OmegaScope extends InheritedWidget {
     required super.child,
   });
 
-  /// Permite obtener el [OmegaScope] más cercano en el árbol de widgets.
+  /// Obtains the [OmegaScope] from the tree. Use in screens to access channel and flowManager.
+  ///
+  /// **Example:** `final scope = OmegaScope.of(context); scope.flowManager.handleIntent(intent);`
   static OmegaScope of(BuildContext context) {
     final OmegaScope? result = context
         .dependOnInheritedWidgetOfExactType<OmegaScope>();
-    assert(result != null, 'No se encontró OmegaScope en el contexto');
+    assert(result != null, 'OmegaScope not found in context');
     return result!;
   }
 

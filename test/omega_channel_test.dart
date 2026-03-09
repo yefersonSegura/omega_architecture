@@ -53,4 +53,10 @@ void main() {
     expect(event.payload, 'data');
     expect(event.id.startsWith('ev:'), isTrue);
   });
+
+  test("OmegaEvent.payloadAs returns typed payload when type matches", () {
+    final event = OmegaEvent(id: '1', name: 'x', payload: 42);
+    expect(event.payloadAs<int>(), 42);
+    expect(event.payloadAs<String>(), isNull);
+  });
 }

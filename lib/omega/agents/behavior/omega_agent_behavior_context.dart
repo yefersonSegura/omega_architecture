@@ -2,18 +2,18 @@ import 'package:omega_architecture/omega/core/semantics/omega_intent.dart';
 
 import '../../core/events/omega_event.dart';
 
-/// [OmegaAgentBehaviorContext] es el contexto que recibe [OmegaAgentBehaviorEngine.evaluate].
+/// Context passed to [OmegaAgentBehaviorEngine.evaluate].
 ///
-/// Incluye el [event] o [intent] que disparó la evaluación y una copia del [state] del agente
-/// para que las reglas puedan decidir la reacción sin modificar el estado directamente.
+/// Contains the [event] or [intent] that triggered the evaluation and a copy of the agent's [state]
+/// so rules can decide the reaction without modifying state directly.
 class OmegaAgentBehaviorContext {
-  /// Evento global que disparó la evaluación, si aplica.
+  /// Global event that triggered the evaluation, if applicable.
   final OmegaEvent? event;
 
-  /// Intención que disparó la evaluación, si aplica.
+  /// Intent that triggered the evaluation, if applicable.
   final OmegaIntent? intent;
 
-  /// Copia del estado interno del agente en el momento de la evaluación.
+  /// Copy of the agent's internal state at evaluation time.
   final Map<String, dynamic> state;
 
   const OmegaAgentBehaviorContext({

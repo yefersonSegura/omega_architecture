@@ -1,15 +1,25 @@
 // lib/omega/flows/omega_flow_expression.dart
 
-/// [OmegaFlowExpression] es un mensaje que un [OmegaFlow] emite hacia la UI.
+/// Message a flow sends to the UI (loading, success, error). The UI listens to [OmegaFlow.expressions].
 ///
-/// El flow llama a [OmegaFlow.emitExpression]. La UI se suscribe a
-/// [OmegaFlow.expressions] y reconstruye según [type] y [payload] (ej. "loading", "success").
+/// **Why use it:** The flow announces state; the UI doesn't ask "are you loading?". Use [payloadAs] for typed reads.
+///
+/// **Example:** In the flow: `emitExpression("success", payload: user);` In the UI: `exp.payloadAs<User>();`
 class OmegaFlowExpression {
-  /// Tipo de expresión (ej. "loading", "success", "error", "idle").
+  /// Type ("loading", "success", "error"). The UI typically does setState based on this value.
   final String type;
 
-  /// Datos opcionales asociados (objeto, mapa, etc.).
+  /// Optional data. Use [payloadAs] to read with type.
   final dynamic payload;
 
   const OmegaFlowExpression(this.type, {this.payload});
+}
+
+/// Extension to read the payload with type safety.
+extension OmegaFlowExpressionPayloadExtension on OmegaFlowExpression {
+  /// Returns [payload] as [T] if compatible; otherwise null.
+  ///
+  /// **Example:** `final user = exp.payloadAs<LoginSuccessPayload>();`
+  T? payloadAs<T>() =>
+      payload != null && payload is T ? payload as T : null;
 }

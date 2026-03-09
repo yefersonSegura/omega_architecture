@@ -1,23 +1,23 @@
 import 'omega_agent_message.dart';
 
-/// [OmegaAgentInbox] es la cola de mensajes directos de un agente (FIFO).
+/// FIFO queue of direct messages for an agent.
 ///
-/// Cuando llega un mensaje vía [OmegaAgentProtocol.send], se llama a [receive].
-/// El agente puede consumir con [next] o comprobar [hasMessages].
+/// When a message arrives via [OmegaAgentProtocol.send], [receive] is called.
+/// The agent can consume with [next] or check [hasMessages].
 class OmegaAgentInbox {
   final _queue = <OmegaAgentMessage>[];
 
-  /// Añade un mensaje a la cola.
+  /// Adds a message to the queue.
   void receive(OmegaAgentMessage message) {
     _queue.add(message);
   }
 
-  /// Retorna el siguiente mensaje en la cola o null si está vacía.
+  /// Returns the next message in the queue or null if empty.
   OmegaAgentMessage? next() {
     if (_queue.isEmpty) return null;
     return _queue.removeAt(0);
   }
 
-  /// Indica si hay mensajes pendientes por procesar.
+  /// Whether there are messages pending to process.
   bool get hasMessages => _queue.isNotEmpty;
 }

@@ -1,6 +1,7 @@
 import 'package:omega_architecture/omega_architecture.dart';
 
 import '../omega/app_semantics.dart';
+import 'models.dart';
 
 class AuthFlow extends OmegaFlow {
   AuthFlow(OmegaChannel channel) : super(id: "authFlow", channel: channel);
@@ -16,12 +17,15 @@ class AuthFlow extends OmegaFlow {
 
     if (intent == null) return;
 
-    // LOGIN → intención desde UI (comparar con nombre tipado)
+    // LOGIN → payload tipado con payloadAs<LoginCredentials>()
     if (intent.name == AppIntent.authLogin.name) {
-      emitExpression("loading");
-      channel.emit(
-        OmegaEvent.fromName(AppEvent.authLoginRequest, payload: intent.payload),
-      );
+      final creds = intent.payloadAs<LoginCredentials>();
+      if (creds != null) {
+        emitExpression("loading");
+        channel.emit(
+          OmegaEvent.fromName(AppEvent.authLoginRequest, payload: creds),
+        );
+      }
     }
 
     // LOGOUT
@@ -37,29 +41,31 @@ class AuthFlow extends OmegaFlow {
     if (event == null) return;
 
     // LOGIN INICIADO
-    if (event.name == "auth.login.started") {
+    if (event.name == AppEvent.authLoginStarted.name) {
       emitExpression("loading");
     }
 
-    // LOGIN CORRECTO
-    if (event.name == "auth.login.success") {
-      final intent = OmegaIntent(id: "goHome", name: "navigate.home");
-
+    // LOGIN CORRECTO: navegar a home con payload tipado (la vista recibe LoginSuccessPayload)
+    if (event.name == AppEvent.authLoginSuccess.name) {
+      emitExpression("success", payload: event.payload);
+      final userData = event.payload; // LoginSuccessPayload desde el agente
       channel.emit(
-        OmegaEvent(
-          id: "nav:${DateTime.now().millisecondsSinceEpoch}",
-          name: "navigation.intent",
-          payload: intent,
+        OmegaEvent.fromName(
+          AppEvent.navigationIntent,
+          payload: OmegaIntent.fromName(
+            AppIntent.navigateHome,
+            payload: userData,
+          ),
         ),
       );
     }
 
-    // ERROR DE LOGIN
-    if (event.name == "auth.login.error") {
-      final failure = event.payload;
+    // ERROR DE LOGIN: payload tipado con payloadAs<OmegaFailure>()
+    if (event.name == AppEvent.authLoginError.name) {
+      final failure = event.payloadAs<OmegaFailure>();
       emitExpression(
         "error",
-        payload: failure is OmegaFailure ? failure.message : failure.toString(),
+        payload: failure?.message ?? event.payload?.toString() ?? "Error",
       );
     }
 

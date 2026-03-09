@@ -6,50 +6,44 @@ import '../../core/semantics/omega_intent.dart';
 import 'omega_route.dart';
 import 'omega_navigation_entry.dart';
 
-/// Prefijo de intents de navegación. Los eventos del canal pueden ser
-/// [navigationIntentEvent] (payload = [OmegaIntent]) o "navigate.xxx" / "navigate.push.xxx".
+/// Navigation intent prefix. Channel events can be
+/// [navigationIntentEvent] (payload = [OmegaIntent]) or "navigate.xxx" / "navigate.push.xxx".
 const String navigationIntentEvent = 'navigation.intent';
 
-/// [OmegaNavigator] traduce intents de navegación a rutas de Flutter.
+/// Converts navigation intents ("navigate.xxx", "navigate.push.xxx") into Flutter push/pushReplacement.
 ///
-/// **Contrato de navegación (canal):**
-/// - Evento [navigationIntentEvent] con [OmegaIntent] en el payload → [handleIntent](payload).
-/// - Evento "navigate.xxx" o "navigate.push.xxx" → se construye un intent y se llama [handleIntent].
+/// **Why use it:** Flows navigate by emitting events; they don't have BuildContext. The channel emits
+/// "navigation.intent" or "navigate.home"; the manager calls [handleIntent] and this shows the screen.
 ///
-/// **Formato del intent ([handleIntent]):**
-/// - "navigate.&lt;id&gt;" → reemplaza la pantalla actual (pushReplacement). Ej: "navigate.login".
-/// - "navigate.push.&lt;id&gt;" → apila la pantalla (push). Ej: "navigate.push.detail".
-/// El [intent.payload] se pasa como argumentos de la ruta ([RouteSettings.arguments]).
+/// **Example:** In the flow: `channel.emit(OmegaEvent(..., name: "navigation.intent", payload: OmegaIntent.fromName(AppIntent.navigateHome, payload: user)));`
 ///
-/// Debes pasar [navigatorKey] al [MaterialApp.navigatorKey].
+/// [navigatorKey] must be assigned to [MaterialApp.navigatorKey]. [intent.payload] is passed as [RouteSettings.arguments].
 class OmegaNavigator {
-  /// Llave global para el [Navigator] de Flutter; asignar a [MaterialApp.navigatorKey].
+  /// Navigator key. Assign to [MaterialApp.navigatorKey].
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   final Map<String, OmegaNavigationEntry> _routes = {};
 
   // -----------------------------------------------------------
-  // 1. Registrar rutas (pantallas)
+  // 1. Register routes (screens)
   // -----------------------------------------------------------
-  /// Registra una nueva ruta [route] en el navegador.
+  /// Registers a screen. [route.id] is the destination in "navigate.{id}" or "navigate.push.{id}".
+  ///
+  /// **Example:** `navigator.registerRoute(OmegaRoute.typed<User>(id: "home", builder: (ctx, user) => HomePage(user)));`
   void registerRoute(OmegaRoute route) {
     _routes[route.id] = OmegaNavigationEntry(route);
   }
 
   // -----------------------------------------------------------
-  // 2. Procesar intención de navegación
+  // 2. Process navigation intent
   // -----------------------------------------------------------
-  /// Procesa una [OmegaIntent] de navegación.
-  ///
-  /// - "navigate.&lt;id&gt;" → pushReplacement a la ruta [id].
-  /// - "navigate.push.&lt;id&gt;" → push a la ruta [id].
-  /// [intent.payload] se pasa a la pantalla vía [RouteSettings.arguments].
+  /// Performs navigation: "navigate.id" → pushReplacement; "navigate.push.id" → push. [intent.payload] → arguments.
   void handleIntent(OmegaIntent intent) {
-    debugPrint("OmegaNavigator: Procesando intención -> ${intent.name}");
+    debugPrint("OmegaNavigator: Processing intent -> ${intent.name}");
 
     if (!intent.name.startsWith("navigate.")) {
       debugPrint(
-        "OmegaNavigator: Ignorando intención (no comienza con 'navigate.')",
+        "OmegaNavigator: Ignoring intent (does not start with 'navigate.')",
       );
       return;
     }
@@ -60,24 +54,24 @@ class OmegaNavigator {
         : intent.name.replaceFirst("navigate.", "");
 
     if (destination.isEmpty) {
-      debugPrint("OmegaNavigator ERROR: Destino vacío en '${intent.name}'.");
+      debugPrint("OmegaNavigator ERROR: Empty destination in '${intent.name}'.");
       return;
     }
 
-    debugPrint("OmegaNavigator: Buscando ruta para el destino -> '$destination' (push=$usePush)");
+    debugPrint("OmegaNavigator: Looking up route for destination -> '$destination' (push=$usePush)");
 
     final entry = _routes[destination];
     if (entry == null) {
       debugPrint(
-        "OmegaNavigator ERROR: No se encontró la ruta '$destination' registrada.",
+        "OmegaNavigator ERROR: Route '$destination' not found.",
       );
-      debugPrint("Rutas registradas actualmente: ${_routes.keys.toList()}");
+      debugPrint("Currently registered routes: ${_routes.keys.toList()}");
       return;
     }
 
     if (navigatorKey.currentState == null) {
       debugPrint(
-        "OmegaNavigator ERROR: navigatorKey.currentState es NULL. Asegúrate de pasar la llave al MaterialApp.",
+        "OmegaNavigator ERROR: navigatorKey.currentState is NULL. Make sure to pass the key to MaterialApp.",
       );
       return;
     }
@@ -91,10 +85,10 @@ class OmegaNavigator {
     );
 
     if (usePush) {
-      debugPrint("OmegaNavigator: Push a '$destination'...");
+      debugPrint("OmegaNavigator: Pushing to '$destination'...");
       navigatorKey.currentState?.push(route);
     } else {
-      debugPrint("OmegaNavigator: PushReplacement a '$destination'...");
+      debugPrint("OmegaNavigator: PushReplacement to '$destination'...");
       navigatorKey.currentState?.pushReplacement(route);
     }
   }

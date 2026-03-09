@@ -1,18 +1,22 @@
 import '../types/omega_object.dart';
 import '../semantics/omega_event_name.dart';
 
-/// [OmegaEvent] representa un evento que ocurre en el sistema y se transmite por [OmegaChannel].
+/// Represents "something that happened" in the system, transmitted via [OmegaChannel].
 ///
-/// Los agentes y flows se suscriben al canal y reaccionan según [name] (ej. "auth.login.success").
-/// Los datos opcionales van en [payload]. Extiende [OmegaObject] (tiene [id] y [meta]).
+/// **Why use it:** Agents and flows react by [name]; [payload] carries optional data.
+/// This avoids coupling emitter and receiver.
 ///
-/// Para evitar strings mágicos, usa [OmegaEventName] y [fromName]:
-/// `channel.emit(OmegaEvent.fromName(AppEvent.authLoginSuccess, payload: data));`
+/// **Example:** Create with typed name and read payload with type:
+/// ```dart
+/// channel.emit(OmegaEvent.fromName(AppEvent.authLoginSuccess, payload: user));
+/// // In a listener:
+/// final u = event.payloadAs<User>();
+/// ```
 class OmegaEvent extends OmegaObject {
-  /// Nombre descriptivo del evento (ej. "auth.login.success", "user.updated").
+  /// Event name (e.g. "auth.login.success"). Listeners filter by this value.
   final String name;
 
-  /// Datos adicionales asociados al evento (objeto, mapa, etc.).
+  /// Optional data. Use [payloadAs] to read with type safety.
   final dynamic payload;
 
   const OmegaEvent({
@@ -22,7 +26,9 @@ class OmegaEvent extends OmegaObject {
     super.meta = const {},
   });
 
-  /// Crea un evento a partir de un nombre tipado ([OmegaEventName]). Si [id] es null, se genera uno.
+  /// Creates an event with a typed name (enum implementing [OmegaEventName]). Generates [id] if not provided.
+  ///
+  /// **Why use it:** Autocomplete and safe refactors; avoids typos in strings.
   factory OmegaEvent.fromName(
     OmegaEventName eventName, {
     dynamic payload,
@@ -35,4 +41,14 @@ class OmegaEvent extends OmegaObject {
         payload: payload,
         meta: meta,
       );
+}
+
+/// Extension to read the payload with type safety.
+extension OmegaEventPayloadExtension on OmegaEvent {
+  /// Returns [payload] as [T] if the runtime value is compatible; otherwise null.
+  ///
+  /// **Why use it:** Avoids `payload as User` which can throw; here you get null if it doesn't match.
+  /// **Example:** `final user = event.payloadAs<User>(); if (user != null) show(user.name);`
+  T? payloadAs<T>() =>
+      payload != null && payload is T ? payload as T : null;
 }

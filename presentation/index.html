@@ -4,28 +4,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Omega Architecture - Whitepaper</title>
+    <title>Omega Architecture - Documentación</title>
+    <meta name="description" content="Documentación completa de Omega Architecture: framework reactivo y basado en agentes para Flutter. Canal de eventos, flows, intents, persistencia, inspector y CLI.">
+    <meta property="og:title" content="Omega Architecture - Documentación">
+    <meta property="og:description" content="Framework reactivo y basado en agentes para Flutter. Documentación, ejemplos, API reference, comparativa con BLoC y Riverpod.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="http://yefersonsegura.com/proyects/omega/">
+    <link rel="canonical" href="http://yefersonsegura.com/proyects/omega/">
+    <link rel="icon" href="icon.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@300;600;800&display=swap"
         rel="stylesheet">
 </head>
 
-<body>
+<body class="doc-body" id="doc-body">
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+    <div class="reading-progress" id="reading-progress" aria-hidden="true"></div>
     <div class="top-nav">
         <div class="top-nav-inner">
             <div class="top-nav-logo">Ω Omega Architecture</div>
+            <button type="button" class="doc-menu-btn" id="doc-menu-btn" aria-label="Abrir menú" aria-expanded="false"><i class="fa fa-bars" aria-hidden="true"></i><span class="doc-menu-btn-text">Menú</span></button>
             <div class="top-nav-links">
+                <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Cambiar tema (claro/oscuro)" title="Cambiar tema">
+                    <i class="fa fa-sun-o theme-icon theme-icon-dark" aria-hidden="true"></i>
+                    <i class="fa fa-moon-o theme-icon theme-icon-light" aria-hidden="true"></i>
+                </button>
                 <a href="#vision">Inicio</a>
-                <a href="#about">Documentación</a>
+                <a href="#get-started">Get started</a>
+                <a href="#api-core">API Reference</a>
                 <a href="#architecture-diagram">Arquitectura</a>
                 <a href="#comparison">Comparativa</a>
                 <a href="#cli">CLI</a>
-                <a href="#usage-flows">Flows</a>
                 <a href="https://pub.dev/packages/omega_architecture" target="_blank" rel="noopener noreferrer">pub.dev</a>
             </div>
         </div>
     </div>
+    <div class="doc-wrap">
+        <div class="doc-sidebar-overlay" id="doc-sidebar-overlay" aria-hidden="true"></div>
+        <nav class="doc-sidebar" id="doc-sidebar" aria-label="Documentación">
+            <div class="doc-search">
+                <span class="doc-search-icon"><i class="fa fa-search" aria-hidden="true"></i></span>
+                <input type="text" id="doc-search-input" class="doc-search-input" placeholder="Buscar en la documentación..." autocomplete="off" aria-label="Buscar">
+                <span class="doc-search-hint" id="doc-search-hint" aria-live="polite"></span>
+            </div>
+            <h3>1. Introducción</h3>
+            <a href="#vision"><i class="fa fa-home"></i> Inicio</a>
+            <a href="#get-started"><i class="fa fa-rocket"></i> Get started</a>
+            <a href="#data-flow"><i class="fa fa-exchange"></i> Flujo de datos</a>
+            <a href="#glossary"><i class="fa fa-book"></i> Glosario</a>
+            <a href="#omega-features"><i class="fa fa-star"></i> Todo lo que ofrece Omega</a>
+            <a href="#problem"><i class="fa fa-info-circle"></i> Contexto técnico</a>
+            <a href="#philosophy"><i class="fa fa-lightbulb-o"></i> Filosofía</a>
+            <a href="#pillars"><i class="fa fa-th-large"></i> Pilares</a>
+            <a href="#architecture"><i class="fa fa-puzzle-piece"></i> Arquitectura desacoplada</a>
+            <a href="#architecture-diagram"><i class="fa fa-picture-o"></i> Diagrama</a>
+            <a href="#comparison"><i class="fa fa-balance-scale"></i> Comparativa</a>
+            <a href="#when-choose"><i class="fa fa-question-circle"></i> Cuándo elegir Omega</a>
+            <a href="#importance"><i class="fa fa-heart"></i> Importancia</a>
+            <a href="#why-worth-it"><i class="fa fa-thumbs-up"></i> Por qué vale la pena</a>
+            <h3>2. Documentación y guías</h3>
+            <a href="#about"><i class="fa fa-code"></i> Sobre el software</a>
+            <a href="#examples-use-cases"><i class="fa fa-file-code-o"></i> Ejemplos por caso de uso</a>
+            <a href="#concepts"><i class="fa fa-cubes"></i> Conceptos core</a>
+            <a href="#usecases"><i class="fa fa-briefcase"></i> Casos de uso</a>
+            <a href="#install"><i class="fa fa-download"></i> Instalación</a>
+            <a href="#cli"><i class="fa fa-terminal"></i> CLI</a>
+            <a href="#usage-agent"><i class="fa fa-cogs"></i> Uso: agente y behavior</a>
+            <a href="#usage-runtime"><i class="fa fa-plug"></i> Integrar en app host</a>
+            <a href="#usage-flutter"><i class="fa fa-desktop"></i> OmegaScope y OmegaBuilder</a>
+            <a href="#usage-flows"><i class="fa fa-refresh"></i> Ciclo de vida del flow</a>
+            <a href="#lifecycle"><i class="fa fa-power-off"></i> Ciclo de vida / dispose</a>
+            <a href="#structure"><i class="fa fa-folder-open-o"></i> Estructura del proyecto</a>
+            <h3>3. API Reference — Core</h3>
+            <a href="#api-core"><i class="fa fa-bolt"></i> OmegaChannel</a>
+            <a href="#api-event"><i class="fa fa-bell"></i> OmegaEvent</a>
+            <a href="#api-intent"><i class="fa fa-bullseye"></i> OmegaIntent</a>
+            <a href="#api-event-name"><i class="fa fa-tag"></i> OmegaEventName</a>
+            <a href="#api-intent-name"><i class="fa fa-tag"></i> OmegaIntentName</a>
+            <a href="#api-object"><i class="fa fa-cube"></i> OmegaObject</a>
+            <a href="#api-failure"><i class="fa fa-exclamation-triangle"></i> OmegaFailure</a>
+            <h3>4. API Reference — Agentes</h3>
+            <a href="#api-agent"><i class="fa fa-user"></i> OmegaAgent</a>
+            <a href="#api-behavior-engine"><i class="fa fa-cog"></i> OmegaAgentBehaviorEngine</a>
+            <a href="#api-behavior-rule"><i class="fa fa-list"></i> OmegaAgentBehaviorRule</a>
+            <a href="#api-behavior-context"><i class="fa fa-comment-o"></i> OmegaAgentBehaviorContext</a>
+            <a href="#api-reaction"><i class="fa fa-reply"></i> OmegaAgentReaction</a>
+            <a href="#api-protocol"><i class="fa fa-share-alt"></i> OmegaAgentProtocol</a>
+            <a href="#api-inbox"><i class="fa fa-inbox"></i> OmegaAgentInbox</a>
+            <a href="#api-message"><i class="fa fa-envelope-o"></i> OmegaAgentMessage</a>
+            <h3>5. API Reference — Flows</h3>
+            <a href="#api-flow"><i class="fa fa-random"></i> OmegaFlow</a>
+            <a href="#api-flow-manager"><i class="fa fa-sitemap"></i> OmegaFlowManager</a>
+            <a href="#api-flow-state"><i class="fa fa-circle-o"></i> OmegaFlowState</a>
+            <a href="#api-flow-expression"><i class="fa fa-comment"></i> OmegaFlowExpression</a>
+            <a href="#api-flow-context"><i class="fa fa-hand-o-right"></i> OmegaFlowContext</a>
+            <a href="#api-snapshot"><i class="fa fa-camera"></i> OmegaFlowSnapshot</a>
+            <a href="#api-app-snapshot"><i class="fa fa-camera"></i> OmegaAppSnapshot</a>
+            <a href="#api-snapshot-storage"><i class="fa fa-database"></i> OmegaSnapshotStorage</a>
+            <h3>6. API Reference — UI</h3>
+            <a href="#api-scope"><i class="fa fa-compass"></i> OmegaScope</a>
+            <a href="#api-builder"><i class="fa fa-wrench"></i> OmegaBuilder</a>
+            <a href="#api-navigator"><i class="fa fa-map-signs"></i> OmegaNavigator</a>
+            <a href="#api-route"><i class="fa fa-road"></i> OmegaRoute</a>
+            <a href="#api-inspector"><i class="fa fa-search-plus"></i> OmegaInspector</a>
+            <h3>7. API Reference — Bootstrap</h3>
+            <a href="#api-config"><i class="fa fa-sliders"></i> OmegaConfig</a>
+            <a href="#api-runtime"><i class="fa fa-play-circle"></i> OmegaRuntime</a>
+            <h3>8. API Reference — Guías</h3>
+            <a href="#api-persistence"><i class="fa fa-floppy-o"></i> Persistencia</a>
+            <a href="#api-testing"><i class="fa fa-check-square-o"></i> Testing</a>
+            <h3>9. Cierre</h3>
+            <a href="#next"><i class="fa fa-flag-checkered"></i> Conclusión</a>
+        </nav>
+        <main class="doc-main" id="main-content" role="main">
+    <nav class="doc-breadcrumb" id="doc-breadcrumb" aria-label="Breadcrumb"></nav>
     <div class="presentation-container">
         <!-- Portada -->
         <section id="vision" class="slide cover">
@@ -37,10 +134,7 @@
                     El sistema nervioso autónomo para aplicaciones de alta complejidad en Flutter.
                 </p>
                 <p class="subtitle" style="margin-top: 20px; max-width: 680px; font-size: 13px;">
-                    <strong>Esta web es la documentación completa de Omega.</strong> Aquí encontrarás: qué es el framework,
-                    comparativa Omega vs BLoC vs Riverpod y cuándo elegir cada uno, diagrama de arquitectura,
-                    instalación, CLI (init, g ecosystem, g agent, g flow, validate), uso de agentes, behaviors y flows,
-                    integración en la app host, persistencia/snapshot, inspector (incl. ventana separada en web) y enlaces a pub.dev y al repo.
+                    <strong>Esta web es la documentación completa de Omega.</strong> Incluye: <strong>flujo de datos</strong> paso a paso, <strong>glosario</strong> de términos, <strong>todo lo que ofrece</strong> el framework, <strong>ejemplos por caso de uso</strong>, conceptos core, comparativa con BLoC y Riverpod, diagrama, instalación, CLI, integración, ciclo de vida de flows, <strong>API reference</strong> de cada clase, persistencia, inspector y testing. Para más ejemplos en el repo: <strong>docs/GUIA.md</strong> y carpeta <strong>example/</strong>.
                 </p>
                 <div class="divider"></div>
                 <div class="author-info">
@@ -68,6 +162,137 @@
                         </a>
                     </p>
                 </div>
+            </div>
+        </section>
+
+        <!-- Get started -->
+        <section id="get-started" class="slide">
+            <span class="section-tag">Get started</span>
+            <h2 class="animate">Empezar con <span class="gradient-text">Omega</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 24px;">Instalación, primer uso y ejecución del ejemplo en tres pasos.</p>
+            <div class="problem-grid animate">
+                <div class="card glass">
+                    <h3>1. Añadir dependencia</h3>
+                    <p>En el <code>pubspec.yaml</code> de tu app Flutter:</p>
+                    <pre class="glass" style="margin-top: 12px; padding: 16px; font-size: 14px;"><code>dependencies:
+  omega_architecture: ^0.0.11</code></pre>
+                </div>
+                <div class="card glass">
+                    <h3>2. Inicializar en tu app</h3>
+                    <p>Desde la raíz del proyecto:</p>
+                    <pre class="glass" style="margin-top: 12px; padding: 16px; font-size: 14px;"><code>dart run omega_architecture:omega init</code></pre>
+                    <p style="margin-top: 12px;">Crea <code>lib/omega/omega_setup.dart</code>. Luego registra agentes, flows y rutas en <code>createOmegaConfig</code>.</p>
+                </div>
+            </div>
+            <div class="highlight-box animate" style="margin-top: 24px;">
+                <p><strong>3. Crear un ecosistema (opcional):</strong> <code>dart run omega_architecture:omega g ecosystem Auth</code> genera agente, flow, behavior y página en el directorio actual y los registra en <code>omega_setup.dart</code>.</p>
+                <p style="margin-top: 12px;"><strong>Ejecutar el ejemplo:</strong> <code>cd example && flutter run</code>. Incluye login, navegación con payload tipado y uso de <code>OmegaRoute.typed&lt;T&gt;</code> y <code>payloadAs&lt;T&gt;</code>.</p>
+            </div>
+        </section>
+
+        <!-- Flujo de datos paso a paso -->
+        <section id="data-flow" class="slide">
+            <span class="section-tag">Conceptos</span>
+            <h2 class="animate">Flujo de datos en <span class="gradient-text">Omega</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 24px;">En Omega la UI no llama métodos de negocio; emite intenciones. El canal, los flows y los agentes resuelven; la UI solo refleja el resultado.</p>
+            <div class="card glass animate" style="margin-bottom: 20px;">
+                <h3 style="margin-bottom: 12px;">Paso 1 — La UI emite un intent</h3>
+                <p>El usuario pulsa "Iniciar sesión". La pantalla no llama a <code>AuthService.login()</code>; llama a <code>flowManager.handleIntent(OmegaIntent.fromName(AppIntent.authLogin, payload: creds))</code>. El intent lleva el nombre semántico ("auth.login") y los datos (credenciales).</p>
+            </div>
+            <div class="card glass animate" style="margin-bottom: 20px;">
+                <h3 style="margin-bottom: 12px;">Paso 2 — El flow (en running) recibe el intent</h3>
+                <p>El <code>OmegaFlowManager</code> envía el intent solo a los flows que están en estado <code>running</code>. El AuthFlow recibe en <code>onIntent(ctx)</code>. Ahí puede: emitir una expresión "loading" para la UI, y emitir un evento al canal para pedir trabajo al agente: <code>channel.emit(OmegaEvent.fromName(AppEvent.authLoginRequest, payload: ctx.intent!.payload))</code>.</p>
+            </div>
+            <div class="card glass animate" style="margin-bottom: 20px;">
+                <h3 style="margin-bottom: 12px;">Paso 3 — El agente reacciona y emite eventos</h3>
+                <p>El agente está suscrito al canal. Su <strong>motor de comportamiento</strong> evalúa el contexto (evento "auth.login.request") y devuelve una reacción, por ejemplo "doLogin" con el payload. El agente ejecuta en <code>onAction("doLogin", payload)</code>: llama a la API, valida y emite <code>emit("auth.login.success", payload: user)</code> o <code>emit("auth.login.error", payload: error)</code>.</p>
+            </div>
+            <div class="card glass animate" style="margin-bottom: 20px;">
+                <h3 style="margin-bottom: 12px;">Paso 4 — El flow reacciona al evento y actualiza la UI / navega</h3>
+                <p>El flow escucha el canal. Cuando llega "auth.login.success", en <code>onEvent(ctx)</code> emite una expresión hacia la UI (<code>emitExpression("success", payload: ctx.event!.payload)</code>) y, si corresponde, un intent de navegación: <code>channel.emit(OmegaEvent(..., name: "navigation.intent", payload: OmegaIntent.fromName(AppIntent.navigateHome, payload: userData)))</code>.</p>
+            </div>
+            <div class="card glass animate">
+                <h3 style="margin-bottom: 12px;">Paso 5 — La UI y el navegador reaccionan</h3>
+                <p>La pantalla está escuchando <code>flow.expressions</code>; al recibir "success" hace <code>setState</code> y muestra el resultado. El <code>OmegaNavigator</code> (conectado al canal con <code>wireNavigator</code>) recibe el evento "navigation.intent", extrae el intent y hace <code>pushReplacement</code> a la ruta "home", pasando el payload como argumentos. La pantalla home recibe los datos con tipo si usas <code>OmegaRoute.typed&lt;LoginSuccessPayload&gt;</code>.</p>
+            </div>
+        </section>
+
+        <!-- Glosario / Definiciones -->
+        <section id="glossary" class="slide">
+            <span class="section-tag">Conceptos</span>
+            <h2 class="animate">Glosario: definiciones <span class="gradient-text">clave</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 24px;">Términos que usarás en todo el ecosistema Omega.</p>
+            <table class="comparison-table animate">
+                <thead><tr><th>Término</th><th>Definición</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Evento (OmegaEvent)</strong></td><td>Representación de "algo que pasó" en el sistema. Tiene <code>name</code> (ej. "auth.login.success") y <code>payload</code> opcional. Se publica en el canal y lo reciben todos los suscritos (agentes, flows, OmegaBuilder).</td></tr>
+                    <tr><td><strong>Intent (OmegaIntent)</strong></td><td>Petición de acción con significado de negocio: "quiero hacer login", "quiero ir a home". La UI emite intents; no llama métodos. El FlowManager los reparte a los flows en <code>running</code>. También se usan para navegación; el payload llega a la pantalla como argumentos.</td></tr>
+                    <tr><td><strong>Expresión (OmegaFlowExpression)</strong></td><td>Mensaje que un flow envía a la UI: "loading", "success", "error" (con tipo y payload). La UI se suscribe a <code>flow.expressions</code> y se reconstruye. Así el flow anuncia estado; la UI no pregunta "¿estás cargando?".</td></tr>
+                    <tr><td><strong>Canal (OmegaChannel)</strong></td><td>Bus de eventos global. Punto único de comunicación: cualquiera puede <code>emit(OmegaEvent)</code> y cualquiera puede suscribirse a <code>events</code>. Desacopla quién emite de quién escucha.</td></tr>
+                    <tr><td><strong>Agente (OmegaAgent)</strong></td><td>Unidad de lógica autónoma con <code>id</code>, canal y motor de comportamiento. Reacciona a eventos (y opcionalmente a intents directos). El behavior devuelve una reacción (acción + payload); el agente ejecuta en <code>onAction</code> y puede emitir nuevos eventos. Encapsula lógica testeable sin Flutter.</td></tr>
+                    <tr><td><strong>Flow (OmegaFlow)</strong></td><td>Flujo de negocio (login, checkout, etc.) con estados (idle, running, paused, sleeping, ended). Solo en <code>running</code> procesa eventos e intents. Orquesta: recibe intents de la UI, emite eventos para los agentes, escucha eventos, emite expresiones para la UI y emite intents de navegación.</td></tr>
+                    <tr><td><strong>FlowManager (OmegaFlowManager)</strong></td><td>Registra flows, los activa/pausa (<code>activate</code>, <code>switchTo</code>) y reparte los intents solo a los que están en <code>running</code>. Conecta el canal al navegador (<code>wireNavigator</code>) para que "navigate.*" y "navigation.intent" cambien de pantalla.</td></tr>
+                    <tr><td><strong>Behavior (motor de comportamiento)</strong></td><td>Define cuándo un agente reacciona y qué acción devolver. Se compone de reglas (condición + reacción). Evalúa el contexto (evento o intent) y devuelve la primera <code>OmegaAgentReaction</code> que coincida.</td></tr>
+                    <tr><td><strong>Snapshot</strong></td><td>Foto del estado: de un flow (OmegaFlowSnapshot) o de toda la app (OmegaAppSnapshot). Incluye flowId, state, memory y última expresión. Sirve para depuración, persistencia (guardar/restaurar al cerrar/abrir) y herramientas tipo time-travel.</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Todo lo que ofrece Omega -->
+        <section id="omega-features" class="slide">
+            <span class="section-tag">Conceptos</span>
+            <h2 class="animate">Todo lo que ofrece <span class="gradient-text">Omega</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 24px;">Un resumen de capacidades y herramientas del framework.</p>
+            <div class="grid-2 animate">
+                <div class="card glass">
+                    <h3>Comunicación y semántica</h3>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li>Bus de eventos global (<code>OmegaChannel</code>): emit y listen desacoplados.</li>
+                        <li>Eventos con nombre y payload; nombres tipados con <code>OmegaEventName</code> y <code>OmegaEvent.fromName</code>.</li>
+                        <li>Intents con nombre y payload; nombres tipados con <code>OmegaIntentName</code> y <code>OmegaIntent.fromName</code>.</li>
+                        <li>Lectura de payload con tipo: <code>payloadAs&lt;T&gt;()</code> en eventos, intents y expresiones.</li>
+                    </ul>
+                </div>
+                <div class="card glass">
+                    <h3>Agentes y comportamiento</h3>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li>Agentes autónomos (<code>OmegaAgent</code>) con id, canal y motor de comportamiento.</li>
+                        <li>Motor de reglas (<code>OmegaAgentBehaviorEngine</code>): <code>addRule(condition, reaction)</code>.</li>
+                        <li>Contexto de evaluación (<code>OmegaAgentBehaviorContext</code>): event, intent, state.</li>
+                        <li>Reacción: <code>OmegaAgentReaction(action, payload)</code> ejecutada en <code>onAction</code>.</li>
+                        <li>Protocolo de agentes: mensajes directos (<code>send</code>) y broadcast.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="grid-2 animate" style="margin-top: 24px;">
+                <div class="card glass">
+                    <h3>Flows y orquestación</h3>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li>Flows de negocio (<code>OmegaFlow</code>) con estados: idle, running, sleeping, paused, ended.</li>
+                        <li><code>OmegaFlowManager</code>: registerFlow, activate, switchTo, handleIntent, wireNavigator.</li>
+                        <li>Expresiones hacia la UI: <code>emitExpression(type, payload)</code>; la UI escucha <code>expressions</code>.</li>
+                        <li>Memoria por flow (<code>memory</code>) que persiste y se incluye en el snapshot.</li>
+                        <li>Snapshot por flow y de toda la app; toJson/fromJson para persistencia.</li>
+                    </ul>
+                </div>
+                <div class="card glass">
+                    <h3>UI, navegación y bootstrap</h3>
+                    <ul style="margin-left: 20px; margin-top: 8px;">
+                        <li><code>OmegaScope</code>: inyección de channel y flowManager; <code>OmegaScope.of(context)</code>.</li>
+                        <li><code>OmegaBuilder</code>: widget que reacciona a un evento del canal (opcionalmente por eventName).</li>
+                        <li>Navegación desacoplada: "navigate.id" (pushReplacement), "navigate.push.id" (push); payload → arguments.</li>
+                        <li>Rutas tipadas: <code>OmegaRoute.typed&lt;T&gt;</code> y <code>routeArguments&lt;T&gt;(context)</code>.</li>
+                        <li><code>OmegaConfig</code> y <code>OmegaRuntime.bootstrap</code>: un solo punto de arranque; initialFlowId opcional.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card glass animate" style="margin-top: 24px;">
+                <h3>Persistencia, inspector y CLI</h3>
+                <ul style="margin-left: 20px; margin-top: 8px;">
+                    <li><strong>Persistencia:</strong> getAppSnapshot → toJson → guardar; al abrir, fromJson → restoreFromSnapshot. Interfaz <code>OmegaSnapshotStorage</code> (save/load) para implementar con disco o backend.</li>
+                    <li><strong>Inspector:</strong> panel de debug (OmegaInspector) con últimos eventos y snapshot de flows. En web: OmegaInspectorLauncher abre ventana aparte; OmegaInspectorReceiver muestra los datos por BroadcastChannel.</li>
+                    <li><strong>CLI:</strong> <code>omega doc</code> (abre esta documentación), <code>omega init</code> (crea omega_setup.dart), <code>omega g ecosystem &lt;Nombre&gt;</code>, <code>omega g agent &lt;Nombre&gt;</code>, <code>omega g flow &lt;Nombre&gt;</code>, <code>omega validate</code>. Genera archivos en el directorio actual y actualiza omega_setup.</li>
+                </ul>
             </div>
         </section>
 
@@ -306,40 +531,111 @@ class AuthFlow extends OmegaFlow {
         <section id="about" class="slide">
             <span class="section-tag">Documentación</span>
             <h2 class="animate">Sobre el <span class="gradient-text">software</span></h2>
-            <p class="subtitle animate" style="margin-bottom: 32px;">Framework reactivo y basado en agentes para aplicaciones Flutter.</p>
+            <p class="subtitle animate" style="margin-bottom: 20px;">Omega es un framework <strong>reactivo</strong> y <strong>basado en agentes</strong> para Flutter: la lógica de negocio vive en agentes y flows que se comunican por un canal de eventos; la UI solo emite intenciones y reacciona a eventos y expresiones.</p>
+            <div class="highlight-box animate" style="margin-bottom: 24px;">
+                <p><strong>Definición breve:</strong> En Omega, <em>evento</em> = "algo que pasó" (se emite al canal). <em>Intent</em> = "quiero que pase esto" (la UI lo emite; el FlowManager lo reparte a los flows en running). <em>Expresión</em> = mensaje del flow a la UI ("loading", "success", "error"). Agentes y flows escuchan eventos; los flows además reciben intents y emiten expresiones e intents de navegación.</p>
+            </div>
             <div class="pillars-container animate">
                 <div class="pillar card glass">
                     <div class="icon">🤖</div>
                     <h3>Agentes reactivos</h3>
-                    <p>Entidades autónomas que reaccionan a eventos del sistema y mensajes directos.</p>
+                    <p>Entidades autónomas con id, canal y motor de comportamiento. Reaccionan a eventos del sistema (y a intents si el flow les delega). Ejecutan la lógica en <code>onAction</code> y emiten nuevos eventos. Testeables sin Flutter.</p>
                 </div>
                 <div class="pillar card glass">
                     <div class="icon">⚙️</div>
                     <h3>Motor de comportamiento</h3>
-                    <p>Lógica desacoplada con reglas y condiciones que determinan las reacciones del agente.</p>
+                    <p>Conjunto de reglas (condición + reacción). Evalúa el contexto (evento o intent) y devuelve la primera <code>OmegaAgentReaction</code> que coincida. Así el agente no es un switch gigante; se compone por reglas.</p>
                 </div>
                 <div class="pillar card glass">
                     <div class="icon">📡</div>
                     <h3>Event-driven</h3>
-                    <p>Comunicación global mediante <code>OmegaChannel</code> (bus de eventos).</p>
+                    <p>Todo pasa por <code>OmegaChannel</code>: <code>emit(OmegaEvent)</code> y suscripción a <code>events</code>. Agentes y flows se suscriben; la UI puede usar <code>OmegaBuilder</code> para reaccionar a un evento concreto.</p>
                 </div>
             </div>
             <div class="problem-grid animate" style="margin-top: 32px;">
                 <div class="card glass">
                     <h3>Gestión de flujos</h3>
-                    <p>Orquestación de transiciones de estado y lógica de negocio con <code>OmegaFlow</code> y <code>OmegaFlowManager</code>. Varios flujos pueden estar activos a la vez.</p>
+                    <p><code>OmegaFlow</code> orquesta un caso de uso (login, checkout). Tiene estados (idle, running, paused, sleeping, ended); solo en <code>running</code> procesa eventos e intents. <code>OmegaFlowManager</code> registra flows, activa/pausa y reparte intents. Varios flows pueden estar activos a la vez con <code>activate(id)</code>; <code>switchTo(id)</code> deja solo uno activo.</p>
                 </div>
                 <div class="card glass">
                     <h3>Intenciones semánticas</h3>
-                    <p>Abstracción de alto nivel para peticiones de usuario o del sistema (<code>OmegaIntent</code>).</p>
+                    <p><code>OmegaIntent</code> representa una petición con nombre (ej. "auth.login", "navigate.home") y payload. La UI no llama métodos; emite intents. Para nombres tipados: enum que implementa <code>OmegaIntentName</code> y <code>OmegaIntent.fromName(AppIntent.xxx, payload: ...)</code>. Para navegación, el payload del intent llega a la pantalla como argumentos (con <code>OmegaRoute.typed&lt;T&gt;</code> la vista recibe el tipo directamente).</p>
                 </div>
             </div>
+        </section>
+
+        <!-- Ejemplos por caso de uso -->
+        <section id="examples-use-cases" class="slide code-slide">
+            <span class="section-tag">Guía</span>
+            <h2 class="animate">Ejemplos por <span class="gradient-text">caso de uso</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 24px;">Código típico para los escenarios más comunes.</p>
+
+            <h3 class="animate" style="font-size: 22px; margin-top: 32px;">Emitir un evento y escucharlo (canal)</h3>
+            <pre class="glass animate"><code>final channel = OmegaChannel();
+channel.emit(OmegaEvent.fromName(AppEvent.userUpdated, payload: user));
+channel.events.listen((e) {
+  if (e.name == AppEvent.userUpdated.name) {
+    final u = e.payloadAs&lt;User&gt;();
+    if (u != null) refreshUI(u);
+  }
+});</code></pre>
+
+            <h3 class="animate" style="font-size: 22px; margin-top: 28px;">La UI pide login (intent + flow + agente)</h3>
+            <pre class="glass animate"><code>// En la pantalla de login
+scope.flowManager.handleIntent(
+  OmegaIntent.fromName(AppIntent.authLogin, payload: LoginCredentials(email: e, password: p)),
+);
+
+// El flow en onIntent emite "loading" y pide al agente
+channel.emit(OmegaEvent.fromName(AppEvent.authLoginRequest, payload: ctx.intent!.payload));
+
+// El agente en onAction hace la API y emite success/error
+emit("auth.login.success", payload: LoginSuccessPayload(token: t, user: u));</code></pre>
+
+            <h3 class="animate" style="font-size: 22px; margin-top: 28px;">Navegar a una pantalla con datos tipados</h3>
+            <pre class="glass animate"><code>// Desde el flow, tras login correcto
+channel.emit(OmegaEvent.fromName(
+  AppEvent.navigationIntent,
+  payload: OmegaIntent.fromName(AppIntent.navigateHome, payload: userData),
+));
+
+// Registro de ruta tipada (en omega_setup)
+navigator.registerRoute(OmegaRoute.typed&lt;LoginSuccessPayload&gt;(
+  id: "home",
+  builder: (context, userData) => HomePage(userData: userData),
+));
+
+// En HomePage recibes userData ya como LoginSuccessPayload?</code></pre>
+
+            <h3 class="animate" style="font-size: 22px; margin-top: 28px;">Guardar y restaurar estado (persistencia)</h3>
+            <pre class="glass animate"><code>// Al cerrar o en punto de guardado
+final snapshot = flowManager.getAppSnapshot();
+await prefs.setString("omega_state", jsonEncode(snapshot.toJson()));
+
+// Al abrir la app
+final loaded = prefs.getString("omega_state");
+if (loaded != null) {
+  final snapshot = OmegaAppSnapshot.fromJson(jsonDecode(loaded));
+  flowManager.restoreFromSnapshot(snapshot);
+}</code></pre>
+
+            <h3 class="animate" style="font-size: 22px; margin-top: 28px;">Mostrar el inspector en debug</h3>
+            <pre class="glass animate"><code>if (kDebugMode)
+  Stack(
+    children: [
+      MyApp(),
+      Positioned(right: 0, top: 0, child: OmegaInspector(eventLimit: 20)),
+    ],
+  )
+
+// En web: OmegaInspectorLauncher en la AppBar abre la ventana aparte</code></pre>
         </section>
 
         <!-- Conceptos core -->
         <section id="concepts" class="slide">
             <span class="section-tag">Documentación</span>
             <h2 class="animate">Conceptos <span class="gradient-text">core</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 20px;">Resumen de cada pieza del sistema y su rol.</p>
             <table class="comparison-table animate">
                 <thead>
                     <tr>
@@ -349,24 +645,44 @@ class AuthFlow extends OmegaFlow {
                 </thead>
                 <tbody>
                     <tr>
+                        <td><strong>OmegaChannel</strong></td>
+                        <td>Bus de eventos central. <code>emit(OmegaEvent)</code> para publicar; <code>events</code> (Stream) para suscribirse. Todos los agentes y flows usan el mismo canal. Quien lo crea debe llamar <code>dispose()</code> al cerrar.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OmegaEvent</strong></td>
+                        <td>Representa "algo que pasó". Campos: <code>id</code>, <code>name</code>, <code>payload</code>. Crear con <code>OmegaEvent.fromName(OmegaEventName, payload)</code> para nombres tipados. Leer payload con tipo: <code>event.payloadAs&lt;T&gt;()</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OmegaIntent</strong></td>
+                        <td>Petición de acción con <code>name</code> y <code>payload</code>. La UI emite intents vía <code>flowManager.handleIntent(intent)</code>. Para navegación el payload se pasa como argumentos de ruta. Nombres tipados: <code>OmegaIntent.fromName(OmegaIntentName, payload)</code>.</td>
+                    </tr>
+                    <tr>
                         <td><strong>OmegaAgent</strong></td>
-                        <td>Unidad de procesamiento. Tiene id, canal y motor de comportamiento.</td>
+                        <td>Unidad de lógica autónoma: <code>id</code>, <code>channel</code>, <code>behavior</code>. Se suscribe al canal; el behavior evalúa contexto y devuelve <code>OmegaAgentReaction</code>; el agente ejecuta en <code>onAction(action, payload)</code> y puede <code>emit(name, payload)</code>. Llamar <code>dispose()</code> al cerrar.</td>
                     </tr>
                     <tr>
                         <td><strong>OmegaAgentBehaviorEngine</strong></td>
-                        <td>Evalúa eventos/intenciones y devuelve reacciones (acciones a ejecutar).</td>
-                    </tr>
-                    <tr>
-                        <td><strong>OmegaChannel</strong></td>
-                        <td>Bus de eventos. Los agentes y flujos se suscriben a <code>events</code> y usan <code>emit()</code> para publicar.</td>
+                        <td>Motor de reglas. <code>addRule(OmegaAgentBehaviorRule(condition, reaction))</code>. <code>evaluate(OmegaAgentBehaviorContext)</code> devuelve la primera reacción cuya condición se cumpla, o null.</td>
                     </tr>
                     <tr>
                         <td><strong>OmegaFlow</strong></td>
-                        <td>Flujo de negocio con estados (idle, running, paused…). Orquesta UI y agentes.</td>
+                        <td>Flujo de negocio con estados (idle, running, sleeping, paused, ended). Solo en <code>running</code> procesa <code>onEvent</code> y <code>onIntent</code>. Emite expresiones a la UI con <code>emitExpression(type, payload)</code>; la UI escucha <code>expressions</code>. Tiene <code>memory</code> (mapa) y <code>getSnapshot()</code> / <code>restoreMemory()</code>.</td>
                     </tr>
                     <tr>
                         <td><strong>OmegaFlowManager</strong></td>
-                        <td>Registra flujos, enruta intenciones a los que están en ejecución y los activa o pausa.</td>
+                        <td>Registra flows con <code>registerFlow(flow)</code>. <code>activate(id)</code> activa sin pausar otros; <code>switchTo(id)</code> activa uno y pausa el resto. <code>handleIntent(intent)</code> envía el intent a todos los flows en running. <code>wireNavigator(navigator)</code> conecta el canal al navegador. <code>getAppSnapshot()</code> y <code>restoreFromSnapshot(snapshot)</code> para persistencia.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OmegaFlowExpression</strong></td>
+                        <td>Mensaje del flow a la UI: <code>type</code> ("loading", "success", "error") y <code>payload</code>. Leer con tipo: <code>expr.payloadAs&lt;T&gt;()</code>. La UI se suscribe a <code>flow.expressions</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OmegaScope / OmegaBuilder</strong></td>
+                        <td>OmegaScope inyecta <code>channel</code> y <code>flowManager</code>; cualquier hijo usa <code>OmegaScope.of(context)</code>. OmegaBuilder es un widget que se reconstruye cuando llega un evento (opcionalmente filtrando por <code>eventName</code>).</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OmegaNavigator / OmegaRoute</strong></td>
+                        <td>Navigator traduce "navigate.id" (pushReplacement) y "navigate.push.id" (push); el payload del intent va a <code>RouteSettings.arguments</code>. Rutas con <code>registerRoute(OmegaRoute)</code>. <code>OmegaRoute.typed&lt;T&gt;(id, builder: (context, T? args))</code> para que la pantalla reciba el tipo sin castear; alternativamente <code>routeArguments&lt;T&gt;(context)</code>.</td>
                     </tr>
                 </tbody>
             </table>
@@ -400,10 +716,13 @@ class AuthFlow extends OmegaFlow {
         <section id="install" class="slide code-slide">
             <span class="section-tag">Documentación</span>
             <h2 class="animate">Instalación</h2>
-            <p class="subtitle animate" style="margin-bottom: 16px;">En tu <strong>app host</strong> (el proyecto Flutter que usa Omega), añade la dependencia. El archivo <code>omega_setup.dart</code> se crea en tu app con <code>omega init</code>, no viene dentro de la librería.</p>
-            <p class="subtitle animate" style="margin-bottom: 24px;">Añade en tu <code>pubspec.yaml</code> (desde pub.dev):</p>
+            <p class="subtitle animate" style="margin-bottom: 16px;">En tu <strong>app host</strong> (el proyecto Flutter que usa Omega), añade la dependencia. El archivo <code>omega_setup.dart</code> se crea en tu app con <code>omega init</code>, no viene dentro de la librería. Ahí defines <code>createOmegaConfig(OmegaChannel)</code> con la lista de agentes, flows y rutas que el runtime registrará.</p>
+            <p class="subtitle animate" style="margin-bottom: 12px;">Añade en tu <code>pubspec.yaml</code> (desde pub.dev):</p>
             <pre class="glass animate"><code>dependencies:
   omega_architecture: ^0.0.11</code></pre>
+            <div class="highlight-box animate" style="margin-top: 24px;">
+                <p><strong>Ejemplo completo en el paquete:</strong> La carpeta <code>example/</code> contiene una app con flujo de login: pantalla de login que emite intents con <code>LoginCredentials</code>, agente que valida y emite success/error con <code>LoginSuccessPayload</code>, flow que reacciona en <code>onIntent</code> y <code>onEvent</code>, navegación a home con ruta tipada <code>OmegaRoute.typed&lt;LoginSuccessPayload&gt;</code> y uso de <code>payloadAs&lt;T&gt;()</code> en eventos y expresiones. Ejecutar con <code>cd example && flutter run</code>.</p>
+            </div>
         </section>
 
         <!-- CLI -->
@@ -421,6 +740,10 @@ class AuthFlow extends OmegaFlow {
                     </tr>
                 </thead>
                 <tbody>
+                    <tr>
+                        <td><code>doc</code></td>
+                        <td>Abre la documentación web oficial en el navegador (<code>dart run omega_architecture:omega doc</code> abre la doc en línea).</td>
+                    </tr>
                     <tr>
                         <td><code>init [--force]</code></td>
                         <td>Crea <code>lib/omega/omega_setup.dart</code> <strong>en tu app</strong>. Ahí defines rutas, agentes y flujos. Ejecuta desde la raíz del proyecto. <code>--force</code> sobrescribe.</td>
@@ -447,42 +770,52 @@ class AuthFlow extends OmegaFlow {
                 <p><strong>Flujo de <code>g ecosystem</code>:</strong> 1) Resuelve la raíz del proyecto (donde está <code>pubspec.yaml</code>). 2) Busca <code>lib/omega/omega_setup.dart</code>; si no existe, pide ejecutar <code>omega init</code>. 3) Crea los archivos <strong>en el directorio actual</strong>. 4) Actualiza <code>omega_setup.dart</code>: quita imports viejos de ese ecosistema, pone los nuevos, y registra agente y flow. <strong><code>g agent</code> y <code>g flow</code></strong> solo modifican su propio import y registro, así que puedes crear agente y flow por separado para el mismo nombre sin que uno borre al otro.</p>
             </div>
             <p class="animate" style="color: var(--text-dim); margin-top: 16px;">Opciones globales: <code>-h, --help</code> · <code>-v, --version</code></p>
-            <pre class="glass animate" style="margin-top: 16px;"><code>dart run omega_architecture:omega init
+            <pre class="glass animate" style="margin-top: 16px;"><code>dart run omega_architecture:omega doc
+dart run omega_architecture:omega init
 dart run omega_architecture:omega g ecosystem Auth
 dart run omega_architecture:omega g agent Orders
 dart run omega_architecture:omega g flow Orders
 dart run omega_architecture:omega validate</code></pre>
+            <p class="animate" style="color: var(--text-dim); margin-top: 12px; font-size: 14px;"><strong>Dónde ejecutar:</strong> <code>init</code> y <code>validate</code> desde la raíz de tu app (donde está <code>pubspec.yaml</code>). <code>g ecosystem</code>, <code>g agent</code> y <code>g flow</code> desde la carpeta donde quieras que se creen los archivos.</p>
         </section>
 
         <!-- Uso: Agent y Behavior -->
         <section id="usage-agent" class="slide code-slide">
             <span class="section-tag">Documentación</span>
             <h2 class="animate">Uso: agente y <span class="gradient-text">behavior</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 16px;">El agente se suscribe al canal; cuando llega un evento (o un intent), el <strong>behavior</strong> evalúa el contexto y devuelve una reacción (acción + payload); el agente ejecuta en <code>onAction</code>. Puedes usar reglas con <code>addRule</code> en lugar de sobrescribir <code>evaluate</code>.</p>
             <div class="grid-2 animate">
-                <pre class="glass"><code>class MyBehavior extends OmegaAgentBehaviorEngine {
-  @override
-  OmegaAgentReaction? evaluate(OmegaAgentBehaviorContext ctx) {
-    if (ctx.event?.name == "greet")
-      return const OmegaAgentReaction("sayHello", payload: "Welcome!");
-    return null;
+                <pre class="glass"><code>// Opción 1: reglas (recomendado)
+class AuthBehavior extends OmegaAgentBehaviorEngine {
+  AuthBehavior() {
+    addRule(OmegaAgentBehaviorRule(
+      condition: (ctx) => ctx.event?.name == AppEvent.authLoginRequest.name,
+      reaction: (ctx) => OmegaAgentReaction("doLogin", payload: ctx.event?.payload),
+    ));
   }
 }
 
-class MyAgent extends OmegaAgent {
-  MyAgent(OmegaChannel channel)
-    : super(id: "my_agent", channel: channel, behavior: MyBehavior());
+class AuthAgent extends OmegaAgent {
+  AuthAgent(OmegaChannel c) : super(id: "Auth", channel: c, behavior: AuthBehavior());
 
-  @override
-  void onMessage(OmegaAgentMessage msg) {}
+  @override void onMessage(OmegaAgentMessage msg) {}
 
   @override
   void onAction(String action, dynamic payload) {
-    if (action == "sayHello") print(payload);
+    if (action == "doLogin") _login(payload);
+  }
+  void _login(dynamic payload) {
+    final creds = payload is LoginCredentials ? payload : null;
+    if (creds == null) { emit("auth.login.error", payload: OmegaFailure(...)); return; }
+    // API call... luego:
+    emit("auth.login.success", payload: LoginSuccessPayload(token: t, user: u));
   }
 }</code></pre>
                 <div class="card glass">
                     <h3>Flujo</h3>
-                    <p>El canal emite eventos → el agente los recibe → el behavior evalúa y devuelve una reacción → <code>onAction</code> ejecuta la lógica.</p>
+                    <p>Canal emite evento → agente recibe → behavior evalúa contexto (event/intent) → devuelve <code>OmegaAgentReaction("doLogin", payload)</code> → <code>onAction("doLogin", payload)</code> ejecuta la lógica (p. ej. llamar API) y emite "auth.login.success" o "auth.login.error".</p>
+                    <h3 style="margin-top: 16px;">Payload tipado</h3>
+                    <p>En el agente puedes comprobar <code>payload is LoginCredentials</code> o recibir el intent desde el flow y usar <code>intent.payloadAs&lt;LoginCredentials&gt;()</code>. Emite eventos con payloads tipados (ej. <code>LoginSuccessPayload</code>) para que el flow y la UI usen <code>payloadAs&lt;T&gt;()</code>.</p>
                 </div>
             </div>
         </section>
@@ -491,15 +824,21 @@ class MyAgent extends OmegaAgent {
         <section id="usage-runtime" class="slide code-slide">
             <span class="section-tag">Implementación</span>
             <h2 class="animate">Integrar Omega en tu <span class="gradient-text">app host</span></h2>
-            <p class="subtitle animate" style="margin-bottom: 24px;">La app host crea el runtime, envuelve la UI con <code>OmegaScope</code> y define la navegación inicial.</p>
-            <div class="grid-2 animate">
-                <pre class="glass"><code>// lib/main.dart de tu app
+            <p class="subtitle animate" style="margin-bottom: 16px;">Pasos: 1) Bootstrap del runtime. 2) OmegaScope con <code>channel</code>, <code>flowManager</code> e <code>initialFlowId</code>. 3) MaterialApp con <code>navigatorKey</code>. 4) En el primer frame: activar el flow inicial y emitir la navegación inicial (p. ej. a login). Opcional: en web, mostrar solo el Inspector si la URL lleva <code>?omega_inspector=1</code>.</p>
+            <h3 class="animate" style="font-size: 18px; margin-top: 16px;">1. main.dart — Bootstrap y OmegaScope</h3>
+            <pre class="glass animate"><code>// lib/main.dart
 void main() {
+  // Opcional: en web, ventana del inspector (OmegaInspectorLauncher abre con ?omega_inspector=1)
+  if (Uri.base.queryParameters['omega_inspector'] == '1') {
+    runApp(MaterialApp(home: const OmegaInspectorReceiver()));
+    return;
+  }
   final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
   runApp(
     OmegaScope(
       channel: runtime.channel,
       flowManager: runtime.flowManager,
+      initialFlowId: runtime.initialFlowId,  // ej. "authFlow"
       child: MyApp(navigator: runtime.navigator),
     ),
   );
@@ -507,9 +846,7 @@ void main() {
 
 class MyApp extends StatelessWidget {
   final OmegaNavigator navigator;
-
   const MyApp({super.key, required this.navigator});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -518,10 +855,9 @@ class MyApp extends StatelessWidget {
     );
   }
 }</code></pre>
-                <pre class="glass"><code>// lib/_root_handler.dart
-class _RootHandler extends StatefulWidget {
+            <h3 class="animate" style="font-size: 18px; margin-top: 16px;">2. RootHandler — Activar flow inicial y navegar</h3>
+            <pre class="glass animate"><code>class _RootHandler extends StatefulWidget {
   const _RootHandler();
-
   @override
   State&lt;_RootHandler&gt; createState() =&gt; _RootHandlerState();
 }
@@ -530,54 +866,75 @@ class _RootHandlerState extends State&lt;_RootHandler&gt; {
   @override
   void initState() {
     super.initState();
-    // Ruta de inicio decidida por la app host
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final scope = OmegaScope.of(context);
-      final intent =
-          OmegaIntent(id: "goLogin", name: "navigate.login");
-
+      // 1) Activar el flow inicial (definido en createOmegaConfig con initialFlowId)
+      if (scope.initialFlowId != null) {
+        scope.flowManager.switchTo(scope.initialFlowId!);
+      }
+      // 2) Navegar a la primera pantalla (p. ej. login) con nombres tipados
+      final intent = OmegaIntent.fromName(AppIntent.navigateLogin);
       scope.channel.emit(
-        OmegaEvent(
-          id: "nav:${DateTime.now().millisecondsSinceEpoch}",
-          name: "navigation.intent",
-          payload: intent,
-        ),
+        OmegaEvent.fromName(AppEvent.navigationIntent, payload: intent),
       );
     });
   }
-
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text("Omega Running")));
+    return Scaffold(
+      appBar: kDebugMode ? AppBar(actions: const [OmegaInspectorLauncher()]) : null,
+      body: const Center(child: Text("Omega Running")),
+    );
   }
 }</code></pre>
+            <h3 class="animate" style="font-size: 18px; margin-top: 16px;">3. omega_setup.dart — Config (agentes, flows, rutas, initialFlowId)</h3>
+            <pre class="glass animate"><code>// lib/omega/omega_setup.dart (creado con omega init / omega g ecosystem)
+OmegaConfig createOmegaConfig(OmegaChannel channel) {
+  return OmegaConfig(
+    agents: [AuthAgent(channel), ProviderAgent(channel)],
+    flows: [AuthFlow(channel), ProviderFlow(channel)],
+    routes: [
+      OmegaRoute(id: "login", builder: (context) => const LoginPage()),
+      OmegaRoute.typed&lt;LoginSuccessPayload&gt;(id: "home", builder: (context, userData) => HomePage(userData: userData)),
+    ],
+    initialFlowId: "authFlow",
+  );
+}</code></pre>
+            <div class="highlight-box animate" style="margin-top: 20px;">
+                <p><strong>Resumen:</strong> <code>createOmegaConfig</code> se define en <code>lib/omega/omega_setup.dart</code> (omega init / g ecosystem). Incluye <code>initialFlowId</code> para que el RootHandler active ese flow en el primer frame. Usa <code>OmegaIntent.fromName</code> y <code>OmegaEvent.fromName</code> con tus enums (AppIntent, AppEvent) para evitar strings mágicos. Rutas tipadas con <code>OmegaRoute.typed&lt;T&gt;</code> para que la pantalla reciba el payload con tipo. Al cerrar la app, quien tenga referencia al runtime puede llamar <code>channel.dispose()</code> y <code>flowManager.dispose()</code> si es necesario.</p>
             </div>
-            <p class="subtitle animate" style="margin-top: 24px;">
-                El archivo <code>createOmegaConfig</code> se genera en tu app con <code>omega init</code> y <code>omega g ecosystem</code>.
-                Ahí registras los agentes, flujos y rutas que el runtime usará.
-            </p>
         </section>
 
         <!-- Flutter: Scope y Builder -->
         <section id="usage-flutter" class="slide">
             <span class="section-tag">Documentación</span>
             <h2 class="animate">Flutter: <span class="gradient-text">OmegaScope</span> y <span class="gradient-text">OmegaBuilder</span></h2>
+            <p class="subtitle animate" style="margin-bottom: 20px;">OmegaScope proporciona el canal y el flow manager a toda la UI. OmegaBuilder permite que una parte del árbol reaccione a un evento del canal sin que la pantalla conozca el flow.</p>
             <div class="problem-grid animate">
                 <div class="card glass">
-                    <h3>OmegaScope (DI)</h3>
-                    <p>Envuelve la app para inyectar <code>OmegaChannel</code> y <code>OmegaFlowManager</code> en el árbol de widgets.</p>
-                    <pre class="glass" style="margin-top: 16px; padding: 16px; font-size: 14px;"><code>OmegaScope(
-  channel: myChannel,
-  flowManager: myFlowManager,
-  child: MyApp(),
-)</code></pre>
+                    <h3>OmegaScope (inyección de dependencias)</h3>
+                    <p>Envuelve la app (normalmente en <code>main</code>) con <code>channel</code>, <code>flowManager</code> y opcionalmente <code>initialFlowId</code>. Cualquier hijo accede con <code>OmegaScope.of(context)</code> para hacer <code>handleIntent</code>, emitir eventos o obtener el flow y escuchar <code>expressions</code>.</p>
+                    <pre class="glass" style="margin-top: 16px; padding: 16px; font-size: 14px;"><code>runApp(
+  OmegaScope(
+    channel: runtime.channel,
+    flowManager: runtime.flowManager,
+    initialFlowId: runtime.initialFlowId,
+    child: MaterialApp(...),
+  ),
+);
+// En una pantalla:
+final scope = OmegaScope.of(context);
+scope.flowManager.handleIntent(...);</code></pre>
                 </div>
                 <div class="card glass">
-                    <h3>OmegaBuilder (UI reactiva)</h3>
-                    <p>Reconstruye partes de la UI cuando ocurren eventos concretos en el sistema.</p>
+                    <h3>OmegaBuilder (UI reactiva a un evento)</h3>
+                    <p>Widget que se reconstruye cuando llega un evento al canal. Si indicas <code>eventName</code>, solo reacciona a ese nombre. Útil para mostrar un banner de error global ("auth.login.error") o un mensaje "user.updated" sin que la pantalla conozca el flow. Requiere OmegaScope en el árbol.</p>
                     <pre class="glass" style="margin-top: 16px; padding: 16px; font-size: 14px;"><code>OmegaBuilder(
-  eventName: 'user.updated',
-  builder: (context, event) => Text('${event?.payload}'),
+  eventName: AppEvent.authLoginError.name,
+  builder: (context, event) {
+    final err = event?.payloadAs&lt;OmegaFailure&gt;();
+    return err != null ? Text(err.message) : SizedBox.shrink();
+  },
 )</code></pre>
                 </div>
             </div>
@@ -677,8 +1034,228 @@ class _RootHandlerState extends State&lt;_RootHandler&gt; {
 │   ├── flows/         # OmegaFlow, OmegaFlowManager, expressions
 │   ├── ui/            # OmegaScope, OmegaBuilder, navigation
 │   └── bootstrap/     # Config, runtime
-├── examples/          # Ejemplos completos
+├── example/           # Ejemplo completo
 └── omega_architecture.dart  # Exportaciones públicas</code></pre>
+        </section>
+
+        <!-- ========== API REFERENCE: CORE ========== -->
+        <section id="api-core" class="slide doc-section">
+            <span class="section-tag">API Reference</span>
+            <h2>OmegaChannel</h2>
+            <p><strong>Definición:</strong> Bus de eventos central. Toda la comunicación entre agentes, flows y UI pasa por el canal. Quien emite no conoce a quien escucha; así se desacopla la lógica de la UI. Solo debe existir una instancia del canal por app (se crea en <code>OmegaRuntime.bootstrap</code> y se inyecta vía OmegaScope).</p>
+            <table class="doc-api-table">
+                <thead><tr><th>Miembro</th><th>Descripción</th></tr></thead>
+                <tbody>
+                    <tr><td><code>events</code></td><td>Stream de eventos. Suscribirse para reaccionar (agentes, flows, OmegaBuilder).</td></tr>
+                    <tr><td><code>emit(OmegaEvent event)</code></td><td>Publica un evento. Todos los suscriptores de <code>events</code> lo reciben.</td></tr>
+                    <tr><td><code>dispose()</code></td><td>Cierra el canal. Llamar al cerrar la app para evitar fugas.</td></tr>
+                </tbody>
+            </table>
+            <p><strong>Ejemplo:</strong></p>
+            <pre class="glass" style="padding: 20px; font-size: 14px;"><code>channel.emit(OmegaEvent.fromName(AppEvent.authLoginRequest, payload: creds));
+channel.events.listen((e) {
+  if (e.name == AppEvent.authLoginSuccess.name) {
+    final user = e.payloadAs&lt;User&gt;();
+    if (user != null) goToHome(user);
+  }
+});</code></pre>
+        </section>
+        <section id="api-event" class="slide doc-section">
+            <h2>OmegaEvent</h2>
+            <p><strong>Definición:</strong> Representa "algo que pasó" en el sistema. Tiene <code>id</code> (único), <code>name</code> (semántica, ej. "auth.login.success") y <code>payload</code> (datos opcionales). Para evitar strings mágicos, define un enum que implemente <code>OmegaEventName</code> y usa <code>OmegaEvent.fromName(AppEvent.xxx, payload: data)</code>. Para leer el payload con tipo seguro: <code>event.payloadAs&lt;User&gt;()</code> (devuelve null si el tipo no coincide).</p>
+            <table class="doc-api-table">
+                <thead><tr><th>Miembro</th><th>Descripción</th></tr></thead>
+                <tbody>
+                    <tr><td><code>name</code></td><td>Nombre del evento. Los listeners filtran por este valor.</td></tr>
+                    <tr><td><code>payload</code></td><td>Datos opcionales. Usar <code>payloadAs&lt;T&gt;()</code> para lectura tipada.</td></tr>
+                    <tr><td><code>OmegaEvent.fromName(eventName, {payload, id, meta})</code></td><td>Factory con nombre tipado. Genera <code>id</code> si no se pasa.</td></tr>
+                </tbody>
+            </table>
+            <pre class="glass" style="padding: 16px; font-size: 13px;"><code>// Crear
+channel.emit(OmegaEvent.fromName(AppEvent.authLoginSuccess, payload: LoginSuccessPayload(...)));
+// Leer en listener
+final data = event.payloadAs&lt;LoginSuccessPayload&gt;();</code></pre>
+        </section>
+        <section id="api-intent" class="slide doc-section">
+            <h2>OmegaIntent</h2>
+            <p><strong>Definición:</strong> Representa una petición de acción con significado de negocio: "quiero hacer login", "quiero ir a home". La UI no llama métodos del flow ni del agente; emite un intent con <code>flowManager.handleIntent(OmegaIntent.fromName(AppIntent.authLogin, payload: creds))</code>. El FlowManager solo lo envía a los flows que están en estado <code>running</code>. También se usan para navegación: cuando el canal emite un evento con nombre "navigation.intent" y payload = OmegaIntent, el navegador ejecuta push/pushReplacement y pasa el <code>payload</code> del intent como <code>RouteSettings.arguments</code>. Nombres tipados: <code>OmegaIntent.fromName(OmegaIntentName, payload)</code>. Lectura tipada: <code>intent.payloadAs&lt;LoginCredentials&gt;()</code>.</p>
+            <table class="doc-api-table">
+                <thead><tr><th>Miembro</th><th>Descripción</th></tr></thead>
+                <tbody>
+                    <tr><td><code>name</code></td><td>Nombre del intent (ej. "auth.login", "navigate.home").</td></tr>
+                    <tr><td><code>payload</code></td><td>Datos. Usar <code>payloadAs&lt;T&gt;()</code>.</td></tr>
+                    <tr><td><code>OmegaIntent.fromName(intentName, {payload, id})</code></td><td>Factory con nombre tipado (OmegaIntentName).</td></tr>
+                </tbody>
+            </table>
+        </section>
+        <section id="api-event-name" class="slide doc-section">
+            <h2>OmegaEventName</h2>
+            <p>Contrato para nombres de evento tipados. Implementar con un enum (ej. <code>enum AppEvent implements OmegaEventName { authLoginSuccess('auth.login.success'); @override final String name; }</code>) y usar <code>OmegaEvent.fromName(AppEvent.authLoginSuccess, payload: x)</code>.</p>
+        </section>
+        <section id="api-intent-name" class="slide doc-section">
+            <h2>OmegaIntentName</h2>
+            <p>Contrato para nombres de intent tipados. Implementar con un enum y usar <code>OmegaIntent.fromName(AppIntent.authLogin, payload: creds)</code>.</p>
+        </section>
+        <section id="api-object" class="slide doc-section">
+            <h2>OmegaObject</h2>
+            <p>Clase base: proporciona <code>id</code> y <code>meta</code> (mapa de metadatos). OmegaEvent, OmegaIntent y OmegaFailure la extienden.</p>
+        </section>
+        <section id="api-failure" class="slide doc-section">
+            <h2>OmegaFailure</h2>
+            <p>Representación de un error. <code>message</code> (legible) y <code>details</code> opcional. Útil para emitir errores semánticos por el canal.</p>
+        </section>
+
+        <!-- ========== API REFERENCE: AGENTS ========== -->
+        <section id="api-agent" class="slide doc-section">
+            <h2>OmegaAgent</h2>
+            <p>Unidad de lógica autónoma. Tiene <code>id</code>, <code>channel</code> y <code>behavior</code>. Se suscribe al canal; el behavior evalúa contexto y devuelve reacciones; el agente ejecuta en <code>onAction</code>. Llamar <code>dispose()</code> al cerrar.</p>
+            <table class="doc-api-table">
+                <thead><tr><th>Miembro</th><th>Descripción</th></tr></thead>
+                <tbody>
+                    <tr><td><code>receiveIntent(OmegaIntent)</code></td><td>Evalúa el intent con el behavior y ejecuta la reacción en onAction.</td></tr>
+                    <tr><td><code>onAction(String action, dynamic payload)</code></td><td>Abstracto. Implementar la lógica de cada acción.</td></tr>
+                    <tr><td><code>onMessage(OmegaAgentMessage msg)</code></td><td>Abstracto. Respuesta a mensajes directos.</td></tr>
+                    <tr><td><code>emit(String name, {payload})</code></td><td>Publica un evento en el canal.</td></tr>
+                </tbody>
+            </table>
+        </section>
+        <section id="api-behavior-engine" class="slide doc-section">
+            <h2>OmegaAgentBehaviorEngine</h2>
+            <p>Motor de reglas: dado un contexto (evento o intent), devuelve la primera reacción cuya regla coincida. <code>addRule(OmegaAgentBehaviorRule)</code> registra reglas; <code>evaluate(OmegaAgentBehaviorContext)</code> devuelve OmegaAgentReaction o null.</p>
+        </section>
+        <section id="api-behavior-rule" class="slide doc-section">
+            <h2>OmegaAgentBehaviorRule</h2>
+            <p>Regla: <code>condition(context)</code> indica si aplica; <code>reaction(context)</code> devuelve la OmegaAgentReaction a ejecutar.</p>
+        </section>
+        <section id="api-behavior-context" class="slide doc-section">
+            <h2>OmegaAgentBehaviorContext</h2>
+            <p>Contexto pasado a evaluate: <code>event</code>, <code>intent</code> y copia del <code>state</code> del agente.</p>
+        </section>
+        <section id="api-reaction" class="slide doc-section">
+            <h2>OmegaAgentReaction</h2>
+            <p>Resultado de una regla: <code>action</code> (nombre) y <code>payload</code>. El agente lo recibe en onAction.</p>
+        </section>
+        <section id="api-protocol" class="slide doc-section">
+            <h2>OmegaAgentProtocol</h2>
+            <p>Registro de agentes. <code>register(OmegaAgent)</code>; <code>send(OmegaAgentMessage)</code> a un agente; <code>broadcast(action, {payload})</code> a todos.</p>
+        </section>
+        <section id="api-inbox" class="slide doc-section">
+            <h2>OmegaAgentInbox</h2>
+            <p>Cola FIFO de mensajes. <code>receive(message)</code> añade; <code>next()</code> devuelve el siguiente o null; <code>hasMessages</code> indica si hay pendientes.</p>
+        </section>
+        <section id="api-message" class="slide doc-section">
+            <h2>OmegaAgentMessage</h2>
+            <p>Mensaje directo: <code>from</code>, <code>to</code>, <code>action</code>, <code>payload</code>. Se envía con OmegaAgentProtocol.send.</p>
+        </section>
+
+        <!-- ========== API REFERENCE: FLOWS ========== -->
+        <section id="api-flow" class="slide doc-section">
+            <h2>OmegaFlow</h2>
+            <p><strong>Definición:</strong> Un flow es un flujo de negocio (login, checkout, onboarding). Tiene estados (<code>OmegaFlowState</code>: idle, running, sleeping, paused, ended) y solo cuando está en <code>running</code> procesa eventos del canal y intents (en <code>onEvent</code> y <code>onIntent</code>). El flow orquesta: recibe intents de la UI, emite eventos al canal para que los agentes actúen, escucha eventos (p. ej. "auth.login.success"), emite expresiones hacia la UI ("loading", "success", "error") y puede emitir un intent de navegación. La UI no pregunta "¿estás cargando?"; el flow anuncia el estado con <code>emitExpression</code>. La pantalla se suscribe a <code>flow.expressions</code>. El flow tiene además <code>memory</code> (mapa clave/valor) que persiste mientras esté activo y se incluye en el snapshot para persistencia.</p>
+            <table class="doc-api-table">
+                <thead><tr><th>Miembro</th><th>Descripción</th></tr></thead>
+                <tbody>
+                    <tr><td><code>expressions</code></td><td>Stream de expresiones hacia la UI.</td></tr>
+                    <tr><td><code>memory</code></td><td>Mapa clave/valor que persiste durante el flow. Incluido en snapshot.</td></tr>
+                    <tr><td><code>emitExpression(String type, {payload})</code></td><td>Notifica a la UI (loading, success, error).</td></tr>
+                    <tr><td><code>getSnapshot()</code></td><td>Devuelve OmegaFlowSnapshot (id, state, memory, lastExpression).</td></tr>
+                    <tr><td><code>restoreMemory(Map)</code></td><td>Reemplaza memory (restore on launch).</td></tr>
+                </tbody>
+            </table>
+        </section>
+        <section id="api-flow-manager" class="slide doc-section">
+            <h2>OmegaFlowManager</h2>
+            <p>Gestiona todos los flows: registra, activa/pausa, reparte intents a los que están en running. <code>wireNavigator(nav)</code> conecta el canal al navegador.</p>
+            <table class="doc-api-table">
+                <thead><tr><th>Miembro</th><th>Descripción</th></tr></thead>
+                <tbody>
+                    <tr><td><code>registerFlow(OmegaFlow)</code></td><td>Registra un flow.</td></tr>
+                    <tr><td><code>activate(id)</code></td><td>Activa el flow sin pausar los demás. Varios pueden estar en running.</td></tr>
+                    <tr><td><code>switchTo(id)</code></td><td>Activa uno y pausa el resto. Un solo "principal".</td></tr>
+                    <tr><td><code>handleIntent(OmegaIntent)</code></td><td>Envía el intent a todos los flows en running.</td></tr>
+                    <tr><td><code>getFlow(id)</code></td><td>Devuelve el flow registrado. Para que la UI escuche expressions.</td></tr>
+                    <tr><td><code>getAppSnapshot()</code></td><td>Snapshot de toda la app (activeFlowId + todos los flows).</td></tr>
+                    <tr><td><code>restoreFromSnapshot(OmegaAppSnapshot)</code></td><td>Restaura memoria y flow activo. Llamar al abrir la app.</td></tr>
+                </tbody>
+            </table>
+        </section>
+        <section id="api-flow-state" class="slide doc-section">
+            <h2>OmegaFlowState</h2>
+            <p>Estados: <code>idle</code>, <code>running</code>, <code>sleeping</code>, <code>paused</code>, <code>ended</code>. Solo en <code>running</code> se procesan eventos e intents.</p>
+        </section>
+        <section id="api-flow-expression" class="slide doc-section">
+            <h2>OmegaFlowExpression</h2>
+            <p>Mensaje del flow a la UI: <code>type</code> ("loading", "success", "error") y <code>payload</code>. Leer payload con tipo: <code>expr.payloadAs&lt;User&gt;()</code>.</p>
+        </section>
+        <section id="api-flow-context" class="slide doc-section">
+            <h2>OmegaFlowContext</h2>
+            <p>Contexto en onEvent/onIntent: <code>event</code>, <code>intent</code> y <code>memory</code> del flow.</p>
+        </section>
+        <section id="api-snapshot" class="slide doc-section">
+            <h2>OmegaFlowSnapshot</h2>
+            <p>Foto de un flow: flowId, state, memory, lastExpression. <code>toJson()</code> / <code>fromJson(Map)</code> para persistencia.</p>
+        </section>
+        <section id="api-app-snapshot" class="slide doc-section">
+            <h2>OmegaAppSnapshot</h2>
+            <p>Foto de la app: activeFlowId y lista de OmegaFlowSnapshot. <code>toJson()</code> / <code>fromJson(Map)</code>. Restaurar con FlowManager.restoreFromSnapshot.</p>
+        </section>
+        <section id="api-snapshot-storage" class="slide doc-section">
+            <h2>OmegaSnapshotStorage</h2>
+            <p>Interfaz opcional: <code>save(OmegaAppSnapshot)</code> y <code>load() → Future&lt;OmegaAppSnapshot?&gt;</code>. Implementar con disco, SharedPreferences o backend.</p>
+        </section>
+
+        <!-- ========== API REFERENCE: UI ========== -->
+        <section id="api-scope" class="slide doc-section">
+            <h2>OmegaScope</h2>
+            <p>InheritedWidget que expone <code>channel</code> y <code>flowManager</code> (y opcionalmente <code>initialFlowId</code>). Cualquier hijo usa <code>OmegaScope.of(context)</code>.</p>
+        </section>
+        <section id="api-builder" class="slide doc-section">
+            <h2>OmegaBuilder</h2>
+            <p>Widget que se reconstruye cuando llega un evento al canal. Opcionalmente filtrar por <code>eventName</code>. Requiere OmegaScope en el árbol.</p>
+        </section>
+        <section id="api-navigator" class="slide doc-section">
+            <h2>OmegaNavigator</h2>
+            <p>Convierte intents "navigate.id" / "navigate.push.id" en push/pushReplacement. <code>navigatorKey</code> se asigna a MaterialApp.navigatorKey. <code>registerRoute(OmegaRoute)</code>; <code>handleIntent(OmegaIntent)</code> ejecuta la navegación. El payload del intent → RouteSettings.arguments.</p>
+        </section>
+        <section id="api-route" class="slide doc-section">
+            <h2>OmegaRoute / OmegaRoute.typed / routeArguments</h2>
+            <p><code>OmegaRoute(id, builder)</code> define una pantalla. <code>OmegaRoute.typed&lt;T&gt;(id, builder: (context, T? arguments))</code> para que la vista reciba el payload con tipo. Si no usas typed: <code>routeArguments&lt;T&gt;(context)</code> para leer argumentos con tipo.</p>
+        </section>
+        <section id="api-inspector" class="slide doc-section">
+            <h2>OmegaInspector / OmegaInspectorLauncher / OmegaInspectorReceiver</h2>
+            <p><strong>OmegaInspector:</strong> panel overlay que muestra últimos eventos del canal y snapshot de flows. Pensado para debug (kDebugMode).</p>
+            <p><strong>OmegaInspectorLauncher:</strong> en web abre el inspector en una ventana nueva (BroadcastChannel). En otras plataformas abre el overlay en un diálogo.</p>
+            <p><strong>OmegaInspectorReceiver:</strong> en la ventana abierta con ?omega_inspector=1, muestra el inspector recibiendo datos por BroadcastChannel.</p>
+        </section>
+
+        <!-- ========== API REFERENCE: BOOTSTRAP ========== -->
+        <section id="api-config" class="slide doc-section">
+            <h2>OmegaConfig</h2>
+            <p>Configuración de arranque: <code>agents</code>, <code>flows</code>, <code>routes</code>, <code>initialFlowId</code> (opcional). Se pasa a OmegaRuntime.bootstrap.</p>
+        </section>
+        <section id="api-runtime" class="slide doc-section">
+            <h2>OmegaRuntime</h2>
+            <p><code>OmegaRuntime.bootstrap(createOmegaConfig)</code> crea el canal, construye el config, registra agentes en el protocolo, flows en el manager, rutas en el navegador, conecta navegador al canal y devuelve el runtime. La app usa channel, flowManager, navigator e initialFlowId para montar OmegaScope y MaterialApp.</p>
+        </section>
+
+        <!-- ========== PERSISTENCE & TESTING ========== -->
+        <section id="api-persistence" class="slide doc-section">
+            <h2>Persistencia y restore</h2>
+            <p><strong>Concepto:</strong> Un <strong>snapshot</strong> es una foto del estado de la app (flow activo + estado y memoria de cada flow). Puedes serializarla a JSON, guardarla al cerrar la app (o en puntos de guardado) y restaurarla al abrir. Así el usuario no pierde el contexto (p. ej. pantalla actual y datos en memoria de los flows).</p>
+            <p><strong>Flujo:</strong> Al cerrar (o en punto clave): <code>flowManager.getAppSnapshot()</code> → <code>snapshot.toJson()</code> → guardar (SharedPreferences, archivo con path_provider, backend). Al abrir: cargar string/mapa → <code>OmegaAppSnapshot.fromJson(map)</code> → <code>flowManager.restoreFromSnapshot(snapshot)</code>. El manager restaura la <code>memory</code> de cada flow y activa el flow que estaba activo. Para que la persistencia sea correcta, los valores en <code>memory</code> y en los payloads que guardes deben ser JSON-serializables (primitivos, List, Map).</p>
+            <p><strong>Interfaz opcional:</strong> <code>OmegaSnapshotStorage</code> define <code>save(OmegaAppSnapshot)</code> y <code>load() → Future&lt;OmegaAppSnapshot?&gt;</code>. Puedes implementarla con el almacenamiento que quieras (archivo, SharedPreferences, API) y llamar save/load desde tu app en el ciclo de vida que prefieras.</p>
+            <pre class="glass" style="padding: 16px; font-size: 13px;"><code>// Guardar
+final snapshot = flowManager.getAppSnapshot();
+await prefs.setString("omega", jsonEncode(snapshot.toJson()));
+// Restaurar al iniciar
+final s = prefs.getString("omega");
+if (s != null) flowManager.restoreFromSnapshot(OmegaAppSnapshot.fromJson(jsonDecode(s)));</code></pre>
+        </section>
+        <section id="api-testing" class="slide doc-section">
+            <h2>Testing</h2>
+            <p><strong>Agentes:</strong> Crear canal y agente de prueba que guarde en variables lo recibido en onAction. Emitir evento o llamar <code>agent.receiveIntent(intent)</code>. Tras un breve delay, comprobar las variables.</p>
+            <p><strong>Flows:</strong> Crear flow de prueba, <code>flow.start()</code>, escuchar <code>flow.expressions</code>, llamar <code>flow.receiveIntent(intent)</code> o emitir eventos. Tras delay, comprobar la expresión recibida. No hace falta WidgetTester ni Flutter.</p>
+            <p>Ver <code>docs/TESTING.md</code> en el repo para ejemplos completos.</p>
         </section>
 
         <!-- Conclusión -->
@@ -692,19 +1269,298 @@ class _RootHandlerState extends State&lt;_RootHandler&gt; {
             </div>
         </section>
     </div>
+    <footer class="doc-footer" aria-label="Pie de documentación">
+        <p>Documentación Omega Architecture · Versión 0.0.11 · Última actualización: 2026</p>
+        <p><a href="http://yefersonsegura.com/proyects/omega/">Documentación oficial</a> · <a href="https://github.com/yefersonSegura/omega_architecture">GitHub</a> · <a href="https://pub.dev/packages/omega_architecture">pub.dev</a></p>
+    </footer>
+        </main>
+    </div>
+
+    <button type="button" class="scroll-to-top" id="scroll-to-top" aria-label="Subir al inicio" title="Subir al inicio">
+        <i class="fa fa-chevron-up" aria-hidden="true"></i>
+    </button>
 
     <script>
-        // Intersection Observer for Animations
-        const observerOptions = { threshold: 0.1 };
+        // Intersection Observer for scroll-triggered animations (with stagger support)
+        const observerOptions = { threshold: 0.08, rootMargin: '0px 0px -40px 0px' };
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('visible');
+                    entry.target.setAttribute('data-animated', 'true');
                 }
             });
         }, observerOptions);
-
         document.querySelectorAll('.animate').forEach(el => observer.observe(el));
+
+        // Reading progress bar (gradient bar at top) — uses .doc-main scroll when it's the scroll container
+        (function() {
+            var bar = document.getElementById('reading-progress');
+            var main = document.querySelector('.doc-main');
+            if (!bar) return;
+            function update() {
+                var scrollTop, scrollHeight, clientHeight;
+                if (main && main.scrollHeight > main.clientHeight) {
+                    scrollTop = main.scrollTop;
+                    scrollHeight = main.scrollHeight;
+                    clientHeight = main.clientHeight;
+                } else {
+                    scrollTop = window.scrollY;
+                    scrollHeight = document.documentElement.scrollHeight;
+                    clientHeight = window.innerHeight;
+                }
+                var docHeight = scrollHeight - clientHeight;
+                var pct = docHeight > 0 ? Math.min(100, (scrollTop / docHeight) * 100) : 0;
+                bar.style.width = pct + '%';
+            }
+            if (main) main.addEventListener('scroll', update);
+            window.addEventListener('scroll', update);
+            window.addEventListener('load', update);
+        })();
+
+        // Copy button on code blocks
+        (function() {
+            var pres = document.querySelectorAll('pre code');
+            pres.forEach(function(block) {
+                var pre = block.parentElement;
+                if (!pre || pre.classList.contains('code-block-wrapped')) return;
+                pre.classList.add('code-block-wrapped');
+                var wrap = document.createElement('div');
+                wrap.className = 'code-block-wrap';
+                pre.parentNode.insertBefore(wrap, pre);
+                wrap.appendChild(pre);
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'code-copy-btn';
+                btn.setAttribute('aria-label', 'Copiar código');
+                btn.innerHTML = '<span class="code-copy-text"><i class="fa fa-copy" aria-hidden="true"></i> Copiar</span><span class="code-copy-done" aria-hidden="true"><i class="fa fa-check" aria-hidden="true"></i> ¡Copiado!</span>';
+                wrap.appendChild(btn);
+                btn.addEventListener('click', function() {
+                    var text = block.textContent || '';
+                    navigator.clipboard.writeText(text).then(function() {
+                        btn.classList.add('code-copy-done-visible');
+                        setTimeout(function() { btn.classList.remove('code-copy-done-visible'); }, 2000);
+                    });
+                });
+            });
+        })();
+
+        // Theme toggle (dark/light) with localStorage
+        (function() {
+            var body = document.getElementById('doc-body');
+            var btn = document.getElementById('theme-toggle');
+            if (!body || !btn) return;
+            var key = 'omega-doc-theme';
+            var light = 'theme-light';
+            function applyTheme(isLight) {
+                if (isLight) body.classList.add(light);
+                else body.classList.remove(light);
+                try { localStorage.setItem(key, isLight ? 'light' : 'dark'); } catch (e) {}
+            }
+            try {
+                var saved = localStorage.getItem(key);
+                if (saved === 'light') applyTheme(true);
+            } catch (e) {}
+            btn.addEventListener('click', function() {
+                applyTheme(!body.classList.contains(light));
+            });
+        })();
+
+        // Scroll-to-top button: show after scroll, click scrolls to top (works with .doc-main or window)
+        (function() {
+            var btn = document.getElementById('scroll-to-top');
+            var main = document.querySelector('.doc-main');
+            if (!btn) return;
+            function scrollTop() {
+                if (main && main.scrollHeight > main.clientHeight) main.scrollTo({ top: 0, behavior: 'smooth' });
+                else window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            function toggle() {
+                var top = main && main.scrollHeight > main.clientHeight ? main.scrollTop : window.scrollY;
+                btn.classList.toggle('scroll-to-top--visible', top > 400);
+            }
+            btn.addEventListener('click', scrollTop);
+            if (main) main.addEventListener('scroll', toggle);
+            window.addEventListener('scroll', toggle);
+            window.addEventListener('load', toggle);
+        })();
+
+        // Active sidebar link: keep highlighted while you are in that section (uses scroll position)
+        (function() {
+            var sections = document.querySelectorAll('section[id]');
+            var navLinks = document.querySelectorAll('.doc-sidebar a[href^="#"]');
+            var main = document.querySelector('.doc-main');
+            var scrollContainer = (main && main.scrollHeight > main.clientHeight) ? main : null;
+            var offset = 120;
+
+            function setActiveLink() {
+                var current = '';
+                var containerTop = 0;
+                if (scrollContainer) {
+                    var rect = scrollContainer.getBoundingClientRect();
+                    containerTop = rect.top;
+                }
+                for (var i = 0; i < sections.length; i++) {
+                    var section = sections[i];
+                    var id = section.getAttribute('id');
+                    if (!id) continue;
+                    var sectionRect = section.getBoundingClientRect();
+                    var sectionTop = sectionRect.top - containerTop;
+                    if (sectionTop <= offset) current = id;
+                }
+                navLinks.forEach(function(link) {
+                    var href = link.getAttribute('href') || '';
+                    var linkId = href.replace('#', '');
+                    link.classList.toggle('active', linkId === current);
+                });
+            }
+            if (main) main.addEventListener('scroll', setActiveLink);
+            window.addEventListener('scroll', setActiveLink);
+            window.addEventListener('load', setActiveLink);
+            window.addEventListener('resize', setActiveLink);
+        })();
+
+        // Breadcrumbs: show current section path (e.g. Introducción > Get started)
+        (function() {
+            var breadcrumbEl = document.getElementById('doc-breadcrumb');
+            if (!breadcrumbEl) return;
+            var sectionTitles = {
+                'vision': 'Inicio',
+                'get-started': 'Get started',
+                'data-flow': 'Flujo de datos',
+                'glossary': 'Glosario',
+                'omega-features': 'Todo lo que ofrece Omega',
+                'problem': 'Contexto técnico',
+                'philosophy': 'Filosofía',
+                'pillars': 'Pilares',
+                'architecture': 'Arquitectura desacoplada',
+                'architecture-diagram': 'Diagrama',
+                'comparison': 'Comparativa',
+                'when-choose': 'Cuándo elegir Omega',
+                'importance': 'Importancia',
+                'why-worth-it': 'Por qué vale la pena',
+                'about': 'Sobre el software',
+                'examples-use-cases': 'Ejemplos por caso de uso',
+                'concepts': 'Conceptos core',
+                'usecases': 'Casos de uso',
+                'install': 'Instalación',
+                'cli': 'CLI',
+                'usage-agent': 'Uso: agente y behavior',
+                'usage-runtime': 'Integrar en app host',
+                'usage-flutter': 'OmegaScope y OmegaBuilder',
+                'usage-flows': 'Ciclo de vida del flow',
+                'lifecycle': 'Ciclo de vida / dispose',
+                'structure': 'Estructura del proyecto',
+                'api-core': 'API Core',
+                'api-event': 'OmegaEvent',
+                'api-intent': 'OmegaIntent',
+                'api-flow': 'OmegaFlow',
+                'api-scope': 'OmegaScope',
+                'api-config': 'OmegaConfig',
+                'api-persistence': 'Persistencia',
+                'api-testing': 'Testing',
+                'next': 'Conclusión'
+            };
+            function updateBreadcrumb() {
+                var current = document.querySelector('.doc-sidebar a.active');
+                if (!current) { breadcrumbEl.innerHTML = ''; return; }
+                var id = (current.getAttribute('href') || '').replace('#', '');
+                var title = sectionTitles[id] || id;
+                breadcrumbEl.innerHTML = '<a href="#vision">Documentación</a> <span class="doc-breadcrumb-sep" aria-hidden="true">›</span> <span aria-current="page">' + title + '</span>';
+            }
+            function onScrollOrLoad() { setTimeout(updateBreadcrumb, 0); }
+            var main = document.querySelector('.doc-main');
+            if (main) main.addEventListener('scroll', onScrollOrLoad);
+            window.addEventListener('scroll', onScrollOrLoad);
+            window.addEventListener('load', onScrollOrLoad);
+        })();
+
+        // Mobile menu: toggle sidebar
+        (function() {
+            var btn = document.getElementById('doc-menu-btn');
+            var body = document.body;
+            if (!btn) return;
+            btn.addEventListener('click', function() {
+                body.classList.toggle('doc-sidebar-open');
+                btn.setAttribute('aria-expanded', body.classList.contains('doc-sidebar-open'));
+            });
+            document.addEventListener('click', function(e) {
+                if (body.classList.contains('doc-sidebar-open') && e.target.id === 'doc-sidebar-overlay') {
+                    body.classList.remove('doc-sidebar-open');
+                    btn.setAttribute('aria-expanded', 'false');
+                }
+            });
+            var sidebar = document.getElementById('doc-sidebar');
+            if (sidebar) {
+                sidebar.addEventListener('click', function(e) {
+                    if (e.target.tagName === 'A') {
+                        body.classList.remove('doc-sidebar-open');
+                        btn.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            }
+        })();
+
+        // Search: filter sidebar by link text and section id
+        (function() {
+            var input = document.getElementById('doc-search-input');
+            var hint = document.getElementById('doc-search-hint');
+            if (!input || !hint) return;
+            var nav = document.querySelector('.doc-sidebar');
+            var links = [].slice.call(nav.querySelectorAll('a[href^="#"]'));
+            var headings = [].slice.call(nav.querySelectorAll('h3'));
+
+            function getSectionFor(link) {
+                var prev = link.previousElementSibling;
+                while (prev) {
+                    if (prev.tagName === 'H3') return prev;
+                    prev = prev.previousElementSibling;
+                }
+                return null;
+            }
+
+            function runSearch() {
+                var q = input.value.trim().toLowerCase();
+                var visibleCount = 0;
+                if (q === '') {
+                    links.forEach(function(a) { a.classList.remove('hidden-by-search'); });
+                    headings.forEach(function(h) { h.classList.remove('hidden-by-search'); });
+                    hint.textContent = '';
+                    return;
+                }
+                links.forEach(function(a) {
+                    var text = (a.textContent || '').toLowerCase();
+                    var id = (a.getAttribute('href') || '').replace('#', '').toLowerCase();
+                    var match = text.indexOf(q) !== -1 || id.indexOf(q) !== -1;
+                    if (match) {
+                        a.classList.remove('hidden-by-search');
+                        visibleCount++;
+                    } else {
+                        a.classList.add('hidden-by-search');
+                    }
+                });
+                headings.forEach(function(h) {
+                    var el = h.nextElementSibling;
+                    var hasVisible = false;
+                    while (el && el.tagName !== 'H3') {
+                        if (el.tagName === 'A' && !el.classList.contains('hidden-by-search')) hasVisible = true;
+                        el = el.nextElementSibling;
+                    }
+                    if (hasVisible) {
+                        h.classList.remove('hidden-by-search');
+                    } else {
+                        h.classList.add('hidden-by-search');
+                    }
+                });
+                if (visibleCount === 0) {
+                    hint.textContent = 'Sin resultados para «' + input.value.trim() + '»';
+                } else {
+                    hint.textContent = visibleCount + ' resultado' + (visibleCount !== 1 ? 's' : '');
+                }
+            }
+            input.addEventListener('input', runSearch);
+            input.addEventListener('keyup', runSearch);
+        })();
     </script>
 </body>
 

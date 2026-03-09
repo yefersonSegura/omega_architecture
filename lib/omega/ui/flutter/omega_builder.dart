@@ -4,16 +4,16 @@ import 'package:flutter/widgets.dart';
 import 'package:omega_architecture/omega/core/events/omega_event.dart';
 import 'omega_scope.dart';
 
-/// [OmegaBuilder] es un widget que se reconstruye cuando se emite un [OmegaEvent] en el canal.
+/// Widget that rebuilds when an event arrives on the channel (optionally only when [eventName] matches).
 ///
-/// Si [eventName] no es null, solo reacciona a eventos con ese nombre (ej. "user.updated").
-/// El [builder] recibe el [BuildContext] y el último evento recibido (o null).
-/// Requiere un [OmegaScope] en el árbol.
+/// **Why use it:** Show a banner when "auth.login.error" occurs without the screen knowing the flow. Requires [OmegaScope] in the tree.
+///
+/// **Example:** `OmegaBuilder(eventName: "auth.login.error", builder: (ctx, e) => Text(e?.payloadAs<String>() ?? ""));`
 class OmegaBuilder extends StatelessWidget {
-  /// Construye el widget con el contexto y el último evento (o null).
+  /// Receives context and the latest event (or null). Called each time an event arrives (filtered by [eventName]).
   final Widget Function(BuildContext context, OmegaEvent? event) builder;
 
-  /// Si se indica, solo se reconstruye cuando [OmegaEvent.name] coincida (ej. "auth.login.success").
+  /// If not null, only reacts to events with this name.
   final String? eventName;
 
   const OmegaBuilder({super.key, required this.builder, this.eventName});

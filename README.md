@@ -1,6 +1,10 @@
 # Ω Omega Architecture
 
+[![pub package](https://img.shields.io/pub/v/omega_architecture.svg)](https://pub.dev/packages/omega_architecture) [![documentation](https://img.shields.io/badge/docs-web%20doc-blue)](http://yefersonsegura.com/proyects/omega/)
+
 A reactive, agent-based architecture framework for Flutter applications.
+
+**What Omega does:** Business logic lives in **agents** and **flows** that communicate through a central **event channel**. The UI only emits **intents** (e.g. "login", "navigate to home") and reacts to **events** and **expressions**; it does not call domain methods or hold navigation state. A **FlowManager** routes intents to the active flow(s); a **navigator** turns navigation intents into screens. So you get a clear separation: UI → intents/events → flows and agents → expressions/navigation → UI. For a **guided tour with examples** of each component, see **[docs/GUIA.md](docs/GUIA.md)**.
 
 ## Features
 
@@ -8,11 +12,18 @@ A reactive, agent-based architecture framework for Flutter applications.
 - **Behavior Engine** — Decoupled logic using rules and conditions to determine agent reactions.
 - **Event-Driven** — Global communication through `OmegaChannel`.
 - **Flow Management** — Orchestrate complex state transitions and business logic flows; run one or multiple flows at once.
-- **Semantic Intents** — High-level abstraction for user or system requests. Optional **typed names** via [OmegaEventName]/[OmegaIntentName] and [OmegaEvent.fromName]/[OmegaIntent.fromName] to avoid magic strings and ease refactors. See the [example](example/lib/omega/app_semantics.dart) for full usage (`AppEvent` / `AppIntent` enums).
+- **Semantic Intents** — High-level abstraction for user or system requests. Optional **typed names** via [OmegaEventName]/[OmegaIntentName] and [OmegaEvent.fromName]/[OmegaIntent.fromName] to avoid magic strings and ease refactors. **Typed payload when reading:** use the `payloadAs<T>()` extension on [OmegaEvent], [OmegaIntent], and [OmegaFlowExpression] to get a safely cast payload. See the [example](example/lib/omega/app_semantics.dart) for full usage (`AppEvent` / `AppIntent` enums).
 - **Persistence & restore** — Serialize [OmegaAppSnapshot] to JSON and restore on launch ([toJson]/[fromJson], [OmegaFlowManager.restoreFromSnapshot], optional [OmegaSnapshotStorage]).
+- **Typed routes** — Use `OmegaRoute.typed<T>` so the route builder receives the intent payload as `T?`; or `routeArguments<T>(context)` when you don't use typed. See the [example](example/lib/omega/omega_setup.dart) (home route with `LoginSuccessPayload`).
 - **CLI** — Scaffold setup and generate ecosystems (agent, flow, behavior, page) from the command line.
 
-**Full documentation:** The **[presentation/index.html](presentation/index.html)** web (in this repo) is the complete Omega documentation: architecture, **comparison (Omega vs BLoC vs Riverpod)** and when to choose each, CLI, flows, installation, inspector, and more. For a detailed technical description of each component, see **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**. For **when to choose Omega** and the full comparison table, see **[docs/COMPARATIVA.md](docs/COMPARATIVA.md)**. To test agents and flows without Flutter (unit tests), see **[docs/TESTING.md](docs/TESTING.md)**. For the long-term vision, see **[docs/ROADMAP.md](docs/ROADMAP.md)**.
+**Documentation:**  
+- **[docs/GUIA.md](docs/GUIA.md)** — What each Omega component does, with **code examples** (channel, event, intent, agent, flow, manager, scope, navigator, routes, persistence, inspector). Start here to see how everything fits together.  
+- **[Web documentation](http://yefersonsegura.com/proyects/omega/)** — Full doc online (architecture, API reference, comparison vs BLoC/Riverpod, CLI, installation, inspector, breadcrumbs, dark/light theme). Local copy: [presentation/index.html](presentation/index.html). Run `dart run omega_architecture:omega doc` to open the local file or the official site.  
+- **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)** — Technical reference for each component.  
+- **[docs/COMPARATIVA.md](docs/COMPARATIVA.md)** — When to choose Omega; full comparison table.  
+- **[docs/TESTING.md](docs/TESTING.md)** — Testing agents and flows without Flutter.  
+- **[docs/ROADMAP.md](docs/ROADMAP.md)** — Long-term vision.
 
 ## Core Concepts
 
@@ -192,18 +203,24 @@ To save app state and restore it when the user reopens the app:
 
 ## Example: Authentication flow
 
-A full example lives under `lib/examples/` and shows:
+A full example lives in the **`example/`** folder. Run it with `cd example && flutter run`. It shows:
 
-1. **UI** — Login screen that emits intents.
-2. **Flow** — Orchestrates login, navigation, and UI expressions.
-3. **Agent** — Performs login logic and emits success/error events.
-4. **Behavior** — Rules and reactions for the auth agent.
+1. **UI** — Login screen that emits intents with typed payload (`LoginCredentials`).
+2. **Flow** — Orchestrates login, reads payload with `payloadAs<LoginCredentials>()`, navigates to home with `OmegaIntent.fromName(AppIntent.navigateHome, payload: userData)`.
+3. **Agent** — Performs login logic, emits `LoginSuccessPayload` or `OmegaFailure`.
+4. **Behavior** — Rules that react to auth events/intents.
+5. **Typed route** — Home registered as `OmegaRoute.typed<LoginSuccessPayload>` so the screen receives the payload without casting.
 
 Relevant files:
 
-- [Main setup](lib/examples/omega_main_setup_example.dart)
-- [Auth flow](lib/examples/auth/auth_flow.dart)
-- [Login page](lib/examples/auth/ui/omega_login_page.dart)
+- [Omega setup (config, routes)](example/lib/omega/omega_setup.dart)
+- [Main entry](example/lib/main.dart)
+- [Auth flow](example/lib/auth/auth_flow.dart)
+- [Auth agent](example/lib/auth/auth_agent.dart)
+- [Login page](example/lib/auth/ui/auth_page.dart)
+- [Home (typed payload)](example/lib/home/home.dart)
+- [Models (LoginCredentials, LoginSuccessPayload)](example/lib/auth/models.dart)
+- [App semantics (AppEvent, AppIntent)](example/lib/omega/app_semantics.dart)
 
 ## Project structure
 

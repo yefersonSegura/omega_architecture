@@ -22,9 +22,12 @@ cd example && flutter run
 ## Estructura relevante
 
 - `lib/main.dart` — Punto de entrada, bootstrap, `OmegaScope`, activación del flow inicial y primera navegación.
-- `lib/omega/omega_setup.dart` — Config: agentes (Provider, Auth), flows (Provider, Auth), rutas (login, home), `initialFlowId`.
+- `lib/omega/omega_setup.dart` — Config: agentes, flows, rutas. **Ruta tipada:** `OmegaRoute.typed<LoginSuccessPayload>(id: "home", builder: (context, userData) => HomePage(userData: userData))` para que la vista reciba el payload sin castear.
 - `lib/omega/app_semantics.dart` — **Nombres tipados:** enums [AppEvent] y [AppIntent] que implementan [OmegaEventName]/[OmegaIntentName]. Se usan con `OmegaEvent.fromName` y `OmegaIntent.fromName` para evitar strings mágicos.
+- `lib/auth/models.dart` — **Payload tipado:** [LoginCredentials] (intent de login) y [LoginSuccessPayload] (evento de éxito). Se leen con la extensión `payloadAs<T>()` en el flow, agente y página.
 - `lib/auth/` — AuthFlow, AuthAgent, AuthBehavior, pantalla de login.
-- `lib/home/` — Pantalla Home.
+- `lib/home/` — HomePage recibe `LoginSuccessPayload? userData`; el flow navega con `OmegaIntent.fromName(AppIntent.navigateHome, payload: userData)`.
 
 Este ejemplo sirve como referencia para integrar Omega en una app real: config, flow inicial, navegación por intents y reacción a eventos entre flow y agente.
+
+**Más documentación:** En el repo del paquete, [docs/GUIA.md](https://github.com/yefersonSegura/omega_architecture/blob/main/docs/GUIA.md) explica cada función de Omega con ejemplos (canal, eventos, intents, agentes, flows, rutas tipadas, persistencia, inspector).

@@ -1,12 +1,12 @@
 import 'omega_flow_snapshot.dart';
 
-/// Contrato opcional para guardar y cargar [OmegaAppSnapshot] (disco, backend, etc.).
+/// Optional contract to save and load [OmegaAppSnapshot] (disk, backend, etc.).
 ///
-/// La app puede implementar esta interfaz con `shared_preferences`, `path_provider` + File,
-/// o un backend. Al iniciar, cargar con [load] y llamar a [OmegaFlowManager.restoreFromSnapshot].
-/// Al cerrar o en puntos clave, obtener [OmegaFlowManager.getAppSnapshot] y llamar a [save].
+/// The app can implement this with `shared_preferences`, `path_provider` + File,
+/// or a backend. On startup, load with [load] and call [OmegaFlowManager.restoreFromSnapshot].
+/// On close or at key points, get [OmegaFlowManager.getAppSnapshot] and call [save].
 ///
-/// Ejemplo con archivo (requiere `path_provider` en el proyecto):
+/// Example with file (requires `path_provider` in the project):
 /// ```dart
 /// class FileSnapshotStorage implements OmegaSnapshotStorage {
 ///   FileSnapshotStorage(this.path);
@@ -26,9 +26,9 @@ import 'omega_flow_snapshot.dart';
 /// }
 /// ```
 abstract class OmegaSnapshotStorage {
-  /// Guarda el snapshot (p. ej. en disco o en la nube).
+  /// Saves the snapshot (e.g. to disk or cloud).
   Future<void> save(OmegaAppSnapshot snapshot);
 
-  /// Carga el último snapshot guardado, o null si no hay ninguno.
+  /// Loads the last saved snapshot, or null if none.
   Future<OmegaAppSnapshot?> load();
 }

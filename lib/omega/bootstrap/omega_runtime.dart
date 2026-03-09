@@ -4,19 +4,18 @@ import 'package:omega_architecture/omega/core/channel/omega_channel.dart';
 import 'package:omega_architecture/omega/flows/omega_flow_manager.dart';
 import 'package:omega_architecture/omega/ui/navigation/omega_navigator.dart';
 
-/// [OmegaRuntime] es el resultado del arranque: canal, flow manager, protocolo, navegador y flow inicial.
+/// Result of bootstrap: channel, flowManager, protocol, navigator and optionally [initialFlowId].
 ///
-/// Se obtiene con [OmegaRuntime.bootstrap]. La app usa [channel], [flowManager], [navigator]
-/// y opcionalmente [initialFlowId] para montar [OmegaScope] y [MaterialApp], y activar el flow inicial.
+/// **Why use it:** Single creation point; agents, flows and navigator share the same channel.
+///
+/// **Example:** `final r = OmegaRuntime.bootstrap((c) => OmegaConfig(channel: c, agents: [...], flows: [...], routes: [...], initialFlowId: "authFlow"));` Then wrap the app with OmegaScope and assign r.navigator.navigatorKey to MaterialApp.
 class OmegaRuntime {
   final OmegaChannel channel;
   final OmegaFlowManager flowManager;
   final OmegaAgentProtocol protocol;
   final OmegaNavigator navigator;
 
-  /// Id del flow a activar al inicio, si se definió en [OmegaConfig.initialFlowId].
-  /// Úsalo en tu widget raíz (ej. en addPostFrameCallback) para activar
-  /// el flow inicial sin hardcodear su id.
+  /// Id of the flow to activate on startup. On first frame: flowManager.switchTo(initialFlowId).
   final String? initialFlowId;
 
   OmegaRuntime._(
@@ -27,11 +26,9 @@ class OmegaRuntime {
     this.initialFlowId,
   );
 
-  /// Inicializa el runtime de Omega a partir de una función que construye
-  /// el [OmegaConfig] usando el [OmegaChannel] interno.
+  /// Creates channel, config (with your createConfig), flowManager, protocol, navigator; registers agents, flows and routes; connects navigator to the channel.
   ///
-  /// De este modo, agentes y flows comparten SIEMPRE el mismo canal que
-  /// utiliza el [OmegaFlowManager] y el [OmegaNavigator].
+  /// **Example:** `OmegaRuntime.bootstrap((channel) => OmegaConfig(channel: channel, agents: [AuthAgent(...)], flows: [AuthFlow(channel)], routes: [...], initialFlowId: "authFlow"));`
   factory OmegaRuntime.bootstrap(
     OmegaConfig Function(OmegaChannel) createConfig,
   ) {
@@ -41,7 +38,7 @@ class OmegaRuntime {
     final protocol = OmegaAgentProtocol(channel);
     final navigator = OmegaNavigator();
 
-    // Agentes
+    // Agents
     for (final agent in config.agents) {
       protocol.register(agent);
     }
@@ -51,7 +48,7 @@ class OmegaRuntime {
       flowManager.registerFlow(flow);
     }
 
-    // Rutas
+    // Routes
     for (final route in config.routes) {
       navigator.registerRoute(route);
     }
