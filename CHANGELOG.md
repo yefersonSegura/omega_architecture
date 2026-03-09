@@ -1,3 +1,7 @@
+## 0.0.13
+
+- **Pub.dev:** README solo con enlaces https (documentación apunta a pub.dev API reference). CLI: cuerpo del `if` en `bin/omega.dart` envuelto en bloque para pasar el lint y recuperar puntos.
+
 ## 0.0.12
 
 - **Favicon:** Favicon SVG con símbolo Omega dibujado por path (sin depender de fuentes). Enlace en `presentation/index.html`.
