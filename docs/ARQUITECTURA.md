@@ -92,6 +92,8 @@ Omega es un framework **reactivo y basado en agentes** para Flutter. La lógica 
 
 **Ciclo de vida:** Llamar a `dispose()` para que deje de escuchar el canal.
 
+**Contratos (opcional):** Puedes declarar qué eventos e intents maneja el agente con [OmegaAgentContract] (override `contract`). En debug, Omega avisa si recibe algo no declarado. Referencia: **example** ([auth_agent.dart](https://github.com/yefersonSegura/omega_architecture/blob/main/example/lib/auth/auth_agent.dart)), [CONTRACTS.md](CONTRACTS.md).
+
 ---
 
 ### OmegaAgentBehaviorEngine
@@ -151,6 +153,8 @@ Omega es un framework **reactivo y basado en agentes** para Flutter. La lógica 
 **Qué hace:** Se suscribe al canal. Cuando está en `running`, recibe eventos globales y recibe intents (enrutados por el [OmegaFlowManager]). En `onEvent` y `onIntent` decides qué hacer: emitir expresiones, navegar (emitir un intent de navegación), pedir trabajo a un agente, etc. La UI escucha el stream `expressions` del flow para actualizarse.
 
 **Ciclo de vida:** Se activa con `flowManager.activate(id)` o `flowManager.switchTo(id)`. Se pausa, duerme o finaliza con los métodos del manager. Al finalizar, el flow cierra su stream de expresiones.
+
+**Contratos (opcional):** Puedes declarar qué eventos escucha el flow, qué intents acepta y qué tipos de expresión emite con [OmegaFlowContract] (override `contract`). En debug, Omega avisa en consola si llega algo no declarado. El **example** del paquete implementa contratos en [AuthFlow](https://github.com/yefersonSegura/omega_architecture/blob/main/example/lib/auth/auth_flow.dart) y [AuthAgent](https://github.com/yefersonSegura/omega_architecture/blob/main/example/lib/auth/auth_agent.dart); ver [CONTRACTS.md](CONTRACTS.md).
 
 ---
 

@@ -15,7 +15,7 @@ A reactive, agent-based architecture framework for Flutter applications.
 - **Semantic Intents** — High-level abstraction for user or system requests. Optional **typed names** via [OmegaEventName]/[OmegaIntentName] and [OmegaEvent.fromName]/[OmegaIntent.fromName] to avoid magic strings and ease refactors. **Typed payload when reading:** use the `payloadAs<T>()` extension on [OmegaEvent], [OmegaIntent], and [OmegaFlowExpression] to get a safely cast payload. See the [example](example/lib/omega/app_semantics.dart) for full usage (`AppEvent` / `AppIntent` enums).
 - **Persistence & restore** — Serialize [OmegaAppSnapshot] to JSON and restore on launch ([toJson]/[fromJson], [OmegaFlowManager.restoreFromSnapshot], optional [OmegaSnapshotStorage]).
 - **Typed routes** — Use `OmegaRoute.typed<T>` so the route builder receives the intent payload as `T?`; or `routeArguments<T>(context)` when you don't use typed. See the [example](example/lib/omega/omega_setup.dart) (home route with `LoginSuccessPayload`).
-- **Declarative contracts** — Optional [OmegaFlowContract] and [OmegaAgentContract] declare which events a flow listens to, which intents it accepts, and which expression types it emits (and for agents: events and intents). In **debug** mode Omega warns in the console when something is received or emitted that is not in the contract, so you can ensure the declared boundaries are respected. See [docs/CONTRACTS.md](docs/CONTRACTS.md).
+- **Declarative contracts** — Optional [OmegaFlowContract] and [OmegaAgentContract] declare which events a flow listens to, which intents it accepts, and which expression types it emits (and for agents: events and intents). In **debug** mode Omega warns in the console when something is received or emitted that is not in the contract. **Example:** The [example](example/) app implements contracts in [AuthFlow](example/lib/auth/auth_flow.dart) and [AuthAgent](example/lib/auth/auth_agent.dart); run `cd example && flutter run` to see them in action. See [docs/CONTRACTS.md](docs/CONTRACTS.md).
 - **CLI** — Scaffold setup and generate ecosystems (agent, flow, behavior, page) from the command line.
 
 **Documentation:**  
@@ -24,7 +24,7 @@ A reactive, agent-based architecture framework for Flutter applications.
 - **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)** — Technical reference for each component.  
 - **[docs/COMPARATIVA.md](docs/COMPARATIVA.md)** — When to choose Omega; full comparison table.  
 - **[docs/TESTING.md](docs/TESTING.md)** — Testing agents and flows without Flutter.  
-- **[docs/CONTRACTS.md](docs/CONTRACTS.md)** — Declarative contracts for flows and agents (events, intents, expression types); debug-time validation.
+- **[docs/CONTRACTS.md](docs/CONTRACTS.md)** — Declarative contracts for flows and agents (events, intents, expression types); debug-time validation. The [example](example/) app is the reference implementation (AuthFlow, AuthAgent).
 - **[docs/ROADMAP.md](docs/ROADMAP.md)** — Long-term vision.
 
 ## Core Concepts
@@ -217,7 +217,7 @@ OmegaAgentContract? get contract => OmegaAgentContract.fromTyped(
 );
 ```
 
-See **[docs/CONTRACTS.md](docs/CONTRACTS.md)** for full details and examples.
+**Reference:** The [example](example/) app implements contracts in [AuthFlow](example/lib/auth/auth_flow.dart) and [AuthAgent](example/lib/auth/auth_agent.dart)—run `cd example && flutter run` to try it. See **[docs/CONTRACTS.md](docs/CONTRACTS.md)** for full details.
 
 ### Lifecycle and dispose
 

@@ -329,18 +329,19 @@ if (kDebugMode)
 El proyecto incluye un **example** (carpeta `example/`) con login, navegación a home con payload tipado, rutas tipadas y uso de nombres tipados (AppEvent, AppIntent) y payloadAs. Archivos clave:
 
 - `example/lib/omega/omega_setup.dart` — Config, agentes, flows, rutas (incluida `OmegaRoute.typed<LoginSuccessPayload>` para home).
-- `example/lib/auth/auth_flow.dart` — Flow que reacciona a intents y eventos y navega con payload.
-- `example/lib/auth/auth_agent.dart` — Agente que hace login y emite éxito/error.
+- `example/lib/auth/auth_flow.dart` — Flow que reacciona a intents y eventos y navega con payload. **Implementa contrato** (`OmegaFlowContract`): eventos e intents declarados; en debug Omega avisa si llega algo no declarado.
+- `example/lib/auth/auth_agent.dart` — Agente que hace login y emite éxito/error. **Implementa contrato** (`OmegaAgentContract`). Referencia principal para ver contratos en uso.
 - `example/lib/auth/ui/auth_page.dart` — UI que emite intents y escucha expresiones.
 - `example/lib/home/home.dart` — Pantalla que recibe `LoginSuccessPayload?` por la ruta tipada.
 
-Para ejecutar: `cd example && flutter run`.
+Para ejecutar: `cd example && flutter run`. Para más sobre contratos: [CONTRACTS.md](CONTRACTS.md).
 
 ---
 
 ## Enlaces
 
 - [ARQUITECTURA.md](ARQUITECTURA.md) — Detalle técnico de cada componente.
+- [CONTRACTS.md](CONTRACTS.md) — Contratos declarativos (flows y agentes); el **example** es la referencia.
 - [TESTING.md](TESTING.md) — Cómo testear agentes y flows sin Flutter.
 - [COMPARATIVA.md](COMPARATIVA.md) — Cuándo elegir Omega frente a BLoC/Riverpod.
 - [README principal](../README.md) — Instalación, CLI y resumen.

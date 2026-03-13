@@ -7,6 +7,18 @@ class AuthFlow extends OmegaFlow {
   AuthFlow(OmegaChannel channel) : super(id: "authFlow", channel: channel);
 
   @override
+  OmegaFlowContract? get contract => OmegaFlowContract.fromTyped(
+        listenedEvents: [
+          AppEvent.authLoginStarted,
+          AppEvent.authLoginSuccess,
+          AppEvent.authLoginError,
+          AppEvent.authLogoutSuccess,
+        ],
+        acceptedIntents: [AppIntent.authLogin, AppIntent.authLogout],
+        emittedExpressionTypes: {'idle', 'loading', 'success', 'error', 'loggedOut'},
+      );
+
+  @override
   void onStart() {
     emitExpression("idle");
   }

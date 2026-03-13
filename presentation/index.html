@@ -1579,6 +1579,11 @@ scope.flowManager.handleIntent(...);</code></pre>
                         <p><strong>¿Para qué sirve?</strong> Documentar límites del flow/agente, detectar typos o nombres
                             equivocados en desarrollo y sentar base para modo strict o Inspector que muestre "qué espera
                             este flow". Es opcional: si no defines <code>contract</code>, todo sigue igual.</p>
+                        <p style="margin-top: 12px;"><strong>Ejemplo de referencia:</strong> La app <code>example/</code>
+                            del paquete implementa contratos en <strong>AuthFlow</strong> y <strong>AuthAgent</strong>. Ejecuta
+                            <code>cd example && flutter run</code> para ver login/logout con contratos; en debug, cualquier
+                            evento o intent no declarado mostrará un aviso en consola. Usa esa app como referencia al añadir
+                            contratos a tus flows y agentes.</p>
                     </div>
                     <h3 class="animate" style="font-size: 20px; margin-top: 24px;">Contrato de flow (<code>OmegaFlowContract</code>)</h3>
                     <p class="animate" style="margin-bottom: 12px;">Override <code>contract</code> en tu flow y devuelve
@@ -1604,7 +1609,8 @@ OmegaAgentContract? get contract => OmegaAgentContract.fromTyped(
 );</code></pre>
                     <p class="animate" style="margin-top: 20px; color: var(--text-dim); font-size: 14px;">
                         Conjuntos vacíos = sin restricción. La validación solo corre en <code>kDebugMode</code>; en
-                        release no hay impacto. Más en <code>docs/CONTRACTS.md</code>.
+                        release no hay impacto. Referencia completa: app <code>example/</code> (AuthFlow, AuthAgent) y
+                        <code>docs/CONTRACTS.md</code>.
                     </p>
                 </section>
 

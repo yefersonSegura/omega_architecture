@@ -8,6 +8,12 @@ class AuthAgent extends OmegaAgent {
   AuthAgent(OmegaChannel channel)
     : super(id: "Auth", channel: channel, behavior: AuthBehavior());
 
+  @override
+  OmegaAgentContract? get contract => OmegaAgentContract.fromTyped(
+        listenedEvents: [AppEvent.authLoginRequest, AppEvent.authLogoutRequest],
+        acceptedIntents: [AppIntent.authLogin, AppIntent.authLogout],
+      );
+
   String? token;
   Map<String, dynamic>? user;
 

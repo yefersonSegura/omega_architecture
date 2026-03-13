@@ -1681,6 +1681,11 @@ scope.flowManager.handleIntent(...);</code></pre>
                             in development, and lay the groundwork for strict mode or an Inspector that shows "what this
                             flow expects". It is optional: if you do not define <code>contract</code>, behavior is
                             unchanged.</p>
+                        <p style="margin-top: 12px;"><strong>Reference example:</strong> The package <code>example/</code>
+                            app implements contracts in <strong>AuthFlow</strong> and <strong>AuthAgent</strong>. Run
+                            <code>cd example && flutter run</code> to see login/logout with contracts; in debug, any
+                            event or intent not in the contract will trigger a console warning. Use that app as the main
+                            reference when adding contracts to your own flows and agents.</p>
                     </div>
                     <h3 class="animate" style="font-size: 20px; margin-top: 24px;">Flow contract (<code>OmegaFlowContract</code>)</h3>
                     <p class="animate" style="margin-bottom: 12px;">Override <code>contract</code> in your flow and
@@ -1707,7 +1712,8 @@ OmegaAgentContract? get contract => OmegaAgentContract.fromTyped(
 );</code></pre>
                     <p class="animate" style="margin-top: 20px; color: var(--text-dim); font-size: 14px;">
                         Empty sets mean no constraint. Validation runs only in <code>kDebugMode</code>; release builds
-                        are unaffected. See <code>docs/CONTRACTS.md</code> for more.
+                        are unaffected. Full reference: <code>example/</code> app (AuthFlow, AuthAgent) and
+                        <code>docs/CONTRACTS.md</code>.
                     </p>
                 </section>
 

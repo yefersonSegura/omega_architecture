@@ -2,6 +2,8 @@
 
 Contracts let you declare what each flow and agent is allowed to receive and emit. In **debug mode**, Omega prints a warning when a flow or agent receives an event or intent not listed in its contract, or when a flow emits an expression type not declared.
 
+**Reference example:** The package **`example/`** app implements contracts in [AuthFlow](https://github.com/yefersonSegura/omega_architecture/blob/main/example/lib/auth/auth_flow.dart) and [AuthAgent](https://github.com/yefersonSegura/omega_architecture/blob/main/example/lib/auth/auth_agent.dart). Run `cd example && flutter run` to see login/logout with contracts; in debug, any event or intent not in the contract will trigger a console warning. Use that app as the main reference when adding contracts to your own flows and agents.
+
 ## Why use contracts
 
 - **Documentation**: Each flow/agent explicitly lists the events it listens to and the intents it accepts.
