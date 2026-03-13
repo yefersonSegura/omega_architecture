@@ -2,6 +2,8 @@
 
 Este documento describe **qué hace cada parte** del framework Omega para que quien lo use sepa cómo encaja todo. Para una **guía con ejemplos de código** de cada componente, ver **[GUIA.md](GUIA.md)**.
 
+**App de ejemplo en producción (arquitectura Omega completa):** [Kashira](http://yefersonsegura.com/projects/kashira/) — http://yefersonsegura.com/projects/kashira/
+
 ---
 
 ## Visión general
