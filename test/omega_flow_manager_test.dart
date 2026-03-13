@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:omega_architecture/omega/flows/omega_flow_context.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 
 class DummyFlow extends OmegaFlow {
@@ -77,40 +76,43 @@ void main() {
     channel.dispose();
   });
 
-  test("FlowManager getFlowSnapshot and getAppSnapshot return correct state", () {
-    final channel = OmegaChannel();
-    final manager = OmegaFlowManager(channel: channel);
-    final flow = DummyFlow(channel);
-    manager.registerFlow(flow);
+  test(
+    "FlowManager getFlowSnapshot and getAppSnapshot return correct state",
+    () {
+      final channel = OmegaChannel();
+      final manager = OmegaFlowManager(channel: channel);
+      final flow = DummyFlow(channel);
+      manager.registerFlow(flow);
 
-    expect(manager.getFlowSnapshot("dummy"), isNotNull);
-    expect(manager.getFlowSnapshot("dummy")!.flowId, "dummy");
-    expect(manager.getFlowSnapshot("dummy")!.state, OmegaFlowState.idle);
-    expect(manager.getFlowSnapshot("dummy")!.memory, isEmpty);
-    expect(manager.getFlowSnapshot("dummy")!.lastExpression, isNull);
+      expect(manager.getFlowSnapshot("dummy"), isNotNull);
+      expect(manager.getFlowSnapshot("dummy")!.flowId, "dummy");
+      expect(manager.getFlowSnapshot("dummy")!.state, OmegaFlowState.idle);
+      expect(manager.getFlowSnapshot("dummy")!.memory, isEmpty);
+      expect(manager.getFlowSnapshot("dummy")!.lastExpression, isNull);
 
-    expect(manager.getFlowSnapshot("nonexistent"), isNull);
+      expect(manager.getFlowSnapshot("nonexistent"), isNull);
 
-    manager.activate("dummy");
-    flow.memory["key"] = "value";
-    flow.emitExpression("loading");
+      manager.activate("dummy");
+      flow.memory["key"] = "value";
+      flow.emitExpression("loading");
 
-    final snap = manager.getFlowSnapshot("dummy")!;
-    expect(snap.state, OmegaFlowState.running);
-    expect(snap.memory["key"], "value");
-    expect(snap.lastExpression?.type, "loading");
+      final snap = manager.getFlowSnapshot("dummy")!;
+      expect(snap.state, OmegaFlowState.running);
+      expect(snap.memory["key"], "value");
+      expect(snap.lastExpression?.type, "loading");
 
-    final appSnap = manager.getAppSnapshot();
-    expect(appSnap.flows.length, 1);
-    expect(appSnap.flows.first.flowId, "dummy");
-    expect(appSnap.activeFlowId, isNull);
+      final appSnap = manager.getAppSnapshot();
+      expect(appSnap.flows.length, 1);
+      expect(appSnap.flows.first.flowId, "dummy");
+      expect(appSnap.activeFlowId, isNull);
 
-    manager.switchTo("dummy");
-    expect(manager.getAppSnapshot().activeFlowId, "dummy");
+      manager.switchTo("dummy");
+      expect(manager.getAppSnapshot().activeFlowId, "dummy");
 
-    manager.dispose();
-    channel.dispose();
-  });
+      manager.dispose();
+      channel.dispose();
+    },
+  );
 
   test("FlowManager restoreFromSnapshot restores memory and active flow", () {
     final channel = OmegaChannel();
