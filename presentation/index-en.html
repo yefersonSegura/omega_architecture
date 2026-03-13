@@ -111,6 +111,7 @@
             <a href="#lifecycle"><i class="fa fa-power-off"></i> Lifecycle / dispose</a>
             <a href="#structure"><i class="fa fa-folder-open-o"></i> Project structure</a>
             <a href="#contracts"><i class="fa fa-file-text-o"></i> Contracts</a>
+            <a href="#time-travel"><i class="fa fa-backward"></i> Time-travel</a>
             <h3>3. API Reference — Core</h3>
             <a href="#api-core"><i class="fa fa-bolt"></i> OmegaChannel</a>
             <a href="#api-event"><i class="fa fa-bell"></i> OmegaEvent</a>
@@ -1714,6 +1715,33 @@ OmegaAgentContract? get contract => OmegaAgentContract.fromTyped(
                         Empty sets mean no constraint. Validation runs only in <code>kDebugMode</code>; release builds
                         are unaffected. Full reference: <code>example/</code> app (AuthFlow, AuthAgent) and
                         <code>docs/CONTRACTS.md</code>.
+                    </p>
+                </section>
+
+                <!-- Time-travel: record & replay -->
+                <section id="time-travel" class="slide code-slide">
+                    <span class="section-tag">DevTools</span>
+                    <h2 class="animate">Time-travel <span class="gradient-text">(record &amp; replay)</span></h2>
+                    <p class="subtitle animate" style="margin-bottom: 20px;">
+                        You can <strong>record</strong> a session (channel events + initial snapshot) and <strong>replay</strong> it
+                        to go back to a previous moment: restore the snapshot and re-emit events up to an index. Useful for debugging, demos, or auditing.
+                    </p>
+                    <div class="highlight-box animate" style="margin-bottom: 24px;">
+                        <p><strong>Concepts:</strong> <em>Record</em> — on start an initial snapshot is saved and each emitted event is appended to a list. <em>Replay</em> — restore the snapshot and re-emit events (or only up to an index) on the channel so the app is in the state it had at that step (time-travel).</p>
+                    </div>
+                    <h3 class="animate" style="font-size: 20px; margin-top: 24px;">Basic usage</h3>
+                    <pre class="glass animate"><code>final recorder = OmegaTimeTravelRecorder();
+recorder.startRecording(channel, flowManager);
+// ... user interacts, events are recorded ...
+final session = recorder.stopRecording();
+
+// Replay all
+recorder.replay(session, channel, flowManager);
+
+// Go to step 5 (time-travel)
+recorder.replay(session, channel, flowManager, upToIndex: 5);</code></pre>
+                    <p class="animate" style="margin-top: 16px; color: var(--text-dim); font-size: 14px;">
+                        <code>OmegaRecordedSession</code> holds <code>initialSnapshot</code> and <code>events</code>. During replay the recorder does not record again. See <code>docs/TIME_TRAVEL.md</code>.
                     </p>
                 </section>
 

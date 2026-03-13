@@ -35,6 +35,10 @@ export 'omega/agents/protocol/omega_agent_protocol.dart';
 // CONTRACTS
 export 'omega/contracts/omega_flow_contract.dart';
 
+// TIME-TRAVEL (record & replay)
+export 'omega/time_travel/omega_recorded_session.dart';
+export 'omega/time_travel/omega_time_travel_recorder.dart';
+
 // FLOWS
 export 'omega/flows/omega_flow.dart';
 export 'omega/flows/omega_flow_manager.dart';

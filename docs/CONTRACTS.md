@@ -81,3 +81,4 @@ Same rule: empty sets = no constraint. Warnings only in debug.
 
 - You can omit `contract` (return `null`): no validation, behavior as before.
 - Contracts are optional and additive; existing Omega apps work without any change.
+- **Performance:** The base class caches the contract on first use (one evaluation per flow/agent). Prefer returning a const or a `static final` instance from your getter so the getter is cheap; see the `example/` app (AuthFlow, AuthAgent) which use `static final _contract = OmegaFlowContract.fromTyped(...)`.

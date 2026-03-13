@@ -21,7 +21,7 @@ cd example && flutter run
 
 ## Estructura relevante
 
-- `lib/main.dart` — Punto de entrada, bootstrap, `OmegaScope`, activación del flow inicial y primera navegación.
+- `lib/main.dart` — Punto de entrada, bootstrap, `OmegaScope`, activación del flow inicial y primera navegación. En **debug**: botón **Time-travel** (icono historia) en la AppBar abre un panel para grabar una sesión (eventos del canal + snapshot inicial) y reproducir hasta un paso; ver [docs/TIME_TRAVEL.md](https://github.com/yefersonSegura/omega_architecture/blob/main/docs/TIME_TRAVEL.md).
 - `lib/omega/omega_setup.dart` — Config: agentes, flows, rutas. **Ruta tipada:** `OmegaRoute.typed<LoginSuccessPayload>(id: "home", builder: (context, userData) => HomePage(userData: userData))` para que la vista reciba el payload sin castear.
 - `lib/omega/app_semantics.dart` — **Nombres tipados:** enums [AppEvent] y [AppIntent] que implementan [OmegaEventName]/[OmegaIntentName]. Se usan con `OmegaEvent.fromName` y `OmegaIntent.fromName` para evitar strings mágicos.
 - `lib/auth/models.dart` — **Payload tipado:** [LoginCredentials] (intent de login) y [LoginSuccessPayload] (evento de éxito). Se leen con la extensión `payloadAs<T>()` en el flow, agente y página.

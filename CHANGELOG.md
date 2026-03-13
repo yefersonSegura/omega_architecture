@@ -1,6 +1,7 @@
 ## 0.0.14
 
 - **Contratos declarativos:** [OmegaFlowContract] y [OmegaAgentContract] para declarar qué eventos escucha un flow, qué intents acepta y qué tipos de expresión emite (y para agentes: eventos e intents). En modo debug Omega avisa en consola cuando se recibe o emite algo no declarado. Override opcional `contract` en [OmegaFlow] y [OmegaAgent]; conjuntos vacíos = sin restricción. Factory `fromTyped` para usar enums [OmegaEventName]/[OmegaIntentName].
+- **Time-travel:** [OmegaTimeTravelRecorder] graba eventos del canal y un snapshot inicial; [OmegaRecordedSession] los guarda. `replay(session, channel, flowManager, upToIndex: n)` restaura el snapshot y reemite eventos hasta el índice n para depurar o reproducir una sesión. Ver [docs/TIME_TRAVEL.md](docs/TIME_TRAVEL.md). Web (presentation): sección "Time-travel" en español e inglés.
 - **Docs:** [docs/CONTRACTS.md](docs/CONTRACTS.md) con guía y ejemplos. README: feature, enlace a CONTRACTS.md y sección de uso. Web (presentation): sección "Contratos" en español e inglés.
 
 ## 0.0.13

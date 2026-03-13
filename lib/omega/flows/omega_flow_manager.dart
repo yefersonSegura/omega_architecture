@@ -136,9 +136,9 @@ class OmegaFlowManager {
   /// **Why use it:** After login you want only AuthFlow (or HomeFlow) to be active.
   /// **Example:** `flowManager.switchTo("authFlow");` on startup. Idempotent.
   bool switchTo(String id) {
-    if (!_flows.containsKey(id)) return false;
+    final target = _flows[id];
+    if (target == null) return false;
 
-    final target = _flows[id]!;
     final alreadyOnlyRunning =
         target.state == OmegaFlowState.running &&
         _flows.values.every((f) =>

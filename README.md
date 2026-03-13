@@ -16,6 +16,7 @@ A reactive, agent-based architecture framework for Flutter applications.
 - **Persistence & restore** — Serialize [OmegaAppSnapshot] to JSON and restore on launch ([toJson]/[fromJson], [OmegaFlowManager.restoreFromSnapshot], optional [OmegaSnapshotStorage]).
 - **Typed routes** — Use `OmegaRoute.typed<T>` so the route builder receives the intent payload as `T?`; or `routeArguments<T>(context)` when you don't use typed. See the [example](example/lib/omega/omega_setup.dart) (home route with `LoginSuccessPayload`).
 - **Declarative contracts** — Optional [OmegaFlowContract] and [OmegaAgentContract] declare which events a flow listens to, which intents it accepts, and which expression types it emits (and for agents: events and intents). In **debug** mode Omega warns in the console when something is received or emitted that is not in the contract. **Example:** The [example](example/) app implements contracts in [AuthFlow](example/lib/auth/auth_flow.dart) and [AuthAgent](example/lib/auth/auth_agent.dart); run `cd example && flutter run` to see them in action. See [docs/CONTRACTS.md](docs/CONTRACTS.md).
+- **Time-travel** — [OmegaTimeTravelRecorder] records channel events and an initial snapshot; [OmegaRecordedSession] holds them. Replay a session (or replay up to an event index) to restore state and re-emit events for debugging or demos. See [docs/TIME_TRAVEL.md](docs/TIME_TRAVEL.md).
 - **CLI** — Scaffold setup and generate ecosystems (agent, flow, behavior, page) from the command line.
 
 **Documentation:**  
@@ -25,6 +26,7 @@ A reactive, agent-based architecture framework for Flutter applications.
 - **[docs/COMPARATIVA.md](docs/COMPARATIVA.md)** — When to choose Omega; full comparison table.  
 - **[docs/TESTING.md](docs/TESTING.md)** — Testing agents and flows without Flutter.  
 - **[docs/CONTRACTS.md](docs/CONTRACTS.md)** — Declarative contracts for flows and agents (events, intents, expression types); debug-time validation. The [example](example/) app is the reference implementation (AuthFlow, AuthAgent).
+- **[docs/TIME_TRAVEL.md](docs/TIME_TRAVEL.md)** — Record and replay sessions; time-travel to a previous event index for debugging or demos.
 - **[docs/ROADMAP.md](docs/ROADMAP.md)** — Long-term vision.
 
 ## Core Concepts

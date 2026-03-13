@@ -118,7 +118,7 @@ test("Flow receiveIntent emits expression when running", () async {
 - **FlowManager:** Registra flows, activa con `activate(id)` o `switchTo(id)`, envía intents con `handleIntent(OmegaIntent)` y comprueba que el flow activo reciba la intención (p. ej. mediante una variable en el flow de prueba).
 - **Snapshots:** Tras activar un flow y emitir expresiones o escribir en `flow.memory`, llama a `manager.getFlowSnapshot(id)` o `manager.getAppSnapshot()` y comprueba `state`, `memory` y `lastExpression`.
 
-Los tests en `test/omega_flow_manager_test.dart` y `test/omega_flow_test.dart` son referencia.
+Los tests en `test/omega_flow_manager_test.dart`, `test/omega_flow_test.dart` y `test/omega_contracts_test.dart` (contratos: accept/allow, cache, que el flow siga procesando con contrato) son referencia.
 
 ---
 
@@ -131,5 +131,8 @@ Los tests en `test/omega_flow_manager_test.dart` y `test/omega_flow_test.dart` s
 | Flow emite expresión  | `flow.start()`, `flow.receiveIntent(...)`, `expressions.listen` + assert | Sí          |
 | FlowManager enruta   | `manager.registerFlow`, `activate`/`switchTo`, `handleIntent` + assert en el flow | Sí          |
 | Snapshot              | `flow.getSnapshot()` o `manager.getAppSnapshot()` + assert campos | Sí          |
+| Time-travel record/replay | `OmegaTimeTravelRecorder.startRecording`, emit events, `stopRecording`, `replay(session, upToIndex: n)` + assert session length y que replay no graba | Sí          |
+
+Los tests de time-travel están en `test/omega_time_travel_test.dart`. Tras emitir eventos en un test, usa `await Future.delayed(Duration.zero)` para que el stream entregue antes de `stopRecording()`.
 
 No necesitas `runApp` ni widgets para cubrir la lógica de negocio de agentes y flows.

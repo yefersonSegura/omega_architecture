@@ -51,7 +51,18 @@ abstract class OmegaAgent {
 
   /// Optional declarative contract: events and intents this agent is declared to handle.
   /// In debug mode Omega warns when the agent receives something not in the contract. Override to set.
+  /// Cached on first access so prefer returning a const or stable instance.
   OmegaAgentContract? get contract => null;
+
+  OmegaAgentContract? _contractCache;
+  bool _contractCacheComputed = false;
+
+  OmegaAgentContract? get _cachedContract {
+    if (_contractCacheComputed) return _contractCache;
+    _contractCacheComputed = true;
+    _contractCache = contract;
+    return _contractCache;
+  }
 
   /// Cleans up resources and cancels subscriptions.
   void dispose() {
@@ -78,7 +89,7 @@ abstract class OmegaAgent {
 
   void _handleEvent(OmegaEvent event) {
     if (kDebugMode) {
-      final c = contract;
+      final c = _cachedContract;
       if (c != null && !c.acceptsEvent(event.name)) {
         debugPrint(
           'OmegaAgent[$id]: received event "${event.name}" not in contract (listened: ${c.listenedEventNames}).',
@@ -97,7 +108,7 @@ abstract class OmegaAgent {
   /// **Example:** Flow receives intent "auth.login"; calls agent.receiveIntent(intent); agent performs login and emits events.
   void receiveIntent(OmegaIntent intent) {
     if (kDebugMode) {
-      final c = contract;
+      final c = _cachedContract;
       if (c != null && !c.acceptsIntent(intent.name)) {
         debugPrint(
           'OmegaAgent[$id]: received intent "${intent.name}" not in contract (accepted: ${c.acceptedIntentNames}).',

@@ -6,13 +6,16 @@ import 'models.dart';
 
 class AuthAgent extends OmegaAgent {
   AuthAgent(OmegaChannel channel)
-    : super(id: "Auth", channel: channel, behavior: AuthBehavior());
+      : super(id: "Auth", channel: channel, behavior: AuthBehavior());
+
+  static final _contract = OmegaAgentContract.fromTyped(
+    agentId: 'Auth',
+    listenedEvents: [AppEvent.authLoginRequest, AppEvent.authLogoutRequest],
+    acceptedIntents: [AppIntent.authLogin, AppIntent.authLogout],
+  );
 
   @override
-  OmegaAgentContract? get contract => OmegaAgentContract.fromTyped(
-        listenedEvents: [AppEvent.authLoginRequest, AppEvent.authLogoutRequest],
-        acceptedIntents: [AppIntent.authLogin, AppIntent.authLogout],
-      );
+  OmegaAgentContract? get contract => _contract;
 
   String? token;
   Map<String, dynamic>? user;

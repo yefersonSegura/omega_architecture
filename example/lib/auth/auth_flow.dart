@@ -6,17 +6,20 @@ import 'models.dart';
 class AuthFlow extends OmegaFlow {
   AuthFlow(OmegaChannel channel) : super(id: "authFlow", channel: channel);
 
+  static final _contract = OmegaFlowContract.fromTyped(
+    flowId: 'authFlow',
+    listenedEvents: [
+      AppEvent.authLoginStarted,
+      AppEvent.authLoginSuccess,
+      AppEvent.authLoginError,
+      AppEvent.authLogoutSuccess,
+    ],
+    acceptedIntents: [AppIntent.authLogin, AppIntent.authLogout],
+    emittedExpressionTypes: {'idle', 'loading', 'success', 'error', 'loggedOut'},
+  );
+
   @override
-  OmegaFlowContract? get contract => OmegaFlowContract.fromTyped(
-        listenedEvents: [
-          AppEvent.authLoginStarted,
-          AppEvent.authLoginSuccess,
-          AppEvent.authLoginError,
-          AppEvent.authLogoutSuccess,
-        ],
-        acceptedIntents: [AppIntent.authLogin, AppIntent.authLogout],
-        emittedExpressionTypes: {'idle', 'loading', 'success', 'error', 'loggedOut'},
-      );
+  OmegaFlowContract? get contract => _contract;
 
   @override
   void onStart() {

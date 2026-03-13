@@ -46,14 +46,27 @@ abstract class OmegaFlow {
 
   OmegaFlowExpression? _lastExpression;
 
+  StreamSubscription<OmegaEvent>? _channelSubscription;
+
   OmegaFlow({required this.id, required this.channel}) {
-    channel.events.listen(_handleEvent);
+    _channelSubscription = channel.events.listen(_handleEvent);
   }
 
   /// Optional declarative contract: events listened, intents accepted, expression types emitted.
   /// When set, in debug mode Omega warns if the flow receives or emits something not declared.
   /// Override in subclasses to declare contracts. Default is null (no validation).
+  /// Cached on first access so prefer returning a const or stable instance.
   OmegaFlowContract? get contract => null;
+
+  OmegaFlowContract? _contractCache;
+  bool _contractCacheComputed = false;
+
+  OmegaFlowContract? get _cachedContract {
+    if (_contractCacheComputed) return _contractCache;
+    _contractCacheComputed = true;
+    _contractCache = contract;
+    return _contractCache;
+  }
 
   // -----------------------------------------------------------
   // 1. Lifecycle
@@ -84,10 +97,13 @@ abstract class OmegaFlow {
     onPause();
   }
 
-  /// Ends the flow and closes its streams.
+  /// Ends the flow and closes its streams. Unsubscribes from the channel so no further events are delivered.
   void end() {
+    if (state == OmegaFlowState.ended) return;
     state = OmegaFlowState.ended;
     onEnd();
+    _channelSubscription?.cancel();
+    _channelSubscription = null;
     _expressions.close();
   }
 
@@ -106,7 +122,7 @@ abstract class OmegaFlow {
     if (state != OmegaFlowState.running) return;
 
     if (kDebugMode) {
-      final c = contract;
+      final c = _cachedContract;
       if (c != null && !c.acceptsEvent(event.name)) {
         debugPrint(
           'OmegaFlow[$id]: received event "${event.name}" not in contract (listened: ${c.listenedEventNames}).',
@@ -131,7 +147,7 @@ abstract class OmegaFlow {
     if (state != OmegaFlowState.running) return;
 
     if (kDebugMode) {
-      final c = contract;
+      final c = _cachedContract;
       if (c != null && !c.acceptsIntent(intent.name)) {
         debugPrint(
           'OmegaFlow[$id]: received intent "${intent.name}" not in contract (accepted: ${c.acceptedIntentNames}).',
@@ -157,7 +173,7 @@ abstract class OmegaFlow {
   /// **Example:** `emitExpression("loading");` then `emitExpression("success", payload: user);`
   void emitExpression(String type, {dynamic payload}) {
     if (kDebugMode) {
-      final c = contract;
+      final c = _cachedContract;
       if (c != null && !c.allowsExpression(type)) {
         debugPrint(
           'OmegaFlow[$id]: emitted expression type "$type" not in contract (allowed: ${c.emittedExpressionTypes}).',
