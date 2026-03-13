@@ -12,15 +12,15 @@ import 'omega_scope.dart';
 /// Default number of recent events shown by the inspector.
 const int kOmegaInspectorDefaultEventLimit = 30;
 
-// Inspector visual theme (modern, high contrast).
-const Color _kInspectorPrimary = Color(0xFF1565C0);
-const Color _kInspectorPrimaryDark = Color(0xFF0D47A1);
-const Color _kInspectorSurface = Color(0xFFF5F7FA);
-const Color _kInspectorCard = Color(0xFFFFFFFF);
-const Color _kInspectorText = Color(0xFF1A237E);
-const Color _kInspectorTextMuted = Color(0xFF546E7A);
-const double _kInspectorRadius = 16.0;
-const double _kCardRadius = 12.0;
+// Inspector visual theme: mezcla de minimal + dashboard.
+const Color _kInspectorPrimary = Color(0xFF2962FF); // Azul más suave, estilo DevTools.
+const Color _kInspectorPrimaryDark = Color(0xFF1743B3);
+const Color _kInspectorSurface = Color(0xFFF3F4F8); // Gris muy claro, casi sin ruido.
+const Color _kInspectorCard = Color(0xFFFAFAFC);
+const Color _kInspectorText = Color(0xFF1F2937);
+const Color _kInspectorTextMuted = Color(0xFF6B7280);
+const double _kInspectorRadius = 14.0;
+const double _kCardRadius = 10.0;
 
 /// Minimal inspection panel for Omega: recent channel events and flow state.
 ///
@@ -136,8 +136,8 @@ class _OmegaInspectorState extends State<OmegaInspector> {
     }
 
     return Material(
-      elevation: 12,
-      shadowColor: Colors.black26,
+      elevation: 8,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
       borderRadius: BorderRadius.circular(_kInspectorRadius),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(_kInspectorRadius),
@@ -160,9 +160,10 @@ class _OmegaInspectorState extends State<OmegaInspector> {
                       flex: 2,
                       child: Container(
                         decoration: BoxDecoration(
+                          color: Colors.white,
                           border: Border(
                             right: BorderSide(
-                              color: Colors.black.withValues(alpha: 0.06),
+                              color: Colors.black.withValues(alpha: 0.05),
                               width: 1,
                             ),
                           ),
@@ -176,9 +177,12 @@ class _OmegaInspectorState extends State<OmegaInspector> {
                     // Right: flows / state
                     Expanded(
                       flex: 3,
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(12),
-                        child: _buildFlowsSection(),
+                      child: Container(
+                        color: _kInspectorSurface,
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(12),
+                          child: _buildFlowsSection(),
+                        ),
                       ),
                     ),
                   ],
@@ -194,18 +198,14 @@ class _OmegaInspectorState extends State<OmegaInspector> {
   Widget _buildHeader() {
     return Container(
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_kInspectorPrimary, _kInspectorPrimaryDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: _kInspectorPrimaryDark,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(8)),
             child: const Icon(Icons.insights, color: Colors.white, size: 20),
           ),
           const SizedBox(width: 10),
@@ -241,7 +241,7 @@ class _OmegaInspectorState extends State<OmegaInspector> {
             const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(color: _kInspectorPrimary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
               child: Text(subtitle, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _kInspectorPrimary)),
             ),
           ],
@@ -282,7 +282,7 @@ class _OmegaInspectorState extends State<OmegaInspector> {
       decoration: BoxDecoration(
         color: _kInspectorCard,
         borderRadius: BorderRadius.circular(_kCardRadius),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+        border: Border.all(color: Colors.black.withValues(alpha: 0.03)),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(_kCardRadius),
@@ -363,7 +363,7 @@ class _OmegaInspectorState extends State<OmegaInspector> {
       decoration: BoxDecoration(
         color: _kInspectorCard,
         borderRadius: BorderRadius.circular(_kCardRadius),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+        border: Border.all(color: Colors.black.withValues(alpha: 0.03)),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(_kCardRadius),

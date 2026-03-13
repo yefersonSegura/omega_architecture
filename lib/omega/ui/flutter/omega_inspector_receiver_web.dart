@@ -11,13 +11,13 @@ import 'package:web/web.dart' as web;
 const String _kChannelName = 'omega_inspector';
 
 // Visual theme (aligned with omega_inspector.dart).
-const Color _kInspectorPrimary = Color(0xFF1565C0);
-const Color _kInspectorPrimaryDark = Color(0xFF0D47A1);
-const Color _kInspectorSurface = Color(0xFFF5F7FA);
-const Color _kInspectorCard = Color(0xFFFFFFFF);
-const Color _kInspectorText = Color(0xFF1A237E);
-const Color _kInspectorTextMuted = Color(0xFF546E7A);
-const double _kCardRadius = 12.0;
+const Color _kInspectorPrimary = Color(0xFF2962FF);
+const Color _kInspectorPrimaryDark = Color(0xFF1743B3);
+const Color _kInspectorSurface = Color(0xFFF3F4F8);
+const Color _kInspectorCard = Color(0xFFFAFAFC);
+const Color _kInspectorText = Color(0xFF1F2937);
+const Color _kInspectorTextMuted = Color(0xFF6B7280);
+const double _kCardRadius = 10.0;
 
 /// In the window opened with ?omega_inspector=1, this widget listens to BroadcastChannel and displays the inspector.
 class OmegaInspectorReceiver extends StatefulWidget {
@@ -144,11 +144,7 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
   Widget _buildHeader() {
     return Container(
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_kInspectorPrimary, _kInspectorPrimaryDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: _kInspectorPrimaryDark,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       child: Row(
@@ -223,7 +219,7 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
       decoration: BoxDecoration(
         color: _kInspectorCard,
         borderRadius: BorderRadius.circular(_kCardRadius),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+        border: Border.all(color: Colors.black.withValues(alpha: 0.03)),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(_kCardRadius),
@@ -302,7 +298,7 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
       decoration: BoxDecoration(
         color: _kInspectorCard,
         borderRadius: BorderRadius.circular(_kCardRadius),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+        border: Border.all(color: Colors.black.withValues(alpha: 0.03)),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(_kCardRadius),
