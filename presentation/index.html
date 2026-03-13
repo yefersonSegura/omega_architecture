@@ -110,6 +110,7 @@
             <a href="#usage-flows"><i class="fa fa-refresh"></i> Ciclo de vida del flow</a>
             <a href="#lifecycle"><i class="fa fa-power-off"></i> Ciclo de vida / dispose</a>
             <a href="#structure"><i class="fa fa-folder-open-o"></i> Estructura del proyecto</a>
+            <a href="#contracts"><i class="fa fa-file-text-o"></i> Contratos</a>
             <h3>3. API Reference — Core</h3>
             <a href="#api-core"><i class="fa fa-bolt"></i> OmegaChannel</a>
             <a href="#api-event"><i class="fa fa-bell"></i> OmegaEvent</a>
@@ -1562,6 +1563,49 @@ scope.flowManager.handleIntent(...);</code></pre>
 │   └── bootstrap/     # Config, runtime
 ├── example/           # Ejemplo completo
 └── omega_architecture.dart  # Exportaciones públicas</code></pre>
+                </section>
+
+                <!-- Contratos (declarative schemas) -->
+                <section id="contracts" class="slide code-slide">
+                    <span class="section-tag">Documentación</span>
+                    <h2 class="animate">Contratos <span class="gradient-text">declarativos</span></h2>
+                    <p class="subtitle animate" style="margin-bottom: 20px;">
+                        Un <strong>contrato</strong> declara qué eventos escucha un flow, qué intents acepta y qué tipos
+                        de expresión emite (y lo mismo para agentes: eventos e intents). En modo <strong>debug</strong>,
+                        Omega avisa en consola cuando llega o se emite algo no declarado; así aseguras que se cumplan los
+                        datos que definiste.
+                    </p>
+                    <div class="highlight-box animate" style="margin-bottom: 24px;">
+                        <p><strong>¿Para qué sirve?</strong> Documentar límites del flow/agente, detectar typos o nombres
+                            equivocados en desarrollo y sentar base para modo strict o Inspector que muestre "qué espera
+                            este flow". Es opcional: si no defines <code>contract</code>, todo sigue igual.</p>
+                    </div>
+                    <h3 class="animate" style="font-size: 20px; margin-top: 24px;">Contrato de flow (<code>OmegaFlowContract</code>)</h3>
+                    <p class="animate" style="margin-bottom: 12px;">Override <code>contract</code> en tu flow y devuelve
+                        un <code>OmegaFlowContract</code> con los nombres de eventos, intents y tipos de expresión.</p>
+                    <pre class="glass animate"><code>class AuthFlow extends OmegaFlow {
+  AuthFlow(OmegaChannel c) : super(id: 'authFlow', channel: c);
+
+  @override
+  OmegaFlowContract? get contract => OmegaFlowContract.fromTyped(
+    listenedEvents: [AppEvent.authLoginSuccess, AppEvent.authLoginError],
+    acceptedIntents: [AppIntent.authLogin, AppIntent.authLogout],
+    emittedExpressionTypes: {'loading', 'success', 'error'},
+  );
+  // ... onEvent, onIntent
+}</code></pre>
+                    <h3 class="animate" style="font-size: 20px; margin-top: 24px;">Contrato de agente (<code>OmegaAgentContract</code>)</h3>
+                    <p class="animate" style="margin-bottom: 12px;">Override <code>contract</code> en tu agente con los
+                        eventos e intents que maneja.</p>
+                    <pre class="glass animate"><code>@override
+OmegaAgentContract? get contract => OmegaAgentContract.fromTyped(
+  listenedEvents: [AppEvent.authLoginRequest],
+  acceptedIntents: [AppIntent.authLogin],
+);</code></pre>
+                    <p class="animate" style="margin-top: 20px; color: var(--text-dim); font-size: 14px;">
+                        Conjuntos vacíos = sin restricción. La validación solo corre en <code>kDebugMode</code>; en
+                        release no hay impacto. Más en <code>docs/CONTRACTS.md</code>.
+                    </p>
                 </section>
 
                 <!-- ========== API REFERENCE: CORE ========== -->

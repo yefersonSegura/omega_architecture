@@ -32,6 +32,9 @@ export 'omega/agents/protocol/omega_agent_inbox.dart';
 export 'omega/agents/protocol/omega_agent_message.dart';
 export 'omega/agents/protocol/omega_agent_protocol.dart';
 
+// CONTRACTS
+export 'omega/contracts/omega_flow_contract.dart';
+
 // FLOWS
 export 'omega/flows/omega_flow.dart';
 export 'omega/flows/omega_flow_manager.dart';

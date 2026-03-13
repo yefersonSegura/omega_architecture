@@ -1,6 +1,9 @@
 import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:omega_architecture/omega/core/semantics/omega_intent.dart';
 
+import '../contracts/omega_flow_contract.dart';
 import '../core/channel/omega_channel.dart';
 import '../core/events/omega_event.dart';
 
@@ -46,6 +49,10 @@ abstract class OmegaAgent {
     _eventSubscription = channel.events.listen(_handleEvent);
   }
 
+  /// Optional declarative contract: events and intents this agent is declared to handle.
+  /// In debug mode Omega warns when the agent receives something not in the contract. Override to set.
+  OmegaAgentContract? get contract => null;
+
   /// Cleans up resources and cancels subscriptions.
   void dispose() {
     _eventSubscription?.cancel();
@@ -70,6 +77,14 @@ abstract class OmegaAgent {
   // -----------------------------------------------------------
 
   void _handleEvent(OmegaEvent event) {
+    if (kDebugMode) {
+      final c = contract;
+      if (c != null && !c.acceptsEvent(event.name)) {
+        debugPrint(
+          'OmegaAgent[$id]: received event "${event.name}" not in contract (listened: ${c.listenedEventNames}).',
+        );
+      }
+    }
     _evaluateBehavior(OmegaAgentBehaviorContext(event: event, state: state));
   }
 
@@ -81,6 +96,14 @@ abstract class OmegaAgent {
   ///
   /// **Example:** Flow receives intent "auth.login"; calls agent.receiveIntent(intent); agent performs login and emits events.
   void receiveIntent(OmegaIntent intent) {
+    if (kDebugMode) {
+      final c = contract;
+      if (c != null && !c.acceptsIntent(intent.name)) {
+        debugPrint(
+          'OmegaAgent[$id]: received intent "${intent.name}" not in contract (accepted: ${c.acceptedIntentNames}).',
+        );
+      }
+    }
     _evaluateBehavior(OmegaAgentBehaviorContext(intent: intent, state: state));
   }
 

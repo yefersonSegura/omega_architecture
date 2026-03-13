@@ -15,6 +15,7 @@ A reactive, agent-based architecture framework for Flutter applications.
 - **Semantic Intents** — High-level abstraction for user or system requests. Optional **typed names** via [OmegaEventName]/[OmegaIntentName] and [OmegaEvent.fromName]/[OmegaIntent.fromName] to avoid magic strings and ease refactors. **Typed payload when reading:** use the `payloadAs<T>()` extension on [OmegaEvent], [OmegaIntent], and [OmegaFlowExpression] to get a safely cast payload. See the [example](example/lib/omega/app_semantics.dart) for full usage (`AppEvent` / `AppIntent` enums).
 - **Persistence & restore** — Serialize [OmegaAppSnapshot] to JSON and restore on launch ([toJson]/[fromJson], [OmegaFlowManager.restoreFromSnapshot], optional [OmegaSnapshotStorage]).
 - **Typed routes** — Use `OmegaRoute.typed<T>` so the route builder receives the intent payload as `T?`; or `routeArguments<T>(context)` when you don't use typed. See the [example](example/lib/omega/omega_setup.dart) (home route with `LoginSuccessPayload`).
+- **Declarative contracts** — Optional [OmegaFlowContract] and [OmegaAgentContract] declare which events a flow listens to, which intents it accepts, and which expression types it emits (and for agents: events and intents). In **debug** mode Omega warns in the console when something is received or emitted that is not in the contract, so you can ensure the declared boundaries are respected. See [docs/CONTRACTS.md](docs/CONTRACTS.md).
 - **CLI** — Scaffold setup and generate ecosystems (agent, flow, behavior, page) from the command line.
 
 **Documentation:**  
@@ -23,6 +24,7 @@ A reactive, agent-based architecture framework for Flutter applications.
 - **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)** — Technical reference for each component.  
 - **[docs/COMPARATIVA.md](docs/COMPARATIVA.md)** — When to choose Omega; full comparison table.  
 - **[docs/TESTING.md](docs/TESTING.md)** — Testing agents and flows without Flutter.  
+- **[docs/CONTRACTS.md](docs/CONTRACTS.md)** — Declarative contracts for flows and agents (events, intents, expression types); debug-time validation.
 - **[docs/ROADMAP.md](docs/ROADMAP.md)** — Long-term vision.
 
 ## Core Concepts
@@ -193,6 +195,29 @@ To save app state and restore it when the user reopens the app:
 1. **Serialize:** `final json = flowManager.getAppSnapshot().toJson()` then save (e.g. `jsonEncode(json)` to a file or `SharedPreferences`). Flow `memory` values must be JSON-serializable.
 2. **Restore:** On startup, load the saved map, then `final snapshot = OmegaAppSnapshot.fromJson(jsonDecode(loaded)); flowManager.restoreFromSnapshot(snapshot);`. This restores each flow's memory and activates the previous active flow.
 3. **Optional:** Implement [OmegaSnapshotStorage] (`save` / `load`) with your preferred backend (file, prefs, API) and call it from app lifecycle. See [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) for details.
+
+### Declarative contracts (optional)
+
+You can declare what each flow and agent is allowed to receive and emit. Override `contract` in your flow or agent and return an [OmegaFlowContract] or [OmegaAgentContract]. In **debug** mode, Omega prints a warning when a flow receives an event or intent not in its contract, or emits an expression type not declared (and similarly for agents). Empty sets mean no constraint; if you don't set a contract, behavior is unchanged.
+
+```dart
+// In your flow
+@override
+OmegaFlowContract? get contract => OmegaFlowContract.fromTyped(
+  listenedEvents: [AppEvent.authLoginSuccess, AppEvent.authLoginError],
+  acceptedIntents: [AppIntent.authLogin, AppIntent.authLogout],
+  emittedExpressionTypes: {'loading', 'success', 'error'},
+);
+
+// In your agent
+@override
+OmegaAgentContract? get contract => OmegaAgentContract.fromTyped(
+  listenedEvents: [AppEvent.authLoginRequest],
+  acceptedIntents: [AppIntent.authLogin],
+);
+```
+
+See **[docs/CONTRACTS.md](docs/CONTRACTS.md)** for full details and examples.
 
 ### Lifecycle and dispose
 

@@ -2,8 +2,10 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:omega_architecture/omega/core/semantics/omega_intent.dart';
 
+import '../contracts/omega_flow_contract.dart';
 import '../core/channel/omega_channel.dart';
 import '../core/events/omega_event.dart';
 
@@ -47,6 +49,11 @@ abstract class OmegaFlow {
   OmegaFlow({required this.id, required this.channel}) {
     channel.events.listen(_handleEvent);
   }
+
+  /// Optional declarative contract: events listened, intents accepted, expression types emitted.
+  /// When set, in debug mode Omega warns if the flow receives or emits something not declared.
+  /// Override in subclasses to declare contracts. Default is null (no validation).
+  OmegaFlowContract? get contract => null;
 
   // -----------------------------------------------------------
   // 1. Lifecycle
@@ -98,6 +105,15 @@ abstract class OmegaFlow {
   void _handleEvent(OmegaEvent event) {
     if (state != OmegaFlowState.running) return;
 
+    if (kDebugMode) {
+      final c = contract;
+      if (c != null && !c.acceptsEvent(event.name)) {
+        debugPrint(
+          'OmegaFlow[$id]: received event "${event.name}" not in contract (listened: ${c.listenedEventNames}).',
+        );
+      }
+    }
+
     final context = OmegaFlowContext(event: event, memory: memory);
 
     onEvent(context);
@@ -113,6 +129,15 @@ abstract class OmegaFlow {
   /// Sends the intent to this flow. Only processed if [state] is running; then [onIntent] is called.
   void receiveIntent(OmegaIntent intent) {
     if (state != OmegaFlowState.running) return;
+
+    if (kDebugMode) {
+      final c = contract;
+      if (c != null && !c.acceptsIntent(intent.name)) {
+        debugPrint(
+          'OmegaFlow[$id]: received intent "${intent.name}" not in contract (accepted: ${c.acceptedIntentNames}).',
+        );
+      }
+    }
 
     final context = OmegaFlowContext(intent: intent, memory: memory);
 
@@ -131,6 +156,14 @@ abstract class OmegaFlow {
   /// **Why use it:** The UI doesn't ask "are you loading?"; the flow announces state.
   /// **Example:** `emitExpression("loading");` then `emitExpression("success", payload: user);`
   void emitExpression(String type, {dynamic payload}) {
+    if (kDebugMode) {
+      final c = contract;
+      if (c != null && !c.allowsExpression(type)) {
+        debugPrint(
+          'OmegaFlow[$id]: emitted expression type "$type" not in contract (allowed: ${c.emittedExpressionTypes}).',
+        );
+      }
+    }
     if (!_expressions.isClosed) {
       final expr = OmegaFlowExpression(type, payload: payload);
       _lastExpression = expr;
