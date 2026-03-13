@@ -39,6 +39,9 @@ export 'omega/contracts/omega_flow_contract.dart';
 export 'omega/time_travel/omega_recorded_session.dart';
 export 'omega/time_travel/omega_time_travel_recorder.dart';
 
+// OFFLINE-FIRST (queued intents)
+export 'omega/offline/omega_offline_queue.dart';
+
 // FLOWS
 export 'omega/flows/omega_flow.dart';
 export 'omega/flows/omega_flow_manager.dart';

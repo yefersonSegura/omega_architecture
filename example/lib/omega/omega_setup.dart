@@ -6,13 +6,23 @@ import '../auth/auth_flow.dart';
 import '../auth/models.dart';
 import '../auth/ui/auth_page.dart';
 import '../home/home.dart';
+import '../orders/orders_flow.dart';
 import '../provider/provider_agent.dart';
 import '../provider/provider_flow.dart';
 
 OmegaConfig createOmegaConfig(OmegaChannel channel) {
+  final offlineQueue = OmegaMemoryOfflineQueue();
+
   return OmegaConfig(
-    agents: <OmegaAgent>[ProviderAgent(channel), AuthAgent(channel)],
-    flows: <OmegaFlow>[ProviderFlow(channel), AuthFlow(channel)],
+    agents: <OmegaAgent>[
+      ProviderAgent(channel),
+      AuthAgent(channel),
+    ],
+    flows: <OmegaFlow>[
+      ProviderFlow(channel),
+      AuthFlow(channel),
+      OrdersFlow(channel, offlineQueue),
+    ],
     routes: [
       OmegaRoute(id: "login", builder: (context) => const OmegaLoginPage()),
       // Ruta tipada: la vista recibe LoginSuccessPayload? (ej. tras login desde el flow)

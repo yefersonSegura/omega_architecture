@@ -308,7 +308,7 @@ if (loaded != null) {
 
 ### Inspector (debug)
 
-**Qué hace:** Muestra en tiempo real los últimos eventos del canal y el estado de los flows. Puedes usarlo como overlay en la app o, en web, en una ventana aparte (OmegaInspectorLauncher abre la ventana; esa ventana muestra OmegaInspectorReceiver).
+**Qué hace:** Muestra en tiempo real los últimos eventos del canal y el estado de los flows. Puedes usarlo como overlay en la app o, en web, en una ventana aparte (OmegaInspectorLauncher abre la ventana; esa ventana muestra OmegaInspectorReceiver). Incluye una **timeline visual**: una fila horizontal de puntos que representan los eventos recientes (similar a Redux DevTools), encima de la lista de eventos.
 
 **Ejemplo (overlay):**
 
@@ -337,6 +337,109 @@ El proyecto incluye un **example** (carpeta `example/`) con login, navegación a
 Para ejecutar: `cd example && flutter run`. Para más sobre contratos: [CONTRACTS.md](CONTRACTS.md).
 
 ---
+
+### Versionado de intents (patrón recomendado)
+
+Cuando necesites cambiar la estructura de un intent de forma incompatible (por ejemplo, añadir campos obligatorios), en lugar de modificar el intent original, crea una **nueva versión**:
+
+```dart
+enum AppIntent implements OmegaIntentName {
+  authLoginV1('auth.login.v1'),
+  authLoginV2('auth.login.v2'),
+  // ...
+}
+```
+
+Un flow puede declarar en su contrato que acepta solo `authLoginV2`, o bien aceptar ambas versiones y adaptar internamente:
+
+```dart
+@override
+OmegaFlowContract? get contract => OmegaFlowContract.fromTyped(
+  acceptedIntents: [AppIntent.authLoginV1, AppIntent.authLoginV2],
+  // ...
+);
+
+@override
+void onIntent(OmegaFlowContext ctx) {
+  final intent = ctx.intent;
+  if (intent == null) return;
+
+  if (intent.name == AppIntent.authLoginV1.name) {
+    final v1 = intent.payloadAs<LoginCredentialsV1>();
+    final v2 = LoginCredentialsV2(email: v1?.email ?? '', password: v1?.password ?? '');
+    // seguir usando v2 internamente...
+  }
+
+  if (intent.name == AppIntent.authLoginV2.name) {
+    final v2 = intent.payloadAs<LoginCredentialsV2>();
+    // lógica nueva...
+  }
+}
+```
+
+Así puedes introducir versiones nuevas sin romper flows/agents existentes y hacer una migración gradual.
+
+---
+
+### Offline-first (cola de intents)
+
+Para soportar escenarios **offline-first**, Omega incluye tipos para una cola de intents pendientes:
+
+- `OmegaQueuedIntent` — representa un intent que no se pudo ejecutar online (id estable, name, payload, createdAt).
+- `OmegaOfflineQueue` — interfaz abstracta para una cola (enqueue/getAll/remove/clear).
+- `OmegaMemoryOfflineQueue` — implementación en memoria, útil para tests y demos.
+
+Patrón recomendado en un flow cuando falla una operación de red:
+
+```dart
+class OrdersFlow extends OmegaFlow {
+  final OmegaOfflineQueue offlineQueue;
+
+  OrdersFlow(OmegaChannel c, this.offlineQueue)
+      : super(id: 'ordersFlow', channel: c);
+
+  Future<void> _createOrder(OmegaFlowContext ctx) async {
+    final intent = ctx.intent;
+    if (intent == null) return;
+
+    try {
+      // Intento online (por ejemplo, llamada HTTP)
+      emitExpression('creating');
+      await api.createOrder(intent.payload); // tu lógica real
+      emitExpression('created');
+    } catch (_) {
+      // Sin red o error de conectividad → encolar para reintentar luego
+      final queued = OmegaQueuedIntent.fromIntent(intent);
+      await offlineQueue.enqueue(queued);
+      emitExpression('pendingOffline', payload: queued.id);
+    }
+  }
+}
+```
+
+Luego, un agente o servicio de sincronización puede leer la cola y reemitir los intents cuando vuelva la conexión:
+
+```dart
+Future<void> replayOfflineIntents(
+  OmegaOfflineQueue queue,
+  OmegaChannel channel,
+) async {
+  final pending = await queue.getAll();
+  for (final q in pending) {
+    final intent = OmegaIntent(id: q.id, name: q.name, payload: q.payload);
+    channel.emit(
+      OmegaEvent(
+        id: q.id,
+        name: 'omega.offline.replay.intent',
+        payload: intent,
+      ),
+    );
+    await queue.remove(q.id);
+  }
+}
+```
+
+La implementación concreta de la cola (SharedPreferences, Hive, SQLite, etc.) queda a elección de la app host; solo debe implementar `OmegaOfflineQueue`.
 
 ## Enlaces
 

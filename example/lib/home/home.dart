@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:omega_architecture/omega_architecture.dart';
 
 import '../auth/models.dart';
+import '../omega/app_semantics.dart';
 
 /// Pantalla Home. Recibe [userData] cuando se navega desde el flow tras login
 /// con OmegaIntent.fromName(AppIntent.navigateHome, payload: loginSuccessPayload).
@@ -17,10 +19,31 @@ class HomePage extends StatelessWidget {
     final name = userData?.user["name"] as String?;
     return Scaffold(
       appBar: AppBar(title: const Text("Home")),
-      body: Center(
-        child: name != null
-            ? Text("Bienvenido, $name", style: const TextStyle(fontSize: 20))
-            : const Text("Home Page"),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (name != null)
+              Text("Bienvenido, $name",
+                  style: const TextStyle(fontSize: 20))
+            else
+              const Text("Home Page", style: TextStyle(fontSize: 20)),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () {
+                final scope = OmegaScope.of(context);
+                final intent = OmegaIntent.fromName(
+                  AppIntent.createOrder,
+                  payload: {'total': 100},
+                );
+                scope.flowManager.handleIntent(intent);
+              },
+              child: const Text('Crear pedido (offline demo)'),
+            ),
+          ],
+        ),
       ),
     );
   }

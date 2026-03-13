@@ -103,16 +103,36 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
                 ),
               ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildEventsSection(),
-                    const SizedBox(height: 16),
-                    _buildFlowsSection(),
-                  ],
-                ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Left: events
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border(
+                          right: BorderSide(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(12),
+                        child: _buildEventsSection(),
+                      ),
+                    ),
+                  ),
+                  // Right: flows
+                  Expanded(
+                    flex: 3,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(12),
+                      child: _buildFlowsSection(),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -176,8 +196,11 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
         _buildSectionTitle('Events', '${_events.length}'),
         if (_events.isEmpty)
           _emptyState('Esperando datos del canal…')
-        else
+        else ...[
+          _buildTimelineRow(),
+          const SizedBox(height: 8),
           ..._events.take(20).map((e) => _eventTile(e)),
+        ],
       ],
     );
   }
@@ -351,5 +374,32 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
       default:
         return Colors.blueGrey;
     }
+  }
+
+  /// Horizontal timeline of recent events (most recent on the right).
+  Widget _buildTimelineRow() {
+    if (_events.isEmpty) return const SizedBox.shrink();
+    final items = _events.take(30).toList().reversed.toList();
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final e in items) ...[
+            Tooltip(
+              message: '${_formatTime(e['time'] as String?)}\n${e['name'] ?? ''}',
+              child: Container(
+                width: 10,
+                height: 10,
+                margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _kInspectorPrimary.withValues(alpha: 0.8),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }

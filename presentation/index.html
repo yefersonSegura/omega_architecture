@@ -364,6 +364,14 @@
                                     persistencia (guardar/restaurar al cerrar/abrir) y herramientas tipo time-travel.
                                 </td>
                             </tr>
+                            <tr>
+                                <td><strong>Offline queue</strong></td>
+                                <td>Cola de intents pendientes cuando no hay red
+                                    (<code>OmegaQueuedIntent</code>, <code>OmegaOfflineQueue</code>,
+                                    <code>OmegaMemoryOfflineQueue</code>). El flow encola intents cuando falla la
+                                    conectividad y otro servicio los reintenta al volver la conexión. Ver sección
+                                    <em>Offline-first (cola de intents)</em> en <code>docs/GUIA.md</code>.</td>
+                            </tr>
                         </tbody>
                     </table>
                 </section>

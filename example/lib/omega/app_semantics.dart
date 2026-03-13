@@ -20,7 +20,8 @@ enum AppIntent implements OmegaIntentName {
   navigateLogin('navigate.login'),
   navigateHome('navigate.home'),
   authLogin('auth.login'),
-  authLogout('auth.logout');
+  authLogout('auth.logout'),
+  createOrder('orders.create');
 
   const AppIntent(this.name);
   @override

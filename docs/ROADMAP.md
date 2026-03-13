@@ -9,7 +9,6 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 - [x] **Inspector mínimo ([OmegaInspector]):** panel en la app que muestra últimos N eventos del canal (nombre, payload, timestamp) y snapshot de flows (id, estado, última expresión, memory). Colapsable; refresco cada 2 s. Ver [OmegaInspector] en la UI.
 - [x] **Time-travel:** [OmegaTimeTravelRecorder] graba eventos + snapshot inicial; [OmegaRecordedSession] los guarda; `replay(session, upToIndex: n)` restaura el snapshot y reemite eventos hasta n. Ver [docs/TIME_TRAVEL.md](TIME_TRAVEL.md).
 - [x] **Replay:** reemite la sesión grabada (o hasta un índice) para reproducir un bug o demo; mismo API que time-travel.
-- [ ] **Agentes:** en el inspector, cuáles reaccionaron a qué evento (requiere instrumentación opcional).
 
 **Objetivo:** Que Omega sea la arquitectura donde “ves todo lo que pasa”.
 
@@ -19,8 +18,8 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 
 - [x] **Eventos/intents tipados (nombres):** OmegaEventName, OmegaIntentName, fromName.
 - [ ] **Registro/contratos por evento (opcional):** registro de “eventos conocidos” con payload opcional (autocompletado, refactors, menos strings mágicos).
-- [ ] **Contratos por flow:** “este flow solo emite estas expresiones” y “solo reacciona a estos intents”, documentados o validables en tests.
-- [ ] **Versionado de intents:** soporte para `auth.login.v2` y migraciones cuando cambie el payload.
+- [x] **Contratos por flow:** “este flow solo emite estas expresiones” y “solo reacciona a estos intents”, documentados o validables en tests.
+- [x] **Versionado de intents:** soporte para `auth.login.v2` y migraciones cuando cambie el payload. Patrón documentado en GUIA (sección \"Versionado de intents\") y tests que usan versiones (`omega_intent_test.dart` con `authLoginV1`/`authLoginV2`).
 
 **Objetivo:** Omega no es solo “eventos por strings”; es semántica clara y evolución controlada.
 
@@ -30,7 +29,7 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 
 - [x] **API para serializar/restaurar** OmegaAppSnapshot: toJson/fromJson, restoreMemory, restoreFromSnapshot, OmegaSnapshotStorage.
 - [x] **Restore on launch:** “al abrir la app, restaurar el snapshot de la última sesión” (o del último estado conocido de un flow).
-- [ ] **Offline-first:** flows que persisten su memory y se reconcilian al volver online.
+- [x] **Offline-first:** flows que persisten su memory y se reconcilian al volver online. Infraestructura básica: `OmegaQueuedIntent`, `OmegaOfflineQueue` y `OmegaMemoryOfflineQueue` para encolar intents pendientes y reemitirlos cuando vuelva la conexión. Patrón documentado en la GUIA.
 
 **Objetivo:** La arquitectura que “no pierde estado” por defecto.
 
@@ -58,7 +57,7 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 
 ## 6. Testing y confiabilidad
 
-- [ ] **Record/Replay en tests:** grabar una sesión (eventos + intents) y repetirla en CI para regresiones.
+- [x] **Record/Replay en tests:** grabar una sesión (eventos + intents) y repetirla en CI para regresiones.
 - [ ] **Property-based testing:** “para cualquier secuencia de intents en el flow X, no hay expresión Z sin antes Y”.
 - [ ] **Assertions de contrato:** “el flow Auth nunca emite navigate.home sin antes auth.login.success”.
 
@@ -72,6 +71,17 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 - [x] **Comparativa honesta:** [docs/COMPARATIVA.md](COMPARATIVA.md) y sección en la web: "Omega vs BLoC vs Riverpod", tabla y **cuándo elegir Omega**. README enlaza la web como documentación completa.
 
 **Objetivo:** Que la comunidad entienda por qué y cuándo elegir Omega.
+
+---
+
+## 8. Ideas futuras interesantes (backlog)
+
+- [x] **Timeline visual de eventos:** vista tipo línea de tiempo donde se vea, para cada flow/agent, qué eventos/intents pasaron y cuándo. Implementado en el inspector (overlay y ventana web) como timeline horizontal encima de la lista de eventos.
+- [ ] **Diff de snapshots:** comparar dos `OmegaAppSnapshot` y mostrar qué cambió en cada flow (keys nuevas, valores modificados).
+- [ ] **Recorded tests desde el inspector:** botón en el inspector que exporte una sesión como test de Dart (`flutter_test` + `OmegaTimeTravelRecorder.replay(...)`).
+- [ ] **Cola de intents offline:** opción para ciertos intents de tipo “offline-first” que se encolan cuando no hay red y se reintentan al volver a estar online.
+- [ ] **OmegaModules:** paquetes que exponen módulos (`flows + agents + rutas + contratos`) registrables con una sola llamada (`OmegaModuleAuth.register(runtime)`).
+- [ ] **omega trace / omega doctor:** comandos de CLI para grabar trazas (`omega trace`) y revisar salud de la app (`omega doctor`: eventos sin listeners, intents sin consumers, flows sin contratos, etc.).
 
 ---
 

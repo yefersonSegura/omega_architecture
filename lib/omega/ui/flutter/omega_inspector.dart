@@ -142,25 +142,46 @@ class _OmegaInspectorState extends State<OmegaInspector> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(_kInspectorRadius),
         child: Container(
-          width: 360,
+          width: 620,
           height: 480,
-          constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
+          constraints: const BoxConstraints(maxWidth: 620, maxHeight: 480),
           decoration: const BoxDecoration(color: _kInspectorSurface),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildHeader(),
+              const Divider(height: 1, color: Color(0xFFE0E4F0)),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildEventsSection(),
-                      const SizedBox(height: 16),
-                      _buildFlowsSection(),
-                    ],
-                  ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Left: events and timeline
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border(
+                            right: BorderSide(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(12),
+                          child: _buildEventsSection(),
+                        ),
+                      ),
+                    ),
+                    // Right: flows / state
+                    Expanded(
+                      flex: 3,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(12),
+                        child: _buildFlowsSection(),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -236,8 +257,11 @@ class _OmegaInspectorState extends State<OmegaInspector> {
         _buildSectionTitle('Events', '${_events.length}'),
         if (_events.isEmpty)
           _emptyState('No events yet')
-        else
+        else ...[
+          _buildTimelineRow(),
+          const SizedBox(height: 8),
           ..._events.take(15).map((e) => _eventTile(e)),
+        ],
       ],
     );
   }
@@ -427,6 +451,33 @@ class _OmegaInspectorState extends State<OmegaInspector> {
     if (p == null) return '';
     final s = p.toString();
     return s.length > 60 ? '${s.substring(0, 60)}…' : s;
+  }
+
+  /// Simple horizontal timeline of recent events (most recent on the right).
+  Widget _buildTimelineRow() {
+    if (_events.isEmpty) return const SizedBox.shrink();
+    final items = _events.take(20).toList().reversed.toList();
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final e in items) ...[
+            Tooltip(
+              message: '${e.time.toIso8601String()}\n${e.event.name}',
+              child: Container(
+                width: 10,
+                height: 10,
+                margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _kInspectorPrimary.withValues(alpha: 0.8),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

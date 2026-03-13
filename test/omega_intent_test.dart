@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 
-enum _TestIntent implements OmegaIntentName {
-  authLogin('auth.login'),
-  goHome('navigate.home');
+enum _TestIntentV implements OmegaIntentName {
+  authLoginV1('auth.login.v1'),
+  authLoginV2('auth.login.v2');
 
-  const _TestIntent(this.name);
+  const _TestIntentV(this.name);
   @override
   final String name;
 }
@@ -22,9 +22,9 @@ void main() {
     expect(intent.payload["email"], "a@b.com");
   });
 
-  test("OmegaIntent.fromName uses typed name and generates id", () {
-    final intent = OmegaIntent.fromName(_TestIntent.authLogin, payload: {'x': 1});
-    expect(intent.name, 'auth.login');
+  test("OmegaIntent.fromName uses typed name and generates id, with versions", () {
+    final intent = OmegaIntent.fromName(_TestIntentV.authLoginV2, payload: {'x': 1});
+    expect(intent.name, 'auth.login.v2');
     expect(intent.payload, {'x': 1});
     expect(intent.id.startsWith('intent:'), isTrue);
   });

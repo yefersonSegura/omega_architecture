@@ -2,7 +2,9 @@
 
 - **Contratos declarativos:** [OmegaFlowContract] y [OmegaAgentContract] para declarar qué eventos escucha un flow, qué intents acepta y qué tipos de expresión emite (y para agentes: eventos e intents). En modo debug Omega avisa en consola cuando se recibe o emite algo no declarado. Override opcional `contract` en [OmegaFlow] y [OmegaAgent]; conjuntos vacíos = sin restricción. Factory `fromTyped` para usar enums [OmegaEventName]/[OmegaIntentName].
 - **Time-travel:** [OmegaTimeTravelRecorder] graba eventos del canal y un snapshot inicial; [OmegaRecordedSession] los guarda. `replay(session, channel, flowManager, upToIndex: n)` restaura el snapshot y reemite eventos hasta el índice n para depurar o reproducir una sesión. Ver [docs/TIME_TRAVEL.md](docs/TIME_TRAVEL.md). Web (presentation): sección "Time-travel" en español e inglés.
-- **Docs:** [docs/CONTRACTS.md](docs/CONTRACTS.md) con guía y ejemplos. README: feature, enlace a CONTRACTS.md y sección de uso. Web (presentation): sección "Contratos" en español e inglés.
+- **Offline-first (infra):** nuevos tipos [OmegaQueuedIntent], [OmegaOfflineQueue] y [OmegaMemoryOfflineQueue] para encolar intents cuando falla la red y reemitirlos al recuperar conectividad. Ejemplo en el `example/` (`OrdersFlow` + botón "Crear pedido (offline demo)" en `HomePage`).
+- **Inspector / DevTools:** inspector reorganizado a layout de 2 columnas (eventos a la izquierda, estado/flows a la derecha) y añadido **timeline visual de eventos** (fila horizontal de puntos) tanto en overlay como en la ventana web.
+- **Docs:** [docs/CONTRACTS.md](docs/CONTRACTS.md) con guía y ejemplos; [docs/TIME_TRAVEL.md](docs/TIME_TRAVEL.md) y sección Offline-first en [docs/GUIA.md](docs/GUIA.md); web (presentation) con glosario y menciones a contratos, time-travel, offline queue y timeline.
 
 ## 0.0.13
 
