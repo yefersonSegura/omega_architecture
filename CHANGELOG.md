@@ -3,6 +3,7 @@
 - **OmegaInspectorServer:** Inspector in browser (desktop/mobile): [OmegaInspectorServer.start](lib/omega/ui/flutter/omega_inspector_server.dart) runs an HTTP/WebSocket server so you can open the Inspector at e.g. `http://localhost:9292` without the in-app overlay. Stub on web (no-op). Example and [docs/GUIA.md](docs/GUIA.md) updated.
 - **Inspector safe for production:** [OmegaInspector], [OmegaInspectorLauncher], [OmegaInspectorReceiver] and [OmegaInspectorServer] guard with `kDebugMode`: in release they do not subscribe, show the button, or start the server; receiver shows a short message. No inspector code runs in production.
 - **CLI:** Replaced `print` with `stdout.writeln` in `bin/omega.dart` to satisfy the `avoid_print` lint.
+- **Docs:** README and example/README with Inspector usage (overlay, launcher, server). Web docs (ES/EN): "Uso del Inspector" in OmegaScope section and API section updated with OmegaInspectorServer and release behavior.
 
 ## 0.0.16
 
