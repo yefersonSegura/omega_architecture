@@ -126,4 +126,33 @@ void main() {
     manager.dispose();
     channel.dispose();
   });
+
+  test("OmegaRecordedSession and OmegaEvent toJson/fromJson round-trip", () {
+    final event = OmegaEvent(id: "ev:1", name: "test.event", payload: {"a": 1});
+    expect(OmegaEvent.fromJson(event.toJson()).name, "test.event");
+    expect(OmegaEvent.fromJson(event.toJson()).id, "ev:1");
+
+    final snapshot = OmegaAppSnapshot(
+      activeFlowId: "main",
+      flows: [
+        OmegaFlowSnapshot(
+          flowId: "main",
+          state: OmegaFlowState.running,
+          memory: {"k": "v"},
+          lastExpression: OmegaFlowExpression("idle"),
+        ),
+      ],
+    );
+    final session = OmegaRecordedSession(
+      initialSnapshot: snapshot,
+      events: [event, OmegaEvent(id: "ev:2", name: "two")],
+    );
+    final json = session.toJson();
+    final restored = OmegaRecordedSession.fromJson(json);
+    expect(restored.events.length, 2);
+    expect(restored.events[0].name, "test.event");
+    expect(restored.events[1].name, "two");
+    expect(restored.initialSnapshot?.activeFlowId, "main");
+    expect(restored.initialSnapshot?.flows.length, 1);
+  });
 }

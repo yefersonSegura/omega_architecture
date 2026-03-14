@@ -81,7 +81,7 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 - [ ] **Recorded tests desde el inspector:** botón en el inspector que exporte una sesión como test de Dart (`flutter_test` + `OmegaTimeTravelRecorder.replay(...)`).
 - [ ] **Cola de intents offline:** opción para ciertos intents de tipo “offline-first” que se encolan cuando no hay red y se reintentan al volver a estar online.
 - [ ] **OmegaModules:** paquetes que exponen módulos (`flows + agents + rutas + contratos`) registrables con una sola llamada (`OmegaModuleAuth.register(runtime)`).
-- [ ] **omega trace / omega doctor:** comandos de CLI para grabar trazas (`omega trace`) y revisar salud de la app (`omega doctor`: eventos sin listeners, intents sin consumers, flows sin contratos, etc.).
+- [x] **omega trace / omega doctor:** comandos de CLI: `omega trace view|validate <file.json>` (inspeccionar/validar archivos de traza guardados con [OmegaRecordedSession.toJson]); `omega doctor` (validar setup + avisos opcionales de flows/agents sin contrato). Serialización de sesión en [OmegaRecordedSession]/[OmegaEvent] para trazas.
 
 ---
 

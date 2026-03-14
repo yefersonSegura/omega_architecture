@@ -28,4 +28,34 @@ class OmegaRecordedSession {
 
   /// Number of recorded events.
   int get length => events.length;
+
+  /// Serializes this session to a JSON-friendly map for saving trace files.
+  /// Use with [OmegaTimeTravelRecorder] and save to disk for `omega trace view`.
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        if (initialSnapshot != null) 'initialSnapshot': initialSnapshot!.toJson(),
+        'events': events.map((e) => e.toJson()).toList(),
+      };
+
+  /// Creates a session from a map (e.g. from a trace file). Used when loading saved traces.
+  static OmegaRecordedSession fromJson(Map<String, dynamic> json) {
+    OmegaAppSnapshot? initialSnapshot;
+    final snap = json['initialSnapshot'];
+    if (snap is Map) {
+      initialSnapshot =
+          OmegaAppSnapshot.fromJson(Map<String, dynamic>.from(snap));
+    }
+    final eventsList = json['events'];
+    final events = eventsList is List
+        ? eventsList
+            .map((e) => e is Map
+                ? OmegaEvent.fromJson(Map<String, dynamic>.from(e))
+                : null)
+            .whereType<OmegaEvent>()
+            .toList()
+        : <OmegaEvent>[];
+    return OmegaRecordedSession(
+      initialSnapshot: initialSnapshot,
+      events: events,
+    );
+  }
 }

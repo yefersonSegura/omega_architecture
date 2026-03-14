@@ -68,53 +68,177 @@ dart run bin/omega.dart <command> [options] [arguments]
 
 **Important:** The CLI runs in **your app’s** project (the host app that depends on `omega_architecture`). It uses the current directory to find your project root. **`omega init`** creates `lib/omega/omega_setup.dart` in your app. **`omega g ecosystem`** creates the ecosystem files in the **directory where you open the terminal** (current working directory), then finds `omega_setup.dart` in your project and registers the new agent and flow there. You own the setup and add your own routes.
 
-### Commands
+### Commands (list)
 
-| Command | Description |
-|---------|-------------|
-| `init [--force]` | Creates `lib/omega/omega_setup.dart` **in your app** with an empty `OmegaConfig` (agents, flows, routes). Use `--force` to overwrite. Run from your app root. |
-| `g ecosystem <Name>` | Generates agent, flow, behavior and page **in the current directory**, then registers agent and flow in `omega_setup.dart`. Run `omega init` first. |
-| `g agent <Name>` | Generates only agent + behavior in the current directory and registers the agent in `omega_setup.dart`. |
-| `g flow <Name>` | Generates only flow in the current directory and registers the flow in `omega_setup.dart`. |
-| `validate` | Checks `omega_setup.dart`: structure (`createOmegaConfig`, `OmegaConfig`, `agents:`), duplicate agent/flow registrations. Run from app root. |
+Each command is listed below with **why** (purpose), **instruction**, **concept**, and **example** (success or failure where applicable). Global options: `-h`, `--help` · `-v`, `--version`.
+
+---
+
+#### doc
+
+**Why:** Open the official docs from the terminal without searching the web or bookmarking the URL.
+
+**Instruction:** `dart run omega_architecture:omega doc`
+
+**Concept:** Opens the official Omega web documentation in the browser. Does not create or modify files.
+
+**Example (success):** `Opening documentation: http://yefersonsegura.com/proyects/omega/`
+
+---
+
+#### init
+
+**Why:** Your app needs one central place to register routes, agents and flows; `init` creates that file so you don’t have to write the boilerplate by hand.
+
+**Instruction (both forms):**
+
+- `dart run omega_architecture:omega init` — creates `lib/omega/omega_setup.dart` only if it does not exist. If the file already exists, the CLI reports an error (so you do not overwrite by mistake).
+- `dart run omega_architecture:omega init --force` — overwrites the existing file. Use when you want to reset or regenerate the setup from scratch.
+
+**Concept:** Creates `lib/omega/omega_setup.dart` in your app with an empty `OmegaConfig` (agents, flows, routes). Run from app root. By default the command is safe (no overwrite); use `--force` only when you intend to replace the current file.
+
+**Example (success):**
+```
+Omega setup created.
+  Project root: C:\...\my_app
+  File: C:\...\my_app\lib\omega\omega_setup.dart
+```
+
+**Example (failure):** `Error: omega_setup.dart already exists. Use --force to overwrite.`
+
+---
+
+#### g ecosystem
+
+**Why:** A full feature (e.g. Auth, Orders) usually needs an agent, a flow, a behavior and a page; this command creates all four and wires them in `omega_setup.dart` so you can focus on logic instead of boilerplate.
+
+**Instruction:** `dart run omega_architecture:omega g ecosystem <Name>`
+
+**Concept:** Generates agent, flow, behavior and page **in the current directory**, then registers agent and flow in `omega_setup.dart`. Run from the folder where you want the files. Requires `omega init` first.
+
+**Example (success):**
+```
+Creating in current directory: C:\...\my_app\lib
+Ecosystem Auth created.
+  Path: C:\...\my_app\lib\auth
+Registered Auth (agent, flow) in omega_setup.dart
+```
+
+**Example (failure):** `Error: omega_setup.dart not found. Run from app root: omega init`
+
+---
+
+#### g agent
+
+**Why:** Sometimes you need only a new agent (and its behavior) for an existing flow or a feature that doesn’t need a full ecosystem; this avoids generating an extra flow and page.
+
+**Instruction:** `dart run omega_architecture:omega g agent <Name>`
+
+**Concept:** Generates only agent + behavior in the current directory. Updates only the agent import and registration in `omega_setup.dart` (does not touch the flow).
+
+**Example (success):** `Agent Orders created. Path: C:\...\my_app\lib\orders`
+
+---
+
+#### g flow
+
+**Why:** When you need only a new flow (orchestrator) without a new agent or page, this creates just the flow and registers it in `omega_setup.dart` without touching the rest.
+
+**Instruction:** `dart run omega_architecture:omega g flow <Name>`
+
+**Concept:** Generates only flow in the current directory. Updates only the flow import and registration in `omega_setup.dart` (does not touch the agent).
+
+**Example (success):** `Flow Profile created. Path: C:\...\my_app\lib\profile`
+
+---
+
+#### validate
+
+**Why:** Catches setup mistakes (missing config, duplicate agent/flow ids) before you run the app, so you can fix them quickly and avoid runtime errors.
+
+**Instruction:** `dart run omega_architecture:omega validate [path]`
+
+**Concept:** Checks `omega_setup.dart`: `createOmegaConfig`, `OmegaConfig`, `agents:`, and no duplicate agent/flow ids. Starts from bash directory (or optional path).
+
+**Example (success):**
+```
+Valid.
+  File: C:\...\my_app\lib\omega\omega_setup.dart
+  Agents: 2, Flows: 3
+```
+
+**Example (failure):** `Error: Duplicate flow registration: Auth. Remove duplicate XFlow(channel) from omega_setup.dart.`
+
+---
+
+#### trace
+
+**Why:** Recorded sessions (events + snapshot) can be saved as JSON; `trace view` and `trace validate` let you inspect or validate those files from the CLI (debugging, CI, or sharing a bug report) without running the app.
+
+**Instruction:** `dart run omega_architecture:omega trace view <file.json>` · `dart run omega_architecture:omega trace validate <file.json>`
+
+**Concept:** A **trace** is a JSON file with a recorded session (channel events and optional initial snapshot). It is built by **OmegaTimeTravelRecorder** in your app when you call `stopRecording()`; the developer chooses where to save the JSON (e.g. path_provider on mobile, download on web). `trace view` shows a summary (events count, snapshot). `trace validate` checks the structure; exit 0 if valid, 1 otherwise. Used for debugging, reproducing bugs, or sharing a case.
+
+**Export example:** After `stopRecording()`, use `jsonEncode(session.toJson())` to get a string, then write it to a file (mobile: `path_provider` + `File.writeAsString`; web: blob + `<a download>`). See [docs/TIME_TRAVEL.md](docs/TIME_TRAVEL.md) § “Export session to JSON (trace file)” for full code.
+
+**Example view (success):**
+```
+Trace: C:\...\trace.json
+  Events: 42
+  Initial snapshot: yes
+```
+
+**Example validate (success):** `Valid trace file. Path: C:\...\trace.json`
+
+**Example (failure):** `Error: Invalid trace structure (expected 'events' list and optional 'initialSnapshot').`
+
+---
+
+#### doctor
+
+**Why:** One command to see if your Omega setup is valid, how many agents/flows you have, and optional hints (e.g. flows/agents without a contract), so you can fix issues before they cause problems at runtime.
+
+**Instruction (both forms):**
+
+- `dart run omega_architecture:omega doctor` — uses the current directory (bash CWD) to find the app root.
+- `dart run omega_architecture:omega doctor <path>` — starts the search from the given path (e.g. `omega doctor example` when you are at the package root and want to check the `example/` app).
+
+**Concept:** Project health: validates `omega_setup.dart`, counts agents and flows, optionally lists flows/agents without a contract (recommendation). By default it starts from the current directory; in a real project there is no `example/` folder. If you are in `lib/`, it looks for the `omega/` folder there. The optional `<path>` tells the CLI where to start looking (useful in repos that have an `example/` or multiple apps).
+
+**Example (success):**
+```
+Directorio (bash): C:\...\my_app\lib
+Omega Doctor
+  Setup: C:\...\my_app\lib\omega\omega_setup.dart
+  Agents: 2, Flows: 3
+
+Health check passed.
+```
+
+**Example (errors):**
+```
+Error: Duplicate flow registration: Auth.
+  Remove duplicate XFlow(channel) from omega_setup.dart.
+Fix the issues above and run omega doctor again.
+```
+
+**Example (optional warnings):**
+```
+Optional (contracts):
+  Flow without contract: ...\lib\orders\orders_flow.dart
+  Agent without contract: ...\lib\provider\provider_agent.dart
+  Tip: add a contract getter for clearer semantics and debug warnings.
+Health check passed.
+```
+
+---
 
 ### How `g ecosystem` uses omega_setup
 
-When you run `omega g ecosystem <Name>` from your host app:
-
 1. The CLI resolves your **project root** (directory that contains `pubspec.yaml`).
-2. It looks for **`lib/omega/omega_setup.dart`** in that project. If it doesn’t exist, it prints *"Run 'omega init' first"* and does not create any files.
-3. It creates the ecosystem files (agent, flow, behavior, page) in the **current directory** (the folder where you opened the terminal).
-4. It **updates** `omega_setup.dart`: removes any existing imports for that ecosystem and adds the new imports (package or relative path depending on location). It registers the **agent** and **flow** in `OmegaConfig`; if the file has no `flows:` section, it adds it with the new flow.
-
-**`g agent` and `g flow`:** When you generate only the agent or only the flow, the CLI updates **only** that artifact’s import and registration in `omega_setup.dart`. It does not remove the other (e.g. running `g flow Orders` after `g agent Orders` keeps the agent import and only adds/refreshes the flow import). So you can create agent and flow separately for the same name without overwriting each other.
-
-Aliases: `generate` and `create` are equivalent to `g`.
-
-### Global options
-
-| Option | Description |
-|--------|-------------|
-| `-h`, `--help` | Show help. |
-| `-v`, `--version` | Show CLI version. |
-
-### Examples
-
-```bash
-# First-time setup
-dart run omega_architecture:omega init
-
-# Overwrite existing setup
-dart run omega_architecture:omega init --force
-
-# Generate an ecosystem (e.g. Auth, Orders, Profile)
-dart run omega_architecture:omega g ecosystem Auth
-dart run omega_architecture:omega g agent Orders    # agent + behavior only
-dart run omega_architecture:omega g flow Profile   # flow only
-
-# Validate omega_setup.dart (structure, duplicate ids)
-dart run omega_architecture:omega validate
-```
+2. It looks for **`lib/omega/omega_setup.dart`**. If it doesn’t exist, it prints *"Run 'omega init' first"*.
+3. It creates the ecosystem files in the **current directory**.
+4. It **updates** `omega_setup.dart**: adds imports and registers the agent and flow. **`g agent`** and **`g flow`** update only that artifact’s import and registration. Aliases: `generate` and `create` are equivalent to `g`.
 
 Generated by `omega g ecosystem Auth` (in the directory where you run the command):
 
@@ -262,16 +386,6 @@ lib/
 ├── examples/          # Full examples and feature demos
 └── omega_architecture.dart  # Barrel exports
 ```
-
-## Releasing (publishing to pub.dev)
-
-Before publishing a new version:
-
-1. Update [CHANGELOG.md](CHANGELOG.md) with the new version and changes.
-2. Bump `version` in [pubspec.yaml](pubspec.yaml).
-3. Update the version in this README and in `presentation/index.html` if you show the dependency snippet.
-4. Run `flutter test` and `dart analyze lib`.
-5. Run `dart pub publish` (dry-run first with `dart pub publish --dry-run`).
 
 ## License
 

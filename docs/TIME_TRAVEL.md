@@ -28,9 +28,50 @@ final session = recorder.stopRecording();
 // session.length           → number of events
 ```
 
-### 3. Replay (time-travel)
+### 3. Export session to JSON (trace file)
 
-Replay the session so the app is in the state it was **after** a given event index:
+To save the recorded session as a JSON file (for `omega trace view` / `omega trace validate`, debugging, or sharing), serialize the session and write it to a file. The exact way you write depends on the platform.
+
+**Common part (all platforms):**
+
+```dart
+import 'dart:convert';
+
+final session = recorder.stopRecording();
+final jsonString = jsonEncode(session.toJson());
+```
+
+**Mobile (e.g. Dart VM, Flutter iOS/Android)** — save to app documents:
+
+```dart
+// Add dependency: path_provider
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+
+final dir = await getApplicationDocumentsDirectory();
+final path = '${dir.path}/trace_${DateTime.now().millisecondsSinceEpoch}.json';
+await File(path).writeAsString(jsonString);
+// Optional: show path to user (e.g. SnackBar) or share the file
+```
+
+**Web (Flutter web)** — trigger a download: build a blob from `jsonString`, create an object URL, create an `<a download="trace_….json">` element with that URL, call `click()`, then revoke the URL. Use `package:web` or `universal_html` for `Blob`, `URL`, `document`. The essential part is `jsonEncode(session.toJson())`; the rest is standard browser download pattern.
+
+**Minimal (no extra packages)** — if you only need the string (e.g. send to server, copy to clipboard, or log in debug):
+
+```dart
+final session = recorder.stopRecording();
+final jsonString = jsonEncode(session.toJson());
+// Now use jsonString as needed (log, send to API, etc.)
+```
+
+Once the file is saved, you can run from the command line:
+
+- `dart run omega_architecture:omega trace view <path/to/trace.json>`
+- `dart run omega_architecture:omega trace validate <path/to/trace.json>`
+
+### 4. Replay (time-travel)
+
+Replay the session so the app is in the state it was **after** a given event index (see step 3 above for exporting the session to JSON first, if needed):
 
 ```dart
 // Replay all events (reproduce the whole session)

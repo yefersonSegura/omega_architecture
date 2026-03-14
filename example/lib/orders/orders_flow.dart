@@ -10,6 +10,16 @@ import '../omega/app_semantics.dart';
 class OrdersFlow extends OmegaFlow {
   final OmegaOfflineQueue offlineQueue;
 
+  static final _contract = OmegaFlowContract.fromTyped(
+    flowId: 'ordersFlow',
+    listenedEvents: [],
+    acceptedIntents: [AppIntent.createOrder],
+    emittedExpressionTypes: {'idle', 'creating', 'created', 'pendingOffline'},
+  );
+
+  @override
+  OmegaFlowContract? get contract => _contract;
+
   OrdersFlow(OmegaChannel channel, this.offlineQueue)
       : super(id: 'ordersFlow', channel: channel);
 
