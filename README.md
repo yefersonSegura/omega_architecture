@@ -45,7 +45,7 @@ Add the dependency to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  omega_architecture: ^0.0.11
+  omega_architecture: ^0.0.16
 ```
 
 ## Omega CLI

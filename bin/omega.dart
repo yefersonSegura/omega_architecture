@@ -715,7 +715,9 @@ String findAppRoot([String? startFrom]) {
       : bashDir;
   final exampleUnderBash = "$bashNorm${sep}example";
   if (File(exampleUnderBash + sep + pubspecName).existsSync() &&
-      File("$exampleUnderBash${sep}lib${sep}omega${sep}omega_setup.dart").existsSync()) {
+      File(
+        "$exampleUnderBash${sep}lib${sep}omega${sep}omega_setup.dart",
+      ).existsSync()) {
     return exampleUnderBash;
   }
   final packageRoot = _packageRootFromScript();

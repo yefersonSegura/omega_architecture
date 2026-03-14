@@ -34,32 +34,31 @@ class OmegaEvent extends OmegaObject {
     dynamic payload,
     String? id,
     Map<String, dynamic> meta = const {},
-  }) =>
-      OmegaEvent(
-        id: id ?? 'ev:${DateTime.now().millisecondsSinceEpoch}',
-        name: eventName.name,
-        payload: payload,
-        meta: meta,
-      );
+  }) => OmegaEvent(
+    id: id ?? 'ev:${DateTime.now().millisecondsSinceEpoch}',
+    name: eventName.name,
+    payload: payload,
+    meta: meta,
+  );
 
   /// Serializes this event to a JSON-friendly map (e.g. for [OmegaRecordedSession] trace files).
   /// [payload] and [meta] should be JSON-serializable when persisting.
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'id': id,
-        'name': name,
-        if (payload != null) 'payload': payload,
-        if (meta.isNotEmpty) 'meta': Map<String, dynamic>.from(meta),
-      };
+    'id': id,
+    'name': name,
+    if (payload != null) 'payload': payload,
+    if (meta.isNotEmpty) 'meta': Map<String, dynamic>.from(meta),
+  };
 
   /// Creates an event from a map (e.g. from a trace file). [payload] and [meta] are read as-is.
   static OmegaEvent fromJson(Map<String, dynamic> json) => OmegaEvent(
-        id: json['id'] as String? ?? '',
-        name: json['name'] as String? ?? '',
-        payload: json['payload'],
-        meta: json['meta'] is Map
-            ? Map<String, dynamic>.from(json['meta'] as Map)
-            : const {},
-      );
+    id: json['id'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+    payload: json['payload'],
+    meta: json['meta'] is Map
+        ? Map<String, dynamic>.from(json['meta'] as Map)
+        : const {},
+  );
 }
 
 /// Extension to read the payload with type safety.
@@ -68,6 +67,5 @@ extension OmegaEventPayloadExtension on OmegaEvent {
   ///
   /// **Why use it:** Avoids `payload as User` which can throw; here you get null if it doesn't match.
   /// **Example:** `final user = event.payloadAs<User>(); if (user != null) show(user.name);`
-  T? payloadAs<T>() =>
-      payload != null && payload is T ? payload as T : null;
+  T? payloadAs<T>() => payload != null && payload is T ? payload as T : null;
 }
