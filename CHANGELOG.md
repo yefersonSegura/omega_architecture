@@ -1,3 +1,7 @@
+## 0.0.18
+
+- **CLI:** Wrapped single-statement `if` body in `omega doctor` in a block to satisfy `curly_braces_in_flow_control_structures` lint.
+
 ## 0.0.17
 
 - **OmegaInspectorServer:** Inspector in browser (desktop/mobile): [OmegaInspectorServer.start](lib/omega/ui/flutter/omega_inspector_server.dart) runs an HTTP/WebSocket server so you can open the Inspector at e.g. `http://localhost:9292` without the in-app overlay. Stub on web (no-op). Example and [docs/GUIA.md](docs/GUIA.md) updated.

@@ -965,8 +965,9 @@ class OmegaDoctorCommand {
         : null;
     final bashCwd = getBashCwd();
     stdout.writeln("Directorio (bash): ${_absPath(bashCwd)}");
-    if (startFrom != null)
+    if (startFrom != null) {
       stdout.writeln("Buscar desde: ${_absPath(Directory(startFrom).absolute.path)}");
+    }
     String root;
     try {
       root = findAppRoot(startFrom);
