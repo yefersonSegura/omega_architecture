@@ -65,7 +65,7 @@ AppBar(
 
 ## 3. Servidor en el navegador (desktop/móvil)
 
-En desktop o móvil puedes abrir el Inspector en el navegador (estilo DevTools). **En web no está disponible** (no hay `dart:io`).
+En desktop o móvil puedes abrir el Inspector en el navegador (estilo Isar/DevTools). **En web no está disponible** (no hay `dart:io`). Si `openBrowser` es true (por defecto), se usa `url_launcher` para abrir la URL en el navegador del dispositivo (también en móvil).
 
 ```dart
 void main() {
@@ -92,7 +92,8 @@ void main() {
 }
 ```
 
-- **Desktop/móvil:** `start()` devuelve el puerto (ej. 9292). Abre `http://localhost:9292` en el navegador.
+- **Desktop (Windows/macOS/Linux):** El servidor escucha en 127.0.0.1. Si `openBrowser: true` (por defecto), se abre el navegador **de la PC** con `http://127.0.0.1:9292` (url_launcher).
+- **Móvil (Android/iOS):** El servidor escucha en todas las interfaces (0.0.0.0) para que la **PC** pueda conectarse. En la **consola de la PC** (donde ejecutaste `flutter run`) se imprime la URL con la IP del dispositivo, por ejemplo: `Omega Inspector (open in your PC browser, same WiFi): http://192.168.1.105:9292`. Abre esa URL en el navegador de tu computadora (teléfono y PC en la misma WiFi). No se abre el navegador del móvil.
 - **Web:** `start()` devuelve `null` y en consola sale un mensaje indicando usar `OmegaInspectorLauncher`.
 
 Para detener el servidor (opcional): `OmegaInspectorServer.stop();`

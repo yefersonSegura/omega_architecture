@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/channel/omega_channel.dart';
 import '../../core/events/omega_event.dart';
@@ -25,23 +26,39 @@ class OmegaInspectorServer {
   static final List<Map<String, dynamic>> _recentEvents = [];
   static const int _eventLimit = _kDefaultEventLimit;
 
+  static const int _kMaxPortTry = 9302;
+
   static Future<int?> start(
     OmegaChannel channel,
     OmegaFlowManager flowManager, {
     int port = 9292,
+    bool openBrowser = true,
   }) async {
     if (!kDebugMode) return null;
     if (_server != null) return _server!.port;
     _flowManager = flowManager;
 
-    try {
-      _server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
-    } on SocketException catch (e) {
-      debugPrint('Omega Inspector Server: could not bind port $port: $e');
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    // On mobile: bind to all interfaces so the PC can connect. On desktop: loopback only.
+    final address = isMobile ? InternetAddress.anyIPv4 : InternetAddress.loopbackIPv4;
+
+    HttpServer? server;
+    int boundPort = 0;
+    for (int p = port; p <= _kMaxPortTry; p++) {
+      try {
+        server = await HttpServer.bind(address, p);
+        boundPort = server.port;
+        break;
+      } on SocketException catch (e) {
+        debugPrint('Omega Inspector Server: port $p in use, trying next: $e');
+      }
+    }
+    if (server == null || boundPort == 0) {
+      debugPrint('Omega Inspector Server: could not bind any port $port–$_kMaxPortTry');
       return null;
     }
 
-    final boundPort = _server!.port;
+    _server = server;
     _server!.listen(_onRequest);
 
     _eventSub = channel.events.listen((e) {
@@ -55,9 +72,55 @@ class OmegaInspectorServer {
 
     _snapshotTimer = Timer.periodic(_kSnapshotInterval, (_) => _sendSnapshot());
 
-    debugPrint('Omega Inspector: http://localhost:$boundPort');
+    if (isMobile) {
+      // Mobile: show URL for the PC (phone and PC must be on same WiFi). Do not open phone browser.
+      final deviceIp = await _getDeviceIp();
+      final urlForPc = deviceIp != null
+          ? 'http://$deviceIp:$boundPort'
+          : 'http://<device-ip>:$boundPort';
+      debugPrint('Omega Inspector (open in your PC browser, same WiFi): $urlForPc');
+    } else {
+      // Desktop: open browser on this machine.
+      final url = 'http://127.0.0.1:$boundPort';
+      debugPrint('Omega Inspector: $url');
+      if (openBrowser) {
+        _openBrowser(url);
+      }
+    }
 
     return boundPort;
+  }
+
+  static Future<String?> _getDeviceIp() async {
+    try {
+      final interfaces = await NetworkInterface.list();
+      for (final ni in interfaces) {
+        for (final addr in ni.addresses) {
+          if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
+            return addr.address;
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Opens the Inspector URL in the default browser (desktop only). On mobile, open the printed URL on your PC.
+  static void _openBrowser(String url) {
+    Future<void>.delayed(const Duration(milliseconds: 500), () async {
+      try {
+        final uri = Uri.parse(url);
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+        if (!launched) {
+          debugPrint('Omega Inspector: open manually: $url');
+        }
+      } catch (e) {
+        debugPrint('Omega Inspector: open manually: $url ($e)');
+      }
+    });
   }
 
   static void stop() {
