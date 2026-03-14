@@ -73,12 +73,14 @@ class OmegaInspectorServer {
     _snapshotTimer = Timer.periodic(_kSnapshotInterval, (_) => _sendSnapshot());
 
     if (isMobile) {
-      // Mobile: show URL for the PC (phone and PC must be on same WiFi). Do not open phone browser.
+      // Mobile: Inspector runs on device. To open on PC use adb reverse (reliable) or same-WiFi IP (often blocked).
       final deviceIp = await _getDeviceIp();
-      final urlForPc = deviceIp != null
-          ? 'http://$deviceIp:$boundPort'
-          : 'http://<device-ip>:$boundPort';
-      debugPrint('Omega Inspector (open in your PC browser, same WiFi): $urlForPc');
+      debugPrint('Omega Inspector [mobile] — To open on your PC run in a terminal:');
+      debugPrint('  adb reverse tcp:$boundPort tcp:$boundPort');
+      debugPrint('Then open in PC browser: http://127.0.0.1:$boundPort');
+      if (deviceIp != null) {
+        debugPrint('Or same WiFi (if not blocked): http://$deviceIp:$boundPort');
+      }
     } else {
       // Desktop: open browser on this machine.
       final url = 'http://127.0.0.1:$boundPort';

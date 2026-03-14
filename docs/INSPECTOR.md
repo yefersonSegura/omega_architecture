@@ -93,7 +93,11 @@ void main() {
 ```
 
 - **Desktop (Windows/macOS/Linux):** El servidor escucha en 127.0.0.1. Si `openBrowser: true` (por defecto), se abre el navegador **de la PC** con `http://127.0.0.1:9292` (url_launcher).
-- **Móvil (Android/iOS):** El servidor escucha en todas las interfaces (0.0.0.0) para que la **PC** pueda conectarse. En la **consola de la PC** (donde ejecutaste `flutter run`) se imprime la URL con la IP del dispositivo, por ejemplo: `Omega Inspector (open in your PC browser, same WiFi): http://192.168.1.105:9292`. Abre esa URL en el navegador de tu computadora (teléfono y PC en la misma WiFi). No se abre el navegador del móvil.
+- **Móvil (Android):** El servidor corre en el dispositivo. Para ver el Inspector en el **navegador del PC** la forma fiable es **adb reverse**. En la consola se imprime:
+  ```
+  adb reverse tcp:9292 tcp:9292
+  ```
+  Ejecuta ese comando en una terminal (con el móvil conectado por USB) y luego abre en el PC: `http://127.0.0.1:9292`. La IP del dispositivo (misma WiFi) a menudo no conecta por firewall o redes que bloquean dispositivo-a-dispositivo.
 - **Web:** `start()` devuelve `null` y en consola sale un mensaje indicando usar `OmegaInspectorLauncher`.
 
 Para detener el servidor (opcional): `OmegaInspectorServer.stop();`
@@ -185,4 +189,5 @@ class _Home extends StatelessWidget {
 2. **Overlay:** si usas el `Stack` con `OmegaInspector`, en la esquina superior derecha debe aparecer un botón (colapsado) o el panel. Pulsa para expandir si está colapsado.
 3. **Launcher:** el icono de bicho (bug) en la AppBar solo se muestra en debug. Pulsa para abrir el Inspector en diálogo o ventana nueva.
 4. **Web:** el servidor no corre en web; en consola verás el mensaje del stub. Usa el botón de la AppBar (Launcher) para abrir el Inspector en otra ventana.
-5. **Desktop/móvil + servidor:** tras `OmegaInspectorServer.start(...)` mira la consola; debe imprimir algo como `Omega Inspector: http://localhost:9292`. Abre esa URL en Chrome/Edge.
+5. **Desktop + servidor:** tras `OmegaInspectorServer.start(...)` en la consola sale la URL; ábrela en el navegador del PC.
+6. **App en móvil, Inspector en el PC:** si al abrir `http://<IP-del-móvil>:9292` en el PC no conecta (firewall, red que bloquea dispositivo a dispositivo), usa **adb reverse**. Con el móvil conectado por USB ejecuta en una terminal: `adb reverse tcp:9292 tcp:9292`. Luego abre en el PC: `http://127.0.0.1:9292`. El tráfico se reenvía al socket del dispositivo.
