@@ -16,6 +16,9 @@ void main() {
     return;
   }
   final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
+  if (kDebugMode) {
+    OmegaInspectorServer.start(runtime.channel, runtime.flowManager);
+  }
   runApp(
     OmegaScope(
       channel: runtime.channel,

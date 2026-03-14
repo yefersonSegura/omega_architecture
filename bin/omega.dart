@@ -16,11 +16,11 @@ void _openInBrowser(String urlOrPath) {
 
 void _openDoc() {
   _openInBrowser(_docUrl);
-  print("Opening documentation: $_docUrl");
+  stdout.writeln("Opening documentation: $_docUrl");
 }
 
 void _err(String message) {
-  print("Error: $message");
+  stdout.writeln("Error: $message");
 }
 
 String _absPath(String path) {
@@ -39,7 +39,7 @@ void main(List<String> args) {
     return;
   }
   if (arg == "-v" || arg == "--version") {
-    print("omega $_version");
+    stdout.writeln("omega $_version");
     return;
   }
 
@@ -72,68 +72,68 @@ void main(List<String> args) {
 
     default:
       _err("Unknown command: $arg");
-      print("");
+      stdout.writeln("");
       printHelp();
   }
 }
 
 void printHelp() {
-  print("");
-  print("Ω Omega CLI");
-  print("");
-  print("Usage: omega <command> [options] [arguments]");
-  print("");
-  print("Commands:");
-  print(
+  stdout.writeln("");
+  stdout.writeln("Ω Omega CLI");
+  stdout.writeln("");
+  stdout.writeln("Usage: omega <command> [options] [arguments]");
+  stdout.writeln("");
+  stdout.writeln("Commands:");
+  stdout.writeln(
     "  doc                  Open the web documentation (official site in browser)",
   );
-  print(
+  stdout.writeln(
     "  init [--force]       Create lib/omega/omega_setup.dart (use --force to overwrite)",
   );
-  print(
+  stdout.writeln(
     "  g ecosystem <Name>    Generate agent, flow, behavior and page in the current directory",
   );
-  print(
+  stdout.writeln(
     "  g agent <Name>       Generate only agent + behavior in current directory",
   );
-  print("  g flow <Name>        Generate only flow in current directory");
-  print(
+  stdout.writeln("  g flow <Name>        Generate only flow in current directory");
+  stdout.writeln(
     "  validate             Check omega_setup.dart (structure, duplicate ids)",
   );
-  print(
+  stdout.writeln(
     "  trace [view|validate] [file]  Inspect or validate a recorded trace file (JSON)",
   );
-  print(
+  stdout.writeln(
     "  doctor [path]        Project health (path = start search from, e.g. example or .)",
   );
-  print("");
-  print("Options:");
-  print("  -h, --help     Show this help");
-  print("  -v, --version  Show version");
-  print("");
-  print("Examples:");
-  print("  omega doc                 # open web documentation");
-  print("  omega init");
-  print("  omega init --force");
-  print(
+  stdout.writeln("");
+  stdout.writeln("Options:");
+  stdout.writeln("  -h, --help     Show this help");
+  stdout.writeln("  -v, --version  Show version");
+  stdout.writeln("");
+  stdout.writeln("Examples:");
+  stdout.writeln("  omega doc                 # open web documentation");
+  stdout.writeln("  omega init");
+  stdout.writeln("  omega init --force");
+  stdout.writeln(
     "  omega g ecosystem Auth    # auth_agent, auth_flow, auth_behavior, auth_page",
   );
-  print("  omega g agent Orders      # orders_agent, orders_behavior only");
-  print("  omega g flow Orders       # orders_flow only");
-  print("  omega validate");
-  print("  omega trace view trace.json    # summarize trace file");
-  print("  omega trace validate trace.json # validate and exit 0/1");
-  print(
+  stdout.writeln("  omega g agent Orders      # orders_agent, orders_behavior only");
+  stdout.writeln("  omega g flow Orders       # orders_flow only");
+  stdout.writeln("  omega validate");
+  stdout.writeln("  omega trace view trace.json    # summarize trace file");
+  stdout.writeln("  omega trace validate trace.json # validate and exit 0/1");
+  stdout.writeln(
     "  omega doctor                   # from app root, or: omega doctor example",
   );
-  print("");
-  print(
+  stdout.writeln("");
+  stdout.writeln(
     "  init / validate / doctor: run from app root (where pubspec.yaml is).",
   );
-  print(
+  stdout.writeln(
     "  g ecosystem / agent / flow: run from the folder where you want the files.",
   );
-  print("");
+  stdout.writeln("");
 }
 
 class OmegaInitCommand {
@@ -145,8 +145,8 @@ class OmegaInitCommand {
       root = findProjectRoot();
     } catch (_) {
       _err("No Flutter project found.");
-      print("  Current directory: ${_absPath(cwd)}");
-      print(
+      stdout.writeln("  Current directory: ${_absPath(cwd)}");
+      stdout.writeln(
         "  Run from your app root (where pubspec.yaml is), then: omega init",
       );
       return;
@@ -160,8 +160,8 @@ class OmegaInitCommand {
     final file = File("$lib/omega/omega_setup.dart");
     if (file.existsSync() && !force) {
       _err("omega_setup.dart already exists.");
-      print("  Path: ${_absPath(file.path)}");
-      print("  Use --force to overwrite.");
+      stdout.writeln("  Path: ${_absPath(file.path)}");
+      stdout.writeln("  Use --force to overwrite.");
       return;
     }
 
@@ -180,9 +180,9 @@ OmegaConfig createOmegaConfig(OmegaChannel channel) {
 
     _formatFile(file.path);
 
-    print("Omega setup created.");
-    print("  Project root: ${_absPath(root)}");
-    print("  File: ${_absPath(file.path)}");
+    stdout.writeln("Omega setup created.");
+    stdout.writeln("  Project root: ${_absPath(root)}");
+    stdout.writeln("  File: ${_absPath(file.path)}");
   }
 }
 
@@ -190,20 +190,20 @@ class OmegaGenerateCommand {
   static void run(List<String> args) {
     if (args.isEmpty) {
       _err("Missing generator and name.");
-      print("  Usage: omega g <ecosystem|agent|flow> <Name>");
+      stdout.writeln("  Usage: omega g <ecosystem|agent|flow> <Name>");
       return;
     }
     if (args.length < 2 && args[0] != "-h" && args[0] != "--help") {
       _err("Missing name for generator '${args[0]}'.");
-      print("  Usage: omega g ${args[0]} <Name>");
+      stdout.writeln("  Usage: omega g ${args[0]} <Name>");
       return;
     }
     if (args[0] == "-h" || args[0] == "--help") {
-      print("Usage: omega g <ecosystem|agent|flow> <Name>");
-      print("");
-      print("  ecosystem <Name>  Agent, flow, behavior and page");
-      print("  agent <Name>      Agent + behavior only");
-      print("  flow <Name>      Flow only");
+      stdout.writeln("Usage: omega g <ecosystem|agent|flow> <Name>");
+      stdout.writeln("");
+      stdout.writeln("  ecosystem <Name>  Agent, flow, behavior and page");
+      stdout.writeln("  agent <Name>      Agent + behavior only");
+      stdout.writeln("  flow <Name>      Flow only");
       return;
     }
 
@@ -222,7 +222,7 @@ class OmegaGenerateCommand {
         break;
       default:
         _err("Unknown generator: $type");
-        print("  Available: ecosystem, agent, flow");
+        stdout.writeln("  Available: ecosystem, agent, flow");
     }
   }
 
@@ -234,8 +234,8 @@ class OmegaGenerateCommand {
       root = findProjectRoot();
     } catch (_) {
       _err("No Flutter project found.");
-      print("  Current directory: ${_absPath(baseDir)}");
-      print("  Run from your app root, then: omega init");
+      stdout.writeln("  Current directory: ${_absPath(baseDir)}");
+      stdout.writeln("  Run from your app root, then: omega init");
       return;
     }
 
@@ -243,16 +243,16 @@ class OmegaGenerateCommand {
     final setupFile = File("$lib/omega/omega_setup.dart");
     if (!setupFile.existsSync()) {
       _err("omega_setup.dart not found.");
-      print("  Looked at: ${_absPath(setupFile.path)}");
-      print("  Current directory: ${_absPath(baseDir)}");
-      print("  Run from app root: omega init");
+      stdout.writeln("  Looked at: ${_absPath(setupFile.path)}");
+      stdout.writeln("  Current directory: ${_absPath(baseDir)}");
+      stdout.writeln("  Run from app root: omega init");
       return;
     }
 
     final ecoPath = "$baseDir/${name.toLowerCase()}";
 
-    print("Creating in current directory: ${_absPath(baseDir)}");
-    print("Ecosystem path: ${_absPath(ecoPath)}");
+    stdout.writeln("Creating in current directory: ${_absPath(baseDir)}");
+    stdout.writeln("Ecosystem path: ${_absPath(ecoPath)}");
 
     Directory(ecoPath).createSync(recursive: true);
     Directory("$ecoPath/ui").createSync(recursive: true);
@@ -276,8 +276,8 @@ class OmegaGenerateCommand {
       _formatFile(path);
     }
 
-    print("Ecosystem $name created.");
-    print("  Path: ${_absPath(ecoPath)}");
+    stdout.writeln("Ecosystem $name created.");
+    stdout.writeln("  Path: ${_absPath(ecoPath)}");
   }
 
   static void _createAgentOnly(String name) {
@@ -288,19 +288,19 @@ class OmegaGenerateCommand {
       root = findProjectRoot();
     } catch (_) {
       _err("No Flutter project found.");
-      print("  Current directory: ${_absPath(baseDir)}");
-      print("  Run from your app root, then: omega init");
+      stdout.writeln("  Current directory: ${_absPath(baseDir)}");
+      stdout.writeln("  Run from your app root, then: omega init");
       return;
     }
     final setupFile = File("$root/lib/omega/omega_setup.dart");
     if (!setupFile.existsSync()) {
       _err("omega_setup.dart not found.");
-      print("  Looked at: ${_absPath(setupFile.path)}");
-      print("  Run from app root: omega init");
+      stdout.writeln("  Looked at: ${_absPath(setupFile.path)}");
+      stdout.writeln("  Run from app root: omega init");
       return;
     }
     final ecoPath = "$baseDir/${name.toLowerCase()}";
-    print("Creating in current directory: ${_absPath(baseDir)}");
+    stdout.writeln("Creating in current directory: ${_absPath(baseDir)}");
     Directory(ecoPath).createSync(recursive: true);
     final created = <String>[
       _createAgent(name, ecoPath),
@@ -316,8 +316,8 @@ class OmegaGenerateCommand {
     for (final p in created) {
       _formatFile(p);
     }
-    print("Agent $name created.");
-    print("  Path: ${_absPath(ecoPath)}");
+    stdout.writeln("Agent $name created.");
+    stdout.writeln("  Path: ${_absPath(ecoPath)}");
   }
 
   static void _createFlowOnly(String name) {
@@ -328,19 +328,19 @@ class OmegaGenerateCommand {
       root = findProjectRoot();
     } catch (_) {
       _err("No Flutter project found.");
-      print("  Current directory: ${_absPath(baseDir)}");
-      print("  Run from your app root, then: omega init");
+      stdout.writeln("  Current directory: ${_absPath(baseDir)}");
+      stdout.writeln("  Run from your app root, then: omega init");
       return;
     }
     final setupFile = File("$root/lib/omega/omega_setup.dart");
     if (!setupFile.existsSync()) {
       _err("omega_setup.dart not found.");
-      print("  Looked at: ${_absPath(setupFile.path)}");
-      print("  Run from app root: omega init");
+      stdout.writeln("  Looked at: ${_absPath(setupFile.path)}");
+      stdout.writeln("  Run from app root: omega init");
       return;
     }
     final ecoPath = "$baseDir/${name.toLowerCase()}";
-    print("Creating in current directory: ${_absPath(baseDir)}");
+    stdout.writeln("Creating in current directory: ${_absPath(baseDir)}");
     Directory(ecoPath).createSync(recursive: true);
     final path = _createFlow(name, ecoPath);
     registerInOmegaSetup(
@@ -351,8 +351,8 @@ class OmegaGenerateCommand {
       registerFlow: true,
     );
     _formatFile(path);
-    print("Flow $name created.");
-    print("  Path: ${_absPath(ecoPath)}");
+    stdout.writeln("Flow $name created.");
+    stdout.writeln("  Path: ${_absPath(ecoPath)}");
   }
 
   static String _createAgent(String name, String base) {
@@ -499,8 +499,8 @@ void registerInOmegaSetup(
 
   if (!setupFile.existsSync()) {
     _err("omega_setup.dart not found.");
-    print("  Looked at: ${_absPath(setupFile.path)}");
-    print("  Run from app root: omega init");
+    stdout.writeln("  Looked at: ${_absPath(setupFile.path)}");
+    stdout.writeln("  Run from app root: omega init");
     return;
   }
 
@@ -573,7 +573,7 @@ void registerInOmegaSetup(
     if (registerAgent) "agent",
     if (registerFlow) "flow",
   ].join(", ");
-  print("Registered $pascal ($what) in omega_setup.dart");
+  stdout.writeln("Registered $pascal ($what) in omega_setup.dart");
 }
 
 String toPascalCase(String name) {
@@ -647,8 +647,9 @@ String findAppRoot([String? startFrom]) {
   String startPath = startFrom != null && startFrom.isNotEmpty
       ? Directory(startFrom).absolute.path
       : bashCwd;
-  if (startPath.endsWith(sep))
+  if (startPath.endsWith(sep)) {
     startPath = startPath.substring(0, startPath.length - 1);
+  }
 
   // 2) Buscar setup: si en este dir está la carpeta omega/ con omega_setup.dart (ej. bash en lib/)
   //    → app root = padre de este dir. Proyecto real: no se usa example.
@@ -753,16 +754,16 @@ class OmegaValidateCommand {
     final startFrom = args.isNotEmpty && !args[0].startsWith("-")
         ? args[0]
         : null;
-    print("Directorio (bash): ${_absPath(getBashCwd())}");
+    stdout.writeln("Directorio (bash): ${_absPath(getBashCwd())}");
     if (startFrom != null) {
-      print("Buscar desde: ${_absPath(Directory(startFrom).absolute.path)}");
+      stdout.writeln("Buscar desde: ${_absPath(Directory(startFrom).absolute.path)}");
     }
     String root;
     try {
       root = findAppRoot(startFrom);
     } catch (_) {
       _err("No Flutter project found.");
-      print("  Run from your app root (where pubspec.yaml is).");
+      stdout.writeln("  Run from your app root (where pubspec.yaml is).");
       return;
     }
 
@@ -770,8 +771,8 @@ class OmegaValidateCommand {
     final setupFile = File(setupPath);
     if (!setupFile.existsSync()) {
       _err("omega_setup.dart not found.");
-      print("  Looked at: ${_absPath(setupPath)}");
-      print("  Run: omega init");
+      stdout.writeln("  Looked at: ${_absPath(setupPath)}");
+      stdout.writeln("  Run: omega init");
       return;
     }
 
@@ -780,7 +781,7 @@ class OmegaValidateCommand {
 
     if (!content.contains("createOmegaConfig")) {
       _err("omega_setup.dart must define createOmegaConfig(OmegaChannel).");
-      print("  File: ${_absPath(setupPath)}");
+      stdout.writeln("  File: ${_absPath(setupPath)}");
       ok = false;
     }
     if (!content.contains("OmegaConfig")) {
@@ -809,19 +810,19 @@ class OmegaValidateCommand {
     final duplicateFlows = _duplicates(flowNames);
     if (duplicateAgents.isNotEmpty) {
       _err("Duplicate agent registration: ${duplicateAgents.join(", ")}.");
-      print("  Remove duplicate XAgent(channel) from omega_setup.dart.");
+      stdout.writeln("  Remove duplicate XAgent(channel) from omega_setup.dart.");
       ok = false;
     }
     if (duplicateFlows.isNotEmpty) {
       _err("Duplicate flow registration: ${duplicateFlows.join(", ")}.");
-      print("  Remove duplicate XFlow(channel) from omega_setup.dart.");
+      stdout.writeln("  Remove duplicate XFlow(channel) from omega_setup.dart.");
       ok = false;
     }
 
     if (ok) {
-      print("Valid.");
-      print("  File: ${_absPath(setupPath)}");
-      print("  Agents: ${agentNames.length}, Flows: ${flowNames.length}");
+      stdout.writeln("Valid.");
+      stdout.writeln("  File: ${_absPath(setupPath)}");
+      stdout.writeln("  Agents: ${agentNames.length}, Flows: ${flowNames.length}");
     }
   }
 
@@ -851,7 +852,7 @@ class OmegaTraceCommand {
     if (sub == "view") {
       if (args.length < 2) {
         _err("Missing trace file path.");
-        print("  Usage: omega trace view <file.json>");
+        stdout.writeln("  Usage: omega trace view <file.json>");
         return;
       }
       _traceView(args[1]);
@@ -860,30 +861,30 @@ class OmegaTraceCommand {
     if (sub == "validate") {
       if (args.length < 2) {
         _err("Missing trace file path.");
-        print("  Usage: omega trace validate <file.json>");
+        stdout.writeln("  Usage: omega trace validate <file.json>");
         exit(1);
       }
       final ok = _traceValidate(args[1]);
       exit(ok ? 0 : 1);
     }
     _err("Unknown trace subcommand: $sub");
-    print("  Use: omega trace view <file> | omega trace validate <file>");
+    stdout.writeln("  Use: omega trace view <file> | omega trace validate <file>");
   }
 
   static void _printTraceHelp() {
-    print("Usage: omega trace <view|validate> <file.json>");
-    print("");
-    print(
+    stdout.writeln("Usage: omega trace <view|validate> <file.json>");
+    stdout.writeln("");
+    stdout.writeln(
       "  view <file>     Print summary of a recorded trace (events count, snapshot).",
     );
-    print(
+    stdout.writeln(
       "  validate <file> Check trace file structure; exit 0 if valid, 1 otherwise.",
     );
-    print("");
-    print(
+    stdout.writeln("");
+    stdout.writeln(
       "Trace files are produced by saving OmegaRecordedSession.toJson() to disk",
     );
-    print(
+    stdout.writeln(
       "(e.g. from OmegaTimeTravelRecorder.stopRecording() and jsonEncode(session.toJson())).",
     );
   }
@@ -935,9 +936,9 @@ class OmegaTraceCommand {
     }
     final events = json["events"] as List;
     final hasSnapshot = json["initialSnapshot"] is Map;
-    print("Trace: ${_absPath(path)}");
-    print("  Events: ${events.length}");
-    print("  Initial snapshot: ${hasSnapshot ? "yes" : "no"}");
+    stdout.writeln("Trace: ${_absPath(path)}");
+    stdout.writeln("  Events: ${events.length}");
+    stdout.writeln("  Initial snapshot: ${hasSnapshot ? "yes" : "no"}");
   }
 
   static bool _traceValidate(String path) {
@@ -949,8 +950,8 @@ class OmegaTraceCommand {
       );
       return false;
     }
-    print("Valid trace file.");
-    print("  Path: ${_absPath(path)}");
+    stdout.writeln("Valid trace file.");
+    stdout.writeln("  Path: ${_absPath(path)}");
     return true;
   }
 }
@@ -963,15 +964,15 @@ class OmegaDoctorCommand {
         ? args[0]
         : null;
     final bashCwd = getBashCwd();
-    print("Directorio (bash): ${_absPath(bashCwd)}");
+    stdout.writeln("Directorio (bash): ${_absPath(bashCwd)}");
     if (startFrom != null)
-      print("Buscar desde: ${_absPath(Directory(startFrom).absolute.path)}");
+      stdout.writeln("Buscar desde: ${_absPath(Directory(startFrom).absolute.path)}");
     String root;
     try {
       root = findAppRoot(startFrom);
     } catch (_) {
       _err("No Flutter project found.");
-      print("  Run from your app root (where pubspec.yaml is).");
+      stdout.writeln("  Run from your app root (where pubspec.yaml is).");
       return;
     }
     var ok = true;
@@ -979,8 +980,8 @@ class OmegaDoctorCommand {
     final setupFile = File(setupPath);
     if (!setupFile.existsSync()) {
       _err("omega_setup.dart not found.");
-      print("  Looked at: ${_absPath(setupPath)}");
-      print("  Run: omega init");
+      stdout.writeln("  Looked at: ${_absPath(setupPath)}");
+      stdout.writeln("  Run: omega init");
       return;
     }
     final content = setupFile.readAsStringSync();
@@ -1012,11 +1013,11 @@ class OmegaDoctorCommand {
       _err("Duplicate flow registration: ${dupFlows.join(", ")}.");
       ok = false;
     }
-    print("Omega Doctor");
-    print("  Setup: ${_absPath(setupPath)}");
-    print("  Agents: ${agentIds.length}, Flows: ${flowIds.length}");
+    stdout.writeln("Omega Doctor");
+    stdout.writeln("  Setup: ${_absPath(setupPath)}");
+    stdout.writeln("  Agents: ${agentIds.length}, Flows: ${flowIds.length}");
     if (!ok) {
-      print("");
+      stdout.writeln("");
       _err("Fix the issues above and run omega doctor again.");
       return;
     }
@@ -1046,21 +1047,21 @@ class OmegaDoctorCommand {
         "OmegaAgentContract",
       );
       if (flowsWithoutContract.isNotEmpty || agentsWithoutContract.isNotEmpty) {
-        print("");
-        print("Optional (contracts):");
+        stdout.writeln("");
+        stdout.writeln("Optional (contracts):");
         for (final p in flowsWithoutContract) {
-          print("  Flow without contract: ${_absPath(p)}");
+          stdout.writeln("  Flow without contract: ${_absPath(p)}");
         }
         for (final p in agentsWithoutContract) {
-          print("  Agent without contract: ${_absPath(p)}");
+          stdout.writeln("  Agent without contract: ${_absPath(p)}");
         }
-        print(
+        stdout.writeln(
           "  Tip: add a contract getter for clearer semantics and debug warnings.",
         );
       }
     }
-    print("");
-    print("Health check passed.");
+    stdout.writeln("");
+    stdout.writeln("Health check passed.");
   }
 
   static List<String> _findDartFilesContaining(

@@ -5,6 +5,7 @@
 import 'dart:convert';
 import 'dart:js_interop';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 
@@ -62,6 +63,7 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
   @override
   void initState() {
     super.initState();
+    if (!kDebugMode) return;
     try {
       _channel = web.BroadcastChannel(_kChannelName);
       _channel!.addEventListener('message', ((web.Event e) => _onMessage(e)).toJS);
@@ -78,6 +80,16 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
 
   @override
   Widget build(BuildContext context) {
+    if (!kDebugMode) {
+      return Material(
+        child: Center(
+          child: Text(
+            'Inspector is only available in debug mode.',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ),
+      );
+    }
     return Material(
       child: Container(
         color: _kInspectorSurface,

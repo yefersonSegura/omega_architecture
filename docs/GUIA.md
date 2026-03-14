@@ -322,6 +322,16 @@ if (kDebugMode)
   )
 ```
 
+**Inspector en el navegador (tipo DevTools):** En **desktop y mobile** (no en web) puedes abrir el Inspector en una pestaña del navegador. Arranca un servidor HTTP que envía eventos y snapshots por WebSocket; así no necesitas el overlay en la app. Solo en **debug**:
+
+```dart
+if (kDebugMode) {
+  OmegaInspectorServer.start(runtime.channel, runtime.flowManager);
+}
+```
+
+La consola imprimirá algo como `Omega Inspector: http://localhost:9292`. Abre esa URL en el navegador para ver eventos y estado de flows en tiempo real. En **web** `OmegaInspectorServer.start` no hace nada (usa la ventana separada con OmegaInspectorLauncher). Para detener el servidor: `OmegaInspectorServer.stop()`.
+
 ---
 
 ## Ejemplo completo

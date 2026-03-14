@@ -2,6 +2,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/events/omega_event.dart';
@@ -66,11 +67,13 @@ class _OmegaInspectorState extends State<OmegaInspector> {
   void initState() {
     super.initState();
     _collapsed = widget.initiallyCollapsed;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _attach());
+    if (kDebugMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _attach());
+    }
   }
 
   void _attach() {
-    if (!mounted) return;
+    if (!mounted || !kDebugMode) return;
     final scope = OmegaScope.of(context);
     _subscription = scope.channel.events.listen((e) {
       if (!mounted) return;
@@ -104,6 +107,7 @@ class _OmegaInspectorState extends State<OmegaInspector> {
 
   @override
   Widget build(BuildContext context) {
+    if (!kDebugMode) return const SizedBox.shrink();
     if (_collapsed) {
       return Material(
         elevation: 4,

@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 
@@ -71,6 +72,7 @@ class _OmegaInspectorLauncherWebState extends State<OmegaInspectorLauncher> {
   @override
   void initState() {
     super.initState();
+    if (!kDebugMode) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final scope = OmegaScope.of(context);
@@ -99,6 +101,7 @@ class _OmegaInspectorLauncherWebState extends State<OmegaInspectorLauncher> {
 
   @override
   Widget build(BuildContext context) {
+    if (!kDebugMode) return const SizedBox.shrink();
     return IconButton(
       icon: const Icon(Icons.bug_report),
       tooltip: 'Abrir Omega Inspector en nueva ventana',

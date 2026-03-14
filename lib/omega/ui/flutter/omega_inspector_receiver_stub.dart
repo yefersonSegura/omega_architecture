@@ -1,14 +1,26 @@
 // Stub: en plataformas no-web el "receiver" indica que se use la ventana remota en web.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// En **web**, este widget recibe datos del canal principal vía BroadcastChannel y muestra el inspector.
 /// En otras plataformas muestra un mensaje: usar [OmegaInspector] en overlay o [OmegaInspectorLauncher] en diálogo.
+/// En release no muestra el inspector (solo un mensaje).
 class OmegaInspectorReceiver extends StatelessWidget {
   const OmegaInspectorReceiver({super.key});
 
   @override
   Widget build(BuildContext context) {
+    if (!kDebugMode) {
+      return Material(
+        child: Center(
+          child: Text(
+            'Inspector is only available in debug mode.',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ),
+      );
+    }
     return Material(
       child: Center(
         child: Padding(
