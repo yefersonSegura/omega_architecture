@@ -20,7 +20,7 @@ class OrdersFlow extends OmegaFlow {
   @override
   OmegaFlowContract? get contract => _contract;
 
-  OrdersFlow(OmegaChannel channel, this.offlineQueue)
+  OrdersFlow(OmegaEventBus channel, this.offlineQueue)
       : super(id: 'ordersFlow', channel: channel);
 
   @override

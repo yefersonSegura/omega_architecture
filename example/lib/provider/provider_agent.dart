@@ -11,8 +11,8 @@ class ProviderAgent extends OmegaAgent {
   @override
   OmegaAgentContract? get contract => _contract;
 
-  ProviderAgent(OmegaChannel channel)
-    : super(id: "Provider", channel: channel, behavior: ProviderBehavior());
+  ProviderAgent(OmegaEventBus channel)
+      : super(id: "Provider", channel: channel, behavior: ProviderBehavior());
 
   @override
   void onMessage(OmegaAgentMessage msg) {}

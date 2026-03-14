@@ -1,7 +1,7 @@
 /// Omega Architecture: framework reactivo y basado en agentes para Flutter.
 ///
 /// Componentes principales:
-/// - [OmegaChannel]: bus de eventos.
+/// - [OmegaChannel] / [OmegaChannelNamespace] / [OmegaEventBus]: bus de eventos; use [OmegaChannel.namespace] para scope por módulo (auth, checkout, etc.). Flows y agents aceptan [OmegaEventBus] (canal o namespace).
 /// - [OmegaAgent] / [OmegaAgentBehaviorEngine]: lógica en agentes.
 /// - [OmegaFlow] / [OmegaFlowManager]: flujos de negocio y orquestación.
 /// - [OmegaScope] / [OmegaBuilder] / [OmegaInspector] / [OmegaInspectorLauncher] / [OmegaInspectorReceiver] / [OmegaInspectorServer]: integración con la UI y Inspector en navegador.

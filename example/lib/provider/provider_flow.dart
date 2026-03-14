@@ -11,7 +11,7 @@ class ProviderFlow extends OmegaFlow {
   @override
   OmegaFlowContract? get contract => _contract;
 
-  ProviderFlow(OmegaChannel channel) : super(id: "Provider", channel: channel);
+  ProviderFlow(OmegaEventBus channel) : super(id: "Provider", channel: channel);
 
   @override
   void onStart() {

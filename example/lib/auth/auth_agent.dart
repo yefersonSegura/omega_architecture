@@ -5,7 +5,7 @@ import 'auth_behavior.dart';
 import 'models.dart';
 
 class AuthAgent extends OmegaAgent {
-  AuthAgent(OmegaChannel channel)
+  AuthAgent(OmegaEventBus channel)
       : super(id: "Auth", channel: channel, behavior: AuthBehavior());
 
   static final _contract = OmegaAgentContract.fromTyped(

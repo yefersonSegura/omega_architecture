@@ -4,7 +4,7 @@ import '../omega/app_semantics.dart';
 import 'models.dart';
 
 class AuthFlow extends OmegaFlow {
-  AuthFlow(OmegaChannel channel) : super(id: "authFlow", channel: channel);
+  AuthFlow(OmegaEventBus channel) : super(id: "authFlow", channel: channel);
 
   static final _contract = OmegaFlowContract.fromTyped(
     flowId: 'authFlow',

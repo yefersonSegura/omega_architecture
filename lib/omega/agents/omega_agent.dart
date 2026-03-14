@@ -24,8 +24,8 @@ abstract class OmegaAgent {
   /// Unique agent identifier.
   final String id;
 
-  /// Global communication channel.
-  final OmegaChannel channel;
+  /// Event bus (channel or [OmegaChannelNamespace]) for emitting and listening.
+  final OmegaEventBus channel;
 
   /// Engine that defines how the agent reacts to events and intents.
   final OmegaAgentBehaviorEngine behavior;

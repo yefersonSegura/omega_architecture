@@ -8,11 +8,13 @@ import 'omega/omega_setup.dart';
 void main() {
   // Si se abre con ?omega_inspector=1 (p. ej. desde OmegaInspectorLauncher en web), mostrar solo el receiver.
   if (Uri.base.queryParameters['omega_inspector'] == '1') {
-    runApp(MaterialApp(
-      title: 'Omega Inspector',
-      theme: ThemeData(primarySwatch: Colors.orange),
-      home: const OmegaInspectorReceiver(),
-    ));
+    runApp(
+      MaterialApp(
+        title: 'Omega Inspector',
+        theme: ThemeData(primarySwatch: Colors.orange),
+        home: const OmegaInspectorReceiver(),
+      ),
+    );
     return;
   }
   final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
@@ -195,9 +197,9 @@ class _TimeTravelPanelState extends State<_TimeTravelPanel> {
       upToIndex: _replayStep,
     );
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Replay hasta paso $_replayStep')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Replay hasta paso $_replayStep')));
     }
   }
 
@@ -243,7 +245,11 @@ class _TimeTravelPanelState extends State<_TimeTravelPanel> {
           if (isRecording) ...[
             Row(
               children: [
-                const Icon(Icons.fiber_manual_record, color: Colors.red, size: 20),
+                const Icon(
+                  Icons.fiber_manual_record,
+                  color: Colors.red,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 const Text('Grabando...', style: TextStyle(color: Colors.red)),
               ],
@@ -257,8 +263,10 @@ class _TimeTravelPanelState extends State<_TimeTravelPanel> {
           ],
           if (hasSession) ...[
             const Divider(),
-            Text('Sesión: ${_session!.length} eventos',
-                style: const TextStyle(fontWeight: FontWeight.w500)),
+            Text(
+              'Sesión: ${_session!.length} eventos',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
             const SizedBox(height: 12),
             if (_session!.length > 1) ...[
               Text('Reproducir hasta el paso: $_replayStep'),
@@ -270,7 +278,9 @@ class _TimeTravelPanelState extends State<_TimeTravelPanel> {
                 onChanged: (v) => setState(() => _replayStep = v.round()),
               ),
             ] else
-              const Text('Un evento grabado. Replay restaura y emite ese evento.'),
+              const Text(
+                'Un evento grabado. Replay restaura y emite ese evento.',
+              ),
             const SizedBox(height: 8),
             Row(
               children: [

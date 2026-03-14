@@ -57,6 +57,14 @@ channel.events.listen((event) {
 channel.dispose();
 ```
 
+**Namespaces (canales temáticos):** En apps grandes o con módulos, puedes acotar eventos por dominio con `channel.namespace('auth')`, `channel.namespace('checkout')`, etc. Los eventos emitidos con `channel.namespace('auth').emit(ev)` llevan ese namespace; `channel.namespace('auth').events` solo entrega eventos globales (sin namespace) y los del namespace `auth`. Así evitas colisiones de nombres entre módulos (p. ej. `auth.loading` vs `checkout.loading`) y preparas el terreno para OmegaModule.
+
+```dart
+final auth = channel.namespace('auth');
+auth.emit(OmegaEvent.fromName(AppEvent.authLoginSuccess, payload: user));
+auth.events.listen((e) { /* solo global + auth */ });
+```
+
 ---
 
 ### OmegaEvent (evento)

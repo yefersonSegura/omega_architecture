@@ -59,4 +59,47 @@ void main() {
     expect(event.payloadAs<int>(), 42);
     expect(event.payloadAs<String>(), isNull);
   });
+
+  test("OmegaChannelNamespace emit tags event with namespace", () async {
+    final channel = OmegaChannel();
+    final authNs = channel.namespace('auth');
+    OmegaEvent? received;
+    authNs.events.listen((e) => received = e);
+
+    authNs.emit(OmegaEvent(id: '1', name: 'auth.login', payload: null));
+
+    await Future.delayed(Duration(milliseconds: 10));
+    expect(received, isNotNull);
+    expect(received!.namespace, 'auth');
+    expect(received!.name, 'auth.login');
+    channel.dispose();
+  });
+
+  test("OmegaChannelNamespace events only receives global and same-namespace events", () async {
+    final channel = OmegaChannel();
+    final authNs = channel.namespace('auth');
+    final checkoutNs = channel.namespace('checkout');
+    final authReceived = <OmegaEvent>[];
+    final checkoutReceived = <OmegaEvent>[];
+    authNs.events.listen(authReceived.add);
+    checkoutNs.events.listen(checkoutReceived.add);
+
+    channel.emit(OmegaEvent(id: '1', name: 'global', payload: null));
+    authNs.emit(OmegaEvent(id: '2', name: 'auth.login', payload: null));
+    checkoutNs.emit(OmegaEvent(id: '3', name: 'checkout.step', payload: null));
+
+    await Future.delayed(Duration(milliseconds: 50));
+
+    expect(authReceived.length, 2);
+    expect(authReceived.any((e) => e.name == 'global' && e.namespace == null), isTrue);
+    expect(authReceived.any((e) => e.name == 'auth.login' && e.namespace == 'auth'), isTrue);
+    expect(authReceived.any((e) => e.name == 'checkout.step'), isFalse);
+
+    expect(checkoutReceived.length, 2);
+    expect(checkoutReceived.any((e) => e.name == 'global' && e.namespace == null), isTrue);
+    expect(checkoutReceived.any((e) => e.name == 'checkout.step' && e.namespace == 'checkout'), isTrue);
+    expect(checkoutReceived.any((e) => e.name == 'auth.login'), isFalse);
+
+    channel.dispose();
+  });
 }

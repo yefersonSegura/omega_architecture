@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:omega_architecture/omega/core/semantics/omega_intent.dart';
 
 import '../contracts/omega_flow_contract.dart';
-import '../core/channel/omega_channel.dart';
+import '../core/channel/omega_channel.dart'; // OmegaEventBus, OmegaChannel
 import '../core/events/omega_event.dart';
 
 import 'omega_flow_state.dart';
@@ -27,8 +27,8 @@ abstract class OmegaFlow {
   /// Flow identifier (e.g. "authFlow"). Must match the one used in the manager.
   final String id;
 
-  /// Global channel; the flow listens to [channel.events] and can emit events.
-  final OmegaChannel channel;
+  /// Event bus (channel or [OmegaChannelNamespace]); the flow listens to [channel.events] and can emit events.
+  final OmegaEventBus channel;
 
   /// Current state. [onEvent] and [onIntent] are only called when [OmegaFlowState.running].
   OmegaFlowState state = OmegaFlowState.idle;

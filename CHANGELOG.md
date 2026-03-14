@@ -1,3 +1,10 @@
+## 0.0.19
+
+- **Channel namespaces:** [OmegaChannel.namespace](lib/omega/core/channel/omega_channel.dart) and [OmegaChannelNamespace] for scoped events (e.g. `auth`, `checkout`). [OmegaEvent] and [OmegaIntent] have optional `namespace`; [OmegaEventBus] abstraction so [OmegaFlow] and [OmegaAgent] accept either the global channel or a namespace view. Example app uses namespaces per domain (auth, provider, orders). ROADMAP and [docs/GUIA.md](docs/GUIA.md) updated.
+- **Inspector server (web stub):** When [OmegaInspectorServer.start] is called on web, a debug message is printed explaining that the server is not available on web and to use [OmegaInspectorLauncher] instead.
+- **Inspector example and docs:** Example app shows overlay + launcher + server in debug; [docs/INSPECTOR.md](docs/INSPECTOR.md) added with full copy-paste guide (overlay, launcher, server) and "Inspector not showing" troubleshooting.
+- **Inspector server (IO) encoding fix:** Events whose payload is an [OmegaIntent] (e.g. `navigation.intent`) are now serialized safely for WebSocket broadcast; fixes "Converting object to an encodable object failed: Instance of 'OmegaIntent'" when running on mobile or desktop with the Inspector server.
+
 ## 0.0.18
 
 - **CLI:** Wrapped single-statement `if` body in `omega doctor` in a block to satisfy `curly_braces_in_flow_control_structures` lint.

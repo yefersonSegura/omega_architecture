@@ -39,7 +39,7 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 
 - [ ] **OmegaModule:** paquete que trae su flow, agentes, rutas y eventos; se registra en el host con una sola llamada (ej. `OmegaModuleAuth.register(channel, config)`).
 - [ ] **Ecosistemas reutilizables:** auth, onboarding, checkout como módulos que distintas apps pueden reutilizar.
-- [ ] **Eventos namespaced:** ej. `auth.*`, `checkout.*`, para que módulos no se pisen.
+- [x] **Eventos namespaced:** [OmegaChannel.namespace] devuelve [OmegaChannelNamespace]; emit/listen por namespace (`auth`, `checkout`, etc.) para que módulos no se pisen. [OmegaEvent] y [OmegaIntent] tienen `namespace` opcional; toJson/fromJson y time-travel compatibles.
 
 **Objetivo:** Omega como plataforma de módulos reutilizables entre apps.
 

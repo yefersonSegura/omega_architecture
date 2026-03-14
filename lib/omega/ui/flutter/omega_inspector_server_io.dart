@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/channel/omega_channel.dart';
 import '../../core/events/omega_event.dart';
+import '../../core/semantics/omega_intent.dart';
 import '../../flows/omega_flow_manager.dart';
 
 const int _kDefaultEventLimit = 30;
@@ -44,7 +45,7 @@ class OmegaInspectorServer {
     _server!.listen(_onRequest);
 
     _eventSub = channel.events.listen((e) {
-      final json = e.toJson();
+      final json = _eventToEncodableMap(e);
       _recentEvents.insert(0, json);
       while (_recentEvents.length > _eventLimit) {
         _recentEvents.removeLast();
@@ -83,6 +84,41 @@ class OmegaInspectorServer {
       final snapshot = fm.getAppSnapshot();
       _broadcast({'type': 'snapshot', 'data': snapshot.toJson()});
     } catch (_) {}
+  }
+
+  /// Converts [event] to a map safe for jsonEncode (payload may be OmegaIntent or other objects).
+  static Map<String, dynamic> _eventToEncodableMap(OmegaEvent event) {
+    final payload = event.payload;
+    final Object? safePayload;
+    if (payload == null) {
+      safePayload = null;
+    } else if (payload is OmegaIntent) {
+      safePayload = <String, dynamic>{
+        'id': payload.id,
+        'name': payload.name,
+        if (payload.namespace != null) 'namespace': payload.namespace,
+        'payload': _toEncodableValue(payload.payload),
+      };
+    } else {
+      safePayload = _toEncodableValue(payload);
+    }
+    return <String, dynamic>{
+      'id': event.id,
+      'name': event.name,
+      if (safePayload != null) 'payload': safePayload,
+      if (event.namespace != null) 'namespace': event.namespace,
+      if (event.meta.isNotEmpty) 'meta': Map<String, dynamic>.from(event.meta),
+    };
+  }
+
+  static Object? _toEncodableValue(dynamic value) {
+    if (value == null) return null;
+    if (value is num || value is bool || value is String) return value;
+    if (value is Map) {
+      return value.map((k, v) => MapEntry(k.toString(), _toEncodableValue(v)));
+    }
+    if (value is List) return value.map(_toEncodableValue).toList();
+    return value.toString();
   }
 
   static void _broadcast(Map<String, dynamic> message) {

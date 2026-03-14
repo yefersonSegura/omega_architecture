@@ -12,16 +12,19 @@ import '../provider/provider_flow.dart';
 
 OmegaConfig createOmegaConfig(OmegaChannel channel) {
   final offlineQueue = OmegaMemoryOfflineQueue();
+  final authNs = channel.namespace('auth');
+  final providerNs = channel.namespace('provider');
+  final ordersNs = channel.namespace('orders');
 
   return OmegaConfig(
     agents: <OmegaAgent>[
-      ProviderAgent(channel),
-      AuthAgent(channel),
+      ProviderAgent(providerNs),
+      AuthAgent(authNs),
     ],
     flows: <OmegaFlow>[
-      ProviderFlow(channel),
-      AuthFlow(channel),
-      OrdersFlow(channel, offlineQueue),
+      ProviderFlow(providerNs),
+      AuthFlow(authNs),
+      OrdersFlow(ordersNs, offlineQueue),
     ],
     routes: [
       OmegaRoute(id: "login", builder: (context) => const OmegaLoginPage()),
