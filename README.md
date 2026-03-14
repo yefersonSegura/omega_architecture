@@ -304,10 +304,46 @@ OmegaBuilder(
 )
 ```
 
-In debug you can inspect the channel (last N events) and flow snapshots in two ways:
+### Inspector (debug only)
 
-- **Overlay:** Add **`OmegaInspector`** in a `Stack` (only when `kDebugMode`). The panel uses a modern theme (blue gradient header, cards with subtle shadow, pills for event count and flow state).
-- **Separate browser window (web):** Add **`OmegaInspectorLauncher`** (e.g. in the AppBar). On web it opens a new window; the app must show **`OmegaInspectorReceiver`** when loaded with `?omega_inspector=1` (see [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)). Each time you tap the launcher, a new window is opened (unique name), so you can close the inspector and open it again without issues.
+In debug you can inspect the channel (last N events) and flow snapshots in three ways:
+
+**1. Overlay in the app**
+
+```dart
+if (kDebugMode)
+  Stack(
+    children: [
+      MyContent(),
+      Positioned(right: 0, top: 0, child: OmegaInspector(eventLimit: 20)),
+    ],
+  )
+```
+
+**2. Launcher button (dialog on desktop/mobile, new window on web)**
+
+Add the launcher in the AppBar (or anywhere); in debug it shows a button that opens the Inspector in a dialog (non-web) or in a new browser tab (web). On web, the app must show `OmegaInspectorReceiver` when the URL has `?omega_inspector=1` (e.g. in `main.dart`: if the query param is set, run only `OmegaInspectorReceiver` as the app).
+
+```dart
+if (kDebugMode)
+  AppBar(
+    title: Text('My App'),
+    actions: [OmegaInspectorLauncher()],
+  )
+```
+
+**3. Inspector in browser (desktop/mobile only)**
+
+Start a small HTTP server so you can open the Inspector at `http://localhost:9292` without the in-app overlay. On web this is a no-op.
+
+```dart
+if (kDebugMode) {
+  OmegaInspectorServer.start(runtime.channel, runtime.flowManager);
+}
+// Console prints: Omega Inspector: http://localhost:9292
+```
+
+All Inspector widgets and the server are no-op in release (`kDebugMode` guards). See the [example](example/) app: `main.dart` uses (2) and (3); [docs/GUIA.md](docs/GUIA.md) has more detail.
 
 ### Activating flows
 

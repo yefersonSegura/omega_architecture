@@ -44,7 +44,7 @@
                 <button type="button" class="lang-toggle" id="lang-toggle" aria-label="View in Spanish"
                     title="View in Spanish" onclick="window.location.href='index.html'">
                     <i class="fa fa-globe" aria-hidden="true"></i>
-                    <span class="lang-toggle-text" id="lang-toggle-text">ES</span>
+                    <span class="lang-toggle-text" id="lang-toggle-text">EN</span>
                 </button>
                 <a href="#vision" data-i18n="nav_home">Inicio</a>
                 <a href="#get-started" data-i18n="nav_get_started">Get started</a>
@@ -1645,6 +1645,13 @@ scope.flowManager.handleIntent(...);</code></pre>
 )</code></pre>
                         </div>
                     </div>
+                    <h3 class="animate" style="font-size: 18px; margin-top: 24px;">Using the Inspector (debug only)</h3>
+                    <p class="animate" style="font-size: 14px; margin-bottom: 8px;">Three options; in release all are no-op.</p>
+                    <ul class="animate" style="font-size: 13px; line-height: 1.6; margin-left: 20px;">
+                        <li><strong>1. Overlay:</strong> <code>Stack(children: [MyContent(), Positioned(..., child: OmegaInspector())])</code> with <code>kDebugMode</code>.</li>
+                        <li><strong>2. Launcher:</strong> <code>AppBar(actions: [OmegaInspectorLauncher()])</code> — on web opens a new window; on desktop/mobile opens a dialog.</li>
+                        <li><strong>3. In the browser (desktop/mobile):</strong> <code>OmegaInspectorServer.start(channel, flowManager)</code> in debug; open the URL printed in the console (e.g. <code>http://localhost:9292</code>).</li>
+                    </ul>
                 </section>
 
                 <!-- Flows: activar, pausar, dormir, finalizar -->
@@ -2224,13 +2231,11 @@ final data = event.payloadAs&lt;LoginSuccessPayload&gt;();</code></pre>
                     </p>
                 </section>
                 <section id="api-inspector" class="slide doc-section">
-                    <h2>OmegaInspector / OmegaInspectorLauncher / OmegaInspectorReceiver</h2>
-                    <p><strong>OmegaInspector:</strong> overlay panel that shows the latest channel events and flow
-                        snapshots. Intended for debug (kDebugMode).</p>
-                    <p><strong>OmegaInspectorLauncher:</strong> on web opens the inspector in a new window
-                        (BroadcastChannel). On other platforms it opens the overlay in a dialog.</p>
-                    <p><strong>OmegaInspectorReceiver:</strong> in the window opened with ?omega_inspector=1, it shows
-                        the inspector receiving data through BroadcastChannel.</p>
+                    <h2>OmegaInspector / Launcher / Receiver / Server</h2>
+                    <p><strong>OmegaInspector:</strong> overlay panel with latest channel events and flow snapshots. Debug only (<code>kDebugMode</code>).</p>
+                    <p><strong>OmegaInspectorLauncher:</strong> button that on web opens the inspector in a new window (BroadcastChannel); on desktop/mobile opens the overlay in a dialog. In release the button is hidden.</p>
+                    <p><strong>OmegaInspectorReceiver:</strong> in the window with <code>?omega_inspector=1</code> it shows the inspector (data via BroadcastChannel). In release it shows a "debug only" message.</p>
+                    <p><strong>OmegaInspectorServer:</strong> on desktop/mobile and debug only, starts an HTTP server; open the URL printed in the console (e.g. <code>http://localhost:9292</code>) to view the inspector in the browser. On web it is a no-op.</p>
                 </section>
 
                 <!-- ========== API REFERENCE: BOOTSTRAP ========== -->

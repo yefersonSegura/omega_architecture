@@ -44,7 +44,7 @@
                 <button type="button" class="lang-toggle" id="lang-toggle" aria-label="Ver en ingles"
                     title="Ver en ingles" onclick="window.location.href='index-en.html'">
                     <i class="fa fa-globe" aria-hidden="true"></i>
-                    <span class="lang-toggle-text" id="lang-toggle-text">EN</span>
+                    <span class="lang-toggle-text" id="lang-toggle-text">ES</span>
                 </button>
                 <a href="#vision" data-i18n="nav_home">Inicio</a>
                 <a href="#get-started" data-i18n="nav_get_started">Primeros pasos</a>
@@ -852,16 +852,6 @@ if (loaded != null) {
   flowManager.restoreFromSnapshot(snapshot);
 }</code></pre>
 
-                    <h3 class="animate" style="font-size: 22px; margin-top: 28px;">Mostrar el inspector en debug</h3>
-                    <pre class="glass animate"><code>if (kDebugMode)
-  Stack(
-    children: [
-      MyApp(),
-      Positioned(right: 0, top: 0, child: OmegaInspector(eventLimit: 20)),
-    ],
-  )
-
-// En web: OmegaInspectorLauncher en la AppBar abre la ventana aparte</code></pre>
                 </section>
 
                 <!-- Kashira: ejemplo en producción -->
@@ -1579,6 +1569,13 @@ scope.flowManager.handleIntent(...);</code></pre>
 )</code></pre>
                         </div>
                     </div>
+                    <h3 class="animate" style="font-size: 18px; margin-top: 24px;">Uso del Inspector (solo debug)</h3>
+                    <p class="animate" style="font-size: 14px; margin-bottom: 8px;">Tres formas; en release todo es no-op.</p>
+                    <ul class="animate" style="font-size: 13px; line-height: 1.6; margin-left: 20px;">
+                        <li><strong>1. Overlay:</strong> <code>Stack(children: [MyContent(), Positioned(..., child: OmegaInspector())])</code> con <code>kDebugMode</code>.</li>
+                        <li><strong>2. Launcher:</strong> <code>AppBar(actions: [OmegaInspectorLauncher()])</code> — en web abre ventana; en desktop/móvil abre diálogo.</li>
+                        <li><strong>3. En el navegador (desktop/móvil):</strong> <code>OmegaInspectorServer.start(channel, flowManager)</code> en debug; abre la URL que imprime la consola (ej. <code>http://localhost:9292</code>).</li>
+                    </ul>
                 </section>
 
                 <!-- Flows: activar, pausar, dormir, finalizar -->
@@ -2122,13 +2119,11 @@ final data = event.payloadAs&lt;LoginSuccessPayload&gt;();</code></pre>
                         leer argumentos con tipo.</p>
                 </section>
                 <section id="api-inspector" class="slide doc-section">
-                    <h2>OmegaInspector / OmegaInspectorLauncher / OmegaInspectorReceiver</h2>
-                    <p><strong>OmegaInspector:</strong> panel overlay que muestra últimos eventos del canal y snapshot
-                        de flows. Pensado para debug (kDebugMode).</p>
-                    <p><strong>OmegaInspectorLauncher:</strong> en web abre el inspector en una ventana nueva
-                        (BroadcastChannel). En otras plataformas abre el overlay en un diálogo.</p>
-                    <p><strong>OmegaInspectorReceiver:</strong> en la ventana abierta con ?omega_inspector=1, muestra el
-                        inspector recibiendo datos por BroadcastChannel.</p>
+                    <h2>OmegaInspector / Launcher / Receiver / Server</h2>
+                    <p><strong>OmegaInspector:</strong> panel overlay con últimos eventos del canal y snapshot de flows. Solo en debug (<code>kDebugMode</code>).</p>
+                    <p><strong>OmegaInspectorLauncher:</strong> botón que en web abre el inspector en ventana nueva (BroadcastChannel); en desktop/móvil abre el overlay en diálogo. En release no se muestra.</p>
+                    <p><strong>OmegaInspectorReceiver:</strong> en la ventana con <code>?omega_inspector=1</code> muestra el inspector (datos por BroadcastChannel). En release muestra mensaje "solo en debug".</p>
+                    <p><strong>OmegaInspectorServer:</strong> en desktop/móvil y solo en debug, arranca un servidor HTTP; abre la URL que imprime la consola (ej. <code>http://localhost:9292</code>) para ver el inspector en el navegador. En web es no-op.</p>
                 </section>
 
                 <!-- ========== API REFERENCE: BOOTSTRAP ========== -->
