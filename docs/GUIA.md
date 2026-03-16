@@ -82,6 +82,34 @@ final user = event.payloadAs<User>();
 if (user != null) { ... }
 ```
 
+### Eventos tipados (clase como evento) — recomendado
+
+**Qué hace:** En vez de emitir un nombre + payload por separado, defines una **clase que implementa [OmegaTypedEvent]** con el nombre del evento y los datos (ej. `email`, `password`). Emites la instancia con `channel.emitTyped(LoginRequestedEvent(email, password))` y en el listener lees `event.payloadAs<LoginRequestedEvent>()`. Así tienes autocompletado, type safety y menos bugs.
+
+**Ejemplo:**
+
+```dart
+// Definir el evento tipado
+class LoginRequestedEvent implements OmegaTypedEvent {
+  final String email;
+  final String password;
+  LoginRequestedEvent(this.email, this.password);
+  @override
+  String get name => 'auth.login.request';
+}
+
+// Emitir
+channel.emitTyped(LoginRequestedEvent(email, password));
+
+// En un listener
+final ev = event.payloadAs<LoginRequestedEvent>();
+if (ev != null) {
+  // ev.email, ev.password con tipo
+}
+```
+
+**Beneficios:** autocompletado, type safety en compilación, refactors más seguros, menos errores en runtime.
+
 ---
 
 ### OmegaIntent (intención)

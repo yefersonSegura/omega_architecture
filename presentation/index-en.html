@@ -24,6 +24,16 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@300;600;800&display=swap"
         rel="stylesheet">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q2XTRMEHHH"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-Q2XTRMEHHH');
+    </script>
 </head>
 
 <body class="doc-body" id="doc-body">
@@ -69,6 +79,7 @@
             </div>
             <h3 data-i18n="sidebar_intro_title">1. Introduction</h3>
             <a href="#vision"><i class="fa fa-home"></i> <span data-i18n="sidebar_home">Home</span></a>
+            <a href="#whats-new"><i class="fa fa-bolt"></i> <span>What’s new</span></a>
             <a href="#get-started"><i class="fa fa-rocket"></i> <span data-i18n="sidebar_get_started">Get
                     started</span></a>
             <a href="#data-flow"><i class="fa fa-exchange"></i> <span data-i18n="sidebar_data_flow">Data
@@ -204,6 +215,54 @@
                                 </a>
                             </p>
                         </div>
+                    </div>
+                </section>
+
+                <!-- What's new -->
+                <section id="whats-new" class="slide">
+                    <span class="section-tag">What’s new</span>
+                    <h2 class="animate">What’s new in <span class="gradient-text">Omega</span></h2>
+                    <p class="subtitle animate" style="margin-bottom: 24px;">
+                        Quick summary of recent improvements to the framework and tools.
+                        For full details see <code>CHANGELOG.md</code> in the repository.
+                    </p>
+                    <div class="card glass animate">
+                        <details>
+                            <summary><strong>0.0.21 — Typed events</strong></summary>
+                            <p style="margin-top: 12px;">
+                                Introduces <code>OmegaTypedEvent</code> and <code>emitTyped</code> so your events can be
+                                classes with name + data instead of plain strings with loose payloads.
+                            </p>
+                            <ul>
+                                <li><strong>OmegaTypedEvent + emitTyped</strong>: define event classes
+                                    (for example <code>LoginRequestedEvent</code>) and emit them with
+                                    <code>channel.emitTyped(...)</code>; listeners read them with
+                                    <code>event.payloadAs&lt;LoginRequestedEvent&gt;()</code>.</li>
+                                <li><strong>Updated example</strong>: the auth flow in the example app uses typed events to
+                                    showcase the recommended pattern.</li>
+                                <li><strong>Docs aligned</strong>: <code>README.md</code> and
+                                    <code>docs/GUIA.md</code> now present typed events as the preferred style, reducing
+                                    magic strings and runtime bugs.</li>
+                            </ul>
+                            <p style="margin-top: 8px; font-weight: 600;">Example:</p>
+                            <pre class="glass" style="margin-top: 8px; padding: 12px; font-size: 13px;"><code>// Define the typed event
+class LoginRequestedEvent implements OmegaTypedEvent {
+  LoginRequestedEvent(this.email, this.password);
+  final String email;
+  final String password;
+  @override
+  String get name =&gt; AppEvent.authLoginRequest.name;
+}
+
+// Emit from the flow
+channel.emitTyped(LoginRequestedEvent(email, password));
+
+// Read in the agent
+final ev = event.payloadAs&lt;LoginRequestedEvent&gt;();
+if (ev != null) {
+  // use ev.email, ev.password
+}</code></pre>
+                        </details>
                     </div>
                 </section>
 

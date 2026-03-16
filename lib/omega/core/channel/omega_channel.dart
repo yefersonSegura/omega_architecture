@@ -1,5 +1,6 @@
 import 'dart:async';
 import '../events/omega_event.dart';
+import '../semantics/omega_typed_event.dart';
 
 /// Abstraction for emitting and listening to events. Implemented by [OmegaChannel]
 /// and [OmegaChannelNamespace], so flows and agents can use either the global channel
@@ -7,6 +8,10 @@ import '../events/omega_event.dart';
 abstract class OmegaEventBus {
   /// Publishes [event]. On a namespace view, the event is tagged with that namespace.
   void emit(OmegaEvent event);
+
+  /// Publishes a typed event. The instance is used as payload and [event.name] as the event name.
+  /// Use this for type-safe events: `channel.emitTyped(LoginRequestedEvent(email, password));`
+  void emitTyped(OmegaTypedEvent event);
 
   /// Event stream. On a namespace view, only global and that namespace's events are emitted.
   Stream<OmegaEvent> get events;
@@ -21,11 +26,11 @@ abstract class OmegaEventBus {
 /// do not collide. [events] receives all events; [namespace](id).events receives only
 /// global events and events in that namespace.
 ///
-/// **Example:** Emit and listen (global), or use a namespace:
+/// **Example:** Emit and listen (global), or use a typed event class:
 /// ```dart
 /// channel.emit(OmegaEvent(id: "1", name: "auth.login.request", payload: creds));
+/// // Or use a typed event (recommended): channel.emit(LoginRequestedEvent(email, password));
 /// channel.events.listen((e) => print(e.name));
-/// // Scoped to "auth": only auth + global events
 /// channel.namespace('auth').emit(OmegaEvent(...));
 /// channel.namespace('auth').events.listen((e) => ...);
 /// ```
@@ -58,6 +63,7 @@ class OmegaChannel implements OmegaEventBus {
   ///
   /// **Why use it:** To notify that "something happened" (login, error, navigation) without
   /// coupling emitter and receiver. If the channel is closed, [onEmitError] is called.
+  @override
   void emit(OmegaEvent event) {
     if (_controller.isClosed) {
       onEmitError?.call(
@@ -74,6 +80,15 @@ class OmegaChannel implements OmegaEventBus {
       }
       onEmitError?.call(e, st);
     }
+  }
+
+  @override
+  void emitTyped(OmegaTypedEvent event) {
+    emit(OmegaEvent(
+      id: 'ev:${DateTime.now().millisecondsSinceEpoch}',
+      name: event.name,
+      payload: event,
+    ));
   }
 
   /// Closes the channel and releases resources. Call when closing the app to avoid leaks.
@@ -100,9 +115,7 @@ class OmegaChannelNamespace implements OmegaEventBus {
 
   OmegaChannelNamespace(this.channel, this.namespace);
 
-  /// Publishes [event] on the channel with [namespace] set to this view's name.
-  /// If [event] already has a namespace, it is overridden so the event is delivered
-  /// under this namespace.
+  @override
   void emit(OmegaEvent event) {
     final tagged = OmegaEvent(
       id: event.id,
@@ -112,6 +125,16 @@ class OmegaChannelNamespace implements OmegaEventBus {
       namespace: namespace,
     );
     channel.emit(tagged);
+  }
+
+  @override
+  void emitTyped(OmegaTypedEvent event) {
+    final inner = OmegaEvent(
+      id: 'ev:${DateTime.now().millisecondsSinceEpoch}',
+      name: event.name,
+      payload: event,
+    );
+    emit(inner);
   }
 
   /// Event stream filtered to global events and events in this namespace.

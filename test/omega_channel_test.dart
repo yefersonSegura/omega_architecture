@@ -10,6 +10,13 @@ enum _TestEvent implements OmegaEventName {
   final String name;
 }
 
+class _TestTypedEvent implements OmegaTypedEvent {
+  _TestTypedEvent(this.value);
+  final int value;
+  @override
+  String get name => 'test.typed';
+}
+
 void main() {
   test("OmegaChannel should emit and listen events", () async {
     final channel = OmegaChannel();
@@ -72,6 +79,38 @@ void main() {
     expect(received, isNotNull);
     expect(received!.namespace, 'auth');
     expect(received!.name, 'auth.login');
+    channel.dispose();
+  });
+
+  test("OmegaChannel emitTyped wraps typed event and listener receives it", () async {
+    final channel = OmegaChannel();
+    OmegaEvent? received;
+    channel.events.listen((e) => received = e);
+
+    channel.emitTyped(_TestTypedEvent(42));
+
+    await Future.delayed(Duration(milliseconds: 10));
+    expect(received, isNotNull);
+    expect(received!.name, 'test.typed');
+    expect(received!.payload, isA<_TestTypedEvent>());
+    expect((received!.payload as _TestTypedEvent).value, 42);
+    expect(received!.payloadAs<_TestTypedEvent>()?.value, 42);
+    channel.dispose();
+  });
+
+  test("OmegaChannelNamespace emitTyped tags typed event with namespace", () async {
+    final channel = OmegaChannel();
+    final authNs = channel.namespace('auth');
+    OmegaEvent? received;
+    authNs.events.listen((e) => received = e);
+
+    authNs.emitTyped(_TestTypedEvent(1));
+
+    await Future.delayed(Duration(milliseconds: 10));
+    expect(received, isNotNull);
+    expect(received!.name, 'test.typed');
+    expect(received!.namespace, 'auth');
+    expect(received!.payloadAs<_TestTypedEvent>()?.value, 1);
     channel.dispose();
   });
 

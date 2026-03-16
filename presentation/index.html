@@ -24,6 +24,16 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@300;600;800&display=swap"
         rel="stylesheet">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q2XTRMEHHH"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-Q2XTRMEHHH');
+    </script>
 </head>
 
 <body class="doc-body" id="doc-body">
@@ -69,6 +79,7 @@
             </div>
             <h3 data-i18n="sidebar_intro_title">1. Introducción</h3>
             <a href="#vision"><i class="fa fa-home"></i> <span data-i18n="sidebar_home">Inicio</span></a>
+            <a href="#whats-new"><i class="fa fa-bolt"></i> <span>Nuevas mejoras</span></a>
             <a href="#get-started"><i class="fa fa-rocket"></i> <span data-i18n="sidebar_get_started">Primeros
                     pasos</span></a>
             <a href="#data-flow"><i class="fa fa-exchange"></i> <span data-i18n="sidebar_data_flow">Flujo de
@@ -204,6 +215,54 @@
                                 </a>
                             </p>
                         </div>
+                    </div>
+                </section>
+
+                <!-- What's new -->
+                <section id="whats-new" class="slide">
+                    <span class="section-tag">What’s new</span>
+                    <h2 class="animate">Nuevas mejoras en <span class="gradient-text">Omega</span></h2>
+                    <p class="subtitle animate" style="margin-bottom: 24px;">
+                        Resumen rápido de los cambios recientes en el framework y en las herramientas.
+                        Para el detalle completo revisa <code>CHANGELOG.md</code> en el repositorio.
+                    </p>
+                    <div class="card glass animate">
+                        <details>
+                            <summary><strong>0.0.21 — Eventos tipados</strong></summary>
+                            <p style="margin-top: 12px;">
+                                Introduce <code>OmegaTypedEvent</code> y <code>emitTyped</code> para que tus eventos sean
+                                clases con nombre + datos, en lugar de solo strings con payload suelto.
+                            </p>
+                            <ul>
+                                <li><strong>OmegaTypedEvent + emitTyped</strong>: define clases de evento
+                                    (por ejemplo <code>LoginRequestedEvent</code>) e invócalas con
+                                    <code>channel.emitTyped(...)</code>; el payload se lee con
+                                    <code>event.payloadAs&lt;LoginRequestedEvent&gt;()</code>.</li>
+                                <li><strong>Example actualizado</strong>: el flujo de autenticación del ejemplo usa
+                                    eventos tipados para ilustrar el patrón recomendado.</li>
+                                <li><strong>Documentación alineada</strong>: <code>README.md</code> y
+                                    <code>docs/GUIA.md</code> marcan los eventos tipados como estilo preferido, reduciendo
+                                    strings mágicos y errores en runtime.</li>
+                            </ul>
+                            <p style="margin-top: 8px; font-weight: 600;">Ejemplo:</p>
+                            <pre class="glass" style="margin-top: 8px; padding: 12px; font-size: 13px;"><code>// Definir el evento tipado
+class LoginRequestedEvent implements OmegaTypedEvent {
+  LoginRequestedEvent(this.email, this.password);
+  final String email;
+  final String password;
+  @override
+  String get name =&gt; AppEvent.authLoginRequest.name;
+}
+
+// Emitir desde el flow
+channel.emitTyped(LoginRequestedEvent(email, password));
+
+// Leer en el agente
+final ev = event.payloadAs&lt;LoginRequestedEvent&gt;();
+if (ev != null) {
+  // usar ev.email, ev.password
+}</code></pre>
+                        </details>
                     </div>
                 </section>
 

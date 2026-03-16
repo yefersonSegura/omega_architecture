@@ -1,3 +1,10 @@
+## 0.0.21
+
+- **Typed events (OmegaTypedEvent + emitTyped):** New [OmegaTypedEvent] interface and [OmegaEventBus.emitTyped] method so you can model events as classes (e.g. `LoginRequestedEvent`) instead of plain string names with loose payloads. The channel wraps them into [OmegaEvent] with the instance as payload; listeners use `event.payloadAs<LoginRequestedEvent>()` for full type safety. Example app updated (AuthFlow, AuthAgent, `auth/models.dart`) and tests added in `omega_channel_test.dart`.
+- **Docs (GUIA, README, ROADMAP):** [docs/GUIA.md](docs/GUIA.md) now has a dedicated “Eventos tipados (clase como evento)” section with a full example; README’s feature list highlights typed events as the recommended style; [docs/ROADMAP.md](docs/ROADMAP.md) marks typed events as completed under “Contratos y convenciones”.
+- **Web docs — What’s new section:** `presentation/index.html` and `index-en.html` include a new “Nuevas mejoras / What’s new” slide with a collapsible block per version (`<details><summary>…</summary>`) starting with 0.0.21 and a concrete code snippet for `LoginRequestedEvent + emitTyped`. Future releases can append new collapsibles there.
+- **Analytics for documentation site:** Both `presentation/index.html` and `index-en.html` now embed Google Analytics 4 (`G-Q2XTRMEHHH`) so you can track visits to the Omega documentation pages.
+
 ## 0.0.20
 
 - **Inspector (VM Service + public web):** [OmegaInspectorServer] now exposes Omega state via a VM Service extension instead of a local HTTP server. On Android/iOS/desktop it prints a URL of the form `http://yefersonsegura.com/projects/omega/inspector.html#<encoded-VM-URL>` that opens the online Inspector and auto-connects; no `adb reverse` is required.

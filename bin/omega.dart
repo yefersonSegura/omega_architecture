@@ -276,6 +276,7 @@ class OmegaGenerateCommand {
       _createFlow(name, ecoPath),
       _createBehavior(name, ecoPath),
       _createPage(name, ecoPath),
+      _createModels(name, ecoPath),
     ];
 
     registerInOmegaSetup(
@@ -462,6 +463,16 @@ class ${pascal}Page extends StatelessWidget {
     );
   }
 }
+''');
+    return file.path;
+  }
+  static String _createModels(String name, String base) {
+    final pascal = toPascalCase(name);
+    final file = File("$base/models.dart");
+
+    file.writeAsStringSync('''
+/// Modelos del ecosistema $pascal.
+/// Agrega aquí tus clases de dominio y eventos tipados (OmegaTypedEvent).
 ''');
     return file.path;
   }

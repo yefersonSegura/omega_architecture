@@ -32,14 +32,15 @@ class AuthFlow extends OmegaFlow {
 
     if (intent == null) return;
 
-    // LOGIN → payload tipado con payloadAs<LoginCredentials>()
+    // LOGIN → evento tipado (emitTyped) o clásico (fromName + payload)
     if (intent.name == AppIntent.authLogin.name) {
       final creds = intent.payloadAs<LoginCredentials>();
       if (creds != null) {
         emitExpression("loading");
-        channel.emit(
-          OmegaEvent.fromName(AppEvent.authLoginRequest, payload: creds),
-        );
+        channel.emitTyped(LoginRequestedEvent(
+          email: creds.email,
+          password: creds.password,
+        ));
       }
     }
 

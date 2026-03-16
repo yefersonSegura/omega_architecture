@@ -17,6 +17,7 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 ## 2. Contratos y convenciones (semántica)
 
 - [x] **Eventos/intents tipados (nombres):** OmegaEventName, OmegaIntentName, fromName.
+- [x] **Eventos tipados (clase como evento):** [OmegaTypedEvent], [OmegaEventBus.emitTyped]; la clase lleva nombre + datos; el listener usa `payloadAs<Clase>()`. Autocompletado, type safety, menos bugs. Ver GUIA § Eventos tipados.
 - [ ] **Registro/contratos por evento (opcional):** registro de “eventos conocidos” con payload opcional (autocompletado, refactors, menos strings mágicos).
 - [x] **Contratos por flow:** “este flow solo emite estas expresiones” y “solo reacciona a estos intents”, documentados o validables en tests.
 - [x] **Versionado de intents:** soporte para `auth.login.v2` y migraciones cuando cambie el payload. Patrón documentado en GUIA (sección \"Versionado de intents\") y tests que usan versiones (`omega_intent_test.dart` con `authLoginV1`/`authLoginV2`).

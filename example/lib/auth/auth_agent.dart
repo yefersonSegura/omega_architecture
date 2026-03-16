@@ -43,16 +43,26 @@ class AuthAgent extends OmegaAgent {
   }
 
   Future<void> _login(dynamic payload) async {
-    if (payload is! LoginCredentials) return;
-    final creds = payload; // Tipo promocionado a LoginCredentials
+    // Payload puede ser LoginRequestedEvent (emitTyped) o LoginCredentials (desde intent directo)
+    final String email;
+    final String password;
+    if (payload is LoginRequestedEvent) {
+      email = payload.email;
+      password = payload.password;
+    } else if (payload is LoginCredentials) {
+      email = payload.email;
+      password = payload.password;
+    } else {
+      return;
+    }
 
     channel.emit(OmegaEvent.fromName(AppEvent.authLoginStarted));
 
     await Future.delayed(const Duration(seconds: 1));
 
-    if (creds.email == "admin@admin.com" && creds.password == "123456") {
+    if (email == "admin@admin.com" && password == "123456") {
       token = "FAKE_TOKEN_ABC123";
-      user = {"name": "Admin", "email": creds.email};
+      user = {"name": "Admin", "email": email};
       channel.emit(
         OmegaEvent.fromName(
           AppEvent.authLoginSuccess,
@@ -66,7 +76,7 @@ class AuthAgent extends OmegaAgent {
           payload: OmegaFailure(
             id: "auth.invalid_credentials",
             message: "Credenciales inválidas",
-            details: {"email": creds.email},
+            details: {"email": email},
           ),
         ),
       );
