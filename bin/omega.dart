@@ -276,7 +276,7 @@ class OmegaGenerateCommand {
       _createFlow(name, ecoPath),
       _createBehavior(name, ecoPath),
       _createPage(name, ecoPath),
-      _createModels(name, ecoPath),
+      _createEvents(name, ecoPath),
     ];
 
     registerInOmegaSetup(
@@ -466,13 +466,15 @@ class ${pascal}Page extends StatelessWidget {
 ''');
     return file.path;
   }
-  static String _createModels(String name, String base) {
+
+  static String _createEvents(String name, String base) {
     final pascal = toPascalCase(name);
-    final file = File("$base/models.dart");
+    final file = File("$base/${name.toLowerCase()}_events.dart");
 
     file.writeAsStringSync('''
-/// Modelos del ecosistema $pascal.
-/// Agrega aquí tus clases de dominio y eventos tipados (OmegaTypedEvent).
+/// Eventos e intents del ecosistema $pascal.
+/// Define aquí tus enums/clases que implementen OmegaEventName / OmegaIntentName
+/// o tus eventos tipados (OmegaTypedEvent).
 ''');
     return file.path;
   }

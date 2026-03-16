@@ -3,7 +3,7 @@ import 'package:omega_architecture/omega_architecture.dart';
 
 import '../../omega/app_semantics.dart';
 import '../auth_flow.dart';
-import '../models.dart';
+import '../auth_events.dart';
 
 class OmegaLoginPage extends StatefulWidget {
   const OmegaLoginPage({super.key});

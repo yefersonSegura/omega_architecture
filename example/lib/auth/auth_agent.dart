@@ -2,11 +2,11 @@ import 'package:omega_architecture/omega_architecture.dart';
 
 import '../omega/app_semantics.dart';
 import 'auth_behavior.dart';
-import 'models.dart';
+import 'auth_events.dart';
 
 class AuthAgent extends OmegaAgent {
   AuthAgent(OmegaEventBus channel)
-      : super(id: "Auth", channel: channel, behavior: AuthBehavior());
+    : super(id: "Auth", channel: channel, behavior: AuthBehavior());
 
   static final _contract = OmegaAgentContract.fromTyped(
     agentId: 'Auth',

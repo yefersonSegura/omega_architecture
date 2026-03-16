@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 
-import '../auth/models.dart';
+import '../auth/auth_events.dart';
 import '../omega/app_semantics.dart';
 
 /// Pantalla Home. Recibe [userData] cuando se navega desde el flow tras login
@@ -26,8 +26,7 @@ class HomePage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             if (name != null)
-              Text("Bienvenido, $name",
-                  style: const TextStyle(fontSize: 20))
+              Text("Bienvenido, $name", style: const TextStyle(fontSize: 20))
             else
               const Text("Home Page", style: TextStyle(fontSize: 20)),
             const SizedBox(height: 32),

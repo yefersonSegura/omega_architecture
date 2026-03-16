@@ -3,7 +3,7 @@ import 'package:omega_architecture/omega/bootstrap/omega_config.dart';
 
 import '../auth/auth_agent.dart';
 import '../auth/auth_flow.dart';
-import '../auth/models.dart';
+import '../auth/auth_events.dart';
 import '../auth/ui/auth_page.dart';
 import '../home/home.dart';
 import '../orders/orders_flow.dart';
@@ -17,10 +17,7 @@ OmegaConfig createOmegaConfig(OmegaChannel channel) {
   final ordersNs = channel.namespace('orders');
 
   return OmegaConfig(
-    agents: <OmegaAgent>[
-      ProviderAgent(providerNs),
-      AuthAgent(authNs),
-    ],
+    agents: <OmegaAgent>[ProviderAgent(providerNs), AuthAgent(authNs)],
     flows: <OmegaFlow>[
       ProviderFlow(providerNs),
       AuthFlow(authNs),

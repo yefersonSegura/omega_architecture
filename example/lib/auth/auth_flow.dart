@@ -1,7 +1,7 @@
 import 'package:omega_architecture/omega_architecture.dart';
 
 import '../omega/app_semantics.dart';
-import 'models.dart';
+import 'auth_events.dart';
 
 class AuthFlow extends OmegaFlow {
   AuthFlow(OmegaEventBus channel) : super(id: "authFlow", channel: channel);
@@ -15,7 +15,13 @@ class AuthFlow extends OmegaFlow {
       AppEvent.authLogoutSuccess,
     ],
     acceptedIntents: [AppIntent.authLogin, AppIntent.authLogout],
-    emittedExpressionTypes: {'idle', 'loading', 'success', 'error', 'loggedOut'},
+    emittedExpressionTypes: {
+      'idle',
+      'loading',
+      'success',
+      'error',
+      'loggedOut',
+    },
   );
 
   @override
@@ -37,10 +43,9 @@ class AuthFlow extends OmegaFlow {
       final creds = intent.payloadAs<LoginCredentials>();
       if (creds != null) {
         emitExpression("loading");
-        channel.emitTyped(LoginRequestedEvent(
-          email: creds.email,
-          password: creds.password,
-        ));
+        channel.emitTyped(
+          LoginRequestedEvent(email: creds.email, password: creds.password),
+        );
       }
     }
 
