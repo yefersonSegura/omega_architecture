@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -77,10 +78,11 @@ class OmegaInspectorServer {
       _registerVmExtension();
       final vmUri = await _vmServiceUri();
       if (vmUri != null && vmUri.isNotEmpty) {
-        final inspectorPath = 'presentation/inspector.html#${Uri.encodeComponent(vmUri)}';
         debugPrint('Omega Inspector [mobile] — Open on your PC (no adb reverse):');
-        debugPrint('  Inspector URL (open this file in PC browser, VM URL is in the hash):');
-        debugPrint('  $inspectorPath');
+        final hash = Uri.encodeComponent(vmUri);
+        debugPrint('  1) On your PC terminal run: omega inspector');
+        debugPrint('  2) If needed, append this hash to the opened URL:');
+        debugPrint('     #$hash');
         debugPrint('  VM Service URL: $vmUri');
       } else {
         debugPrint('Omega Inspector [mobile] — VM Service URI not available. Use the in-app overlay or launcher.');
