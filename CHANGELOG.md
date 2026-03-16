@@ -1,3 +1,9 @@
+## 0.0.22
+
+- **Reactive agent state (optional):** Added [OmegaStatefulAgent] and [OmegaAgentBuilder]. Agents can expose a typed reactive `viewState` (`stateStream`) for UI widgets while preserving Omega’s core event/intent model.
+- **Workflow engine flow (optional):** Added [OmegaWorkflowFlow] for explicit step-based flows with `defineStep`, `startAt`, `next`, `failStep`, and `completeWorkflow` to model multi-step processes (e.g. checkout/onboarding) without replacing [OmegaFlow].
+- **Example auth updated:** `example/lib/auth` now demonstrates reactive agent state in practice (`AuthAgent` + `AuthViewState` + `OmegaAgentBuilder` in login UI) with flow semantics kept focused on milestones.
+
 ## 0.0.21
 
 - **Typed events (OmegaTypedEvent + emitTyped):** New [OmegaTypedEvent] interface and [OmegaEventBus.emitTyped] method so you can model events as classes (e.g. `LoginRequestedEvent`) instead of plain string names with loose payloads. The channel wraps them into [OmegaEvent] with the instance as payload; listeners use `event.payloadAs<LoginRequestedEvent>()` for full type safety. Example app updated (AuthFlow, AuthAgent, `auth/models.dart`) and tests added in `omega_channel_test.dart`.

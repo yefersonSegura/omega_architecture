@@ -78,6 +78,8 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 ## 8. Ideas futuras interesantes (backlog)
 
 - [x] **Timeline visual de eventos:** vista tipo línea de tiempo donde se vea, para cada flow/agent, qué eventos/intents pasaron y cuándo. Implementado en el inspector (overlay y ventana web) como timeline horizontal encima de la lista de eventos.
+- [x] **Agentes con estado reactivo opcional:** `OmegaStatefulAgent<TState>` + `OmegaAgentBuilder` para exponer `viewState/stateStream` en UI sin romper el core basado en canal, intents y eventos.
+- [x] **Workflow flow opcional:** `OmegaWorkflowFlow` con pasos explícitos (`defineStep`, `startAt`, `next`, `failStep`, `completeWorkflow`) para procesos largos (checkout/onboarding), manteniendo `OmegaFlow` como opción por defecto.
 - [ ] **Diff de snapshots:** comparar dos `OmegaAppSnapshot` y mostrar qué cambió en cada flow (keys nuevas, valores modificados).
 - [ ] **Recorded tests desde el inspector:** botón en el inspector que exporte una sesión como test de Dart (`flutter_test` + `OmegaTimeTravelRecorder.replay(...)`).
 - [ ] **Cola de intents offline:** opción para ciertos intents de tipo “offline-first” que se encolan cuando no hay red y se reintentan al volver a estar online.

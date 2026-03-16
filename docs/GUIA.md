@@ -156,6 +156,32 @@ class AuthAgent extends OmegaAgent {
 }
 ```
 
+### OmegaStatefulAgent (agente con estado reactivo de vista)
+
+**Qué hace:** Es una variante opcional de `OmegaAgent` que mantiene un estado tipado para UI (`viewState`) y lo expone como stream (`stateStream`). Sirve para renderizar widgets reactivos sin sacar la lógica de negocio del agente.
+
+**Cuándo usarlo:** Cuando un agente necesita actuar como mini-store observable (por ejemplo login, carrito, filtros), manteniendo el canal/intents/eventos como base de Omega.
+
+**Ejemplo:**
+
+```dart
+class AuthAgent extends OmegaStatefulAgent<AuthViewState> {
+  AuthAgent(OmegaEventBus channel)
+      : super(
+          id: "Auth",
+          channel: channel,
+          behavior: AuthBehavior(),
+          initialState: AuthViewState.empty,
+        );
+
+  Future<void> _login(LoginCredentials creds) async {
+    setViewState(viewState.copyWith(isLoading: true, errorMessage: null));
+    // ... lógica
+    setViewState(viewState.copyWith(isLoading: false));
+  }
+}
+```
+
 ---
 
 ### OmegaAgentBehaviorEngine (reglas del agente)
@@ -203,6 +229,45 @@ class AuthFlow extends OmegaFlow {
       ));
     }
   }
+}
+```
+
+### OmegaWorkflowFlow (workflow engine opcional)
+
+**Qué hace:** Extiende `OmegaFlow` con pasos explícitos para procesos largos (checkout, onboarding, approvals): `defineStep`, `startAt`, `next`, `failStep`, `completeWorkflow`.
+
+**Cuándo usarlo:** Cuando el flow deja de ser lineal/simple y necesitas transiciones de paso claras, trazabilidad y manejo uniforme de errores de proceso.
+
+**Ejemplo:**
+
+```dart
+class CheckoutFlow extends OmegaWorkflowFlow {
+  CheckoutFlow(OmegaEventBus channel)
+      : super(id: "checkoutFlow", channel: channel) {
+    defineStep("validateCart", _validateCart);
+    defineStep("calculateTotal", _calculateTotal);
+    defineStep("confirmOrder", _confirmOrder);
+  }
+
+  @override
+  void onStart() {
+    startAt("validateCart");
+  }
+
+  Future<void> _validateCart() async {
+    final cartEmpty = false;
+    if (cartEmpty) return failStep("cart.empty", message: "Cart is empty");
+    await next("calculateTotal");
+  }
+
+  Future<void> _calculateTotal() async => next("confirmOrder");
+  Future<void> _confirmOrder() async => completeWorkflow();
+
+  @override
+  void onIntent(OmegaFlowContext ctx) {}
+
+  @override
+  void onEvent(OmegaFlowContext ctx) {}
 }
 ```
 
@@ -266,6 +331,23 @@ scope.flowManager.handleIntent(...);
 OmegaBuilder(
   eventName: 'user.updated',
   builder: (context, event) => Text('Hola ${event?.payload?['name']}'),
+)
+```
+
+### OmegaAgentBuilder (UI que reacciona al estado de un agente)
+
+**Qué hace:** Escucha `stateStream` de un `OmegaStatefulAgent` y reconstruye el widget cuando cambia `viewState`. Es útil para loading/error/estado de vista sin duplicar `setState` manual.
+
+**Ejemplo:**
+
+```dart
+OmegaAgentBuilder<AuthAgent, AuthViewState>(
+  agent: authAgent,
+  builder: (context, state) {
+    if (state.isLoading) return const CircularProgressIndicator();
+    if (state.errorMessage != null) return Text(state.errorMessage!);
+    return const SizedBox.shrink();
+  },
 )
 ```
 

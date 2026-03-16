@@ -228,6 +228,40 @@
                     </p>
                     <div class="card glass animate">
                         <details>
+                            <summary><strong>0.0.22 — Reactive agents and workflow flow</strong></summary>
+                            <p style="margin-top: 12px;">
+                                This release adds two optional capabilities to scale UI/processes without compromising the core:
+                                <code>OmegaStatefulAgent</code> + <code>OmegaAgentBuilder</code>, and
+                                <code>OmegaWorkflowFlow</code>.
+                            </p>
+                            <ul>
+                                <li><strong>Reactive agent state:</strong> <code>OmegaStatefulAgent&lt;TState&gt;</code>
+                                    exposes <code>viewState</code>/<code>stateStream</code> so UI can react to agent state
+                                    without duplicating logic.</li>
+                                <li><strong>UI helper:</strong> <code>OmegaAgentBuilder</code> listens to agent state and
+                                    rebuilds widgets (loading/error/view state) declaratively.</li>
+                                <li><strong>Optional workflow engine:</strong> <code>OmegaWorkflowFlow</code> models
+                                    step-based processes with <code>defineStep</code>, <code>startAt</code>, <code>next</code>,
+                                    <code>failStep</code>, and <code>completeWorkflow</code>.</li>
+                            </ul>
+                            <p style="margin-top: 8px; font-weight: 600;">Example:</p>
+                            <pre class="glass" style="margin-top: 8px; padding: 12px; font-size: 13px;"><code>class AuthAgent extends OmegaStatefulAgent&lt;AuthViewState&gt; {
+  AuthAgent(OmegaEventBus channel) : super(
+    id: "Auth",
+    channel: channel,
+    behavior: AuthBehavior(),
+    initialState: AuthViewState.empty,
+  );
+}
+
+OmegaAgentBuilder&lt;AuthAgent, AuthViewState&gt;(
+  agent: authAgent,
+  builder: (context, state) =&gt; state.isLoading
+      ? const CircularProgressIndicator()
+      : const SizedBox.shrink(),
+);</code></pre>
+                        </details>
+                        <details>
                             <summary><strong>0.0.21 — Typed events</strong></summary>
                             <p style="margin-top: 12px;">
                                 Introduces <code>OmegaTypedEvent</code> and <code>emitTyped</code> so your events can be

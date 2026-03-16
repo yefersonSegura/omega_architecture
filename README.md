@@ -13,9 +13,11 @@ A reactive, agent-based architecture framework for Flutter applications.
 ## Features
 
 - **Reactive Agents** — Autonomous entities that react to system events and direct messages.
+- **Stateful Agents (optional)** — [OmegaStatefulAgent<TState>] lets an agent expose a typed reactive `viewState` stream for UI/widgets without changing the core event/intent model.
 - **Behavior Engine** — Decoupled logic using rules and conditions to determine agent reactions.
 - **Event-Driven** — Global communication through `OmegaChannel`.
 - **Flow Management** — Orchestrate complex state transitions and business logic flows; run one or multiple flows at once.
+- **Workflow Flows (optional)** — [OmegaWorkflowFlow] adds step-based orchestration (`defineStep`, `startAt`, `next`, `failStep`) for complex multi-step processes such as checkout/onboarding while keeping [OmegaFlow] as the default.
 - **Semantic Intents** — High-level abstraction for user or system requests. Optional **typed names** via [OmegaEventName]/[OmegaIntentName] and [OmegaEvent.fromName]/[OmegaIntent.fromName] to avoid magic strings and ease refactors. **Typed events (recommended):** define a class implementing [OmegaTypedEvent] (e.g. `LoginRequestedEvent(email, password)`) and emit with `channel.emitTyped(LoginRequestedEvent(...))`; listeners use `event.payloadAs<LoginRequestedEvent>()` for full type safety. **Typed payload when reading:** use the `payloadAs<T>()` extension on [OmegaEvent], [OmegaIntent], and [OmegaFlowExpression] to get a safely cast payload. See the [example](example/lib/omega/app_semantics.dart) and [GUIA § Eventos tipados](docs/GUIA.md) for full usage.
 - **Persistence & restore** — Serialize [OmegaAppSnapshot] to JSON and restore on launch ([toJson]/[fromJson], [OmegaFlowManager.restoreFromSnapshot], optional [OmegaSnapshotStorage]).
 - **Typed routes** — Use `OmegaRoute.typed<T>` so the route builder receives the intent payload as `T?`; or `routeArguments<T>(context)` when you don't use typed. See the [example](example/lib/omega/omega_setup.dart) (home route with `LoginSuccessPayload`).
@@ -38,9 +40,11 @@ A reactive, agent-based architecture framework for Flutter applications.
 | Concept | Description |
 |--------|-------------|
 | **OmegaAgent** | Building block of the architecture. Has an ID, a channel, and a behavior engine. |
+| **OmegaStatefulAgent** | Optional typed reactive agent state (`viewState` + `stateStream`) for UI updates. |
 | **OmegaAgentBehaviorEngine** | Evaluates events/intents and returns reactions (actions to run). |
 | **OmegaChannel** | Event bus. Agents and flows subscribe to `events` and use `emit()` to publish. |
 | **OmegaFlow** | Business flow with states (idle, running, paused, etc.). Orchestrates UI and agents. |
+| **OmegaWorkflowFlow** | Optional step-based process flow for advanced workflow engines. |
 | **OmegaFlowManager** | Registers flows, routes intents to running flows, and activates/pauses them. |
 
 ## Getting Started
