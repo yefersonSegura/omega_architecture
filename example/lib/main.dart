@@ -6,19 +6,9 @@ import 'omega/app_semantics.dart';
 import 'omega/omega_setup.dart';
 
 void main() async {
-  // Si se abre con ?omega_inspector=1 (p. ej. desde OmegaInspectorLauncher en web), mostrar solo el receiver.
-  if (Uri.base.queryParameters['omega_inspector'] == '1') {
-    runApp(
-      MaterialApp(
-        title: 'Omega Inspector',
-        theme: ThemeData(primarySwatch: Colors.orange),
-        home: const OmegaInspectorReceiver(),
-      ),
-    );
-    return;
-  }
   final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
-  // Inspector (solo debug): Desktop → servidor HTTP + abre navegador. Móvil → VM Service; en consola se imprime la URL para abrir presentation/inspector.html en el PC.
+  // Inspector (solo debug): VM (desktop/móvil) → imprime la URL pública del inspector
+  // http://yefersonsegura.com/projects/omega/inspector.html#<VM-URL-encodeada> para abrirlo en el navegador.
   if (kDebugMode) {
     await OmegaInspectorServer.start(runtime.channel, runtime.flowManager);
   }
@@ -83,7 +73,6 @@ class _RootHandlerState extends State<_RootHandler> {
               actions: const [
                 _DocsLink(),
                 _TimeTravelButton(),
-                OmegaInspectorLauncher(),
               ],
             )
           : null,

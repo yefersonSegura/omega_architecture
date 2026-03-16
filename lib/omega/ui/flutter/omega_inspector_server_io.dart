@@ -4,7 +4,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -33,6 +32,8 @@ class OmegaInspectorServer {
   static Map<String, dynamic> _cachedSnapshot = const {};
   static const int _eventLimit = _kDefaultEventLimit;
 
+  // Deprecated: constant kept for backward compatibility with older code; currently unused.
+  // ignore: unused_field
   static const int _kMaxPortTry = 9302;
 
   static Future<int?> start(
@@ -68,67 +69,52 @@ class OmegaInspectorServer {
       _sendSnapshot();
     });
 
-    if (isMobile) {
-      // Mobile: use VM Service (already forwarded by Flutter). No HTTP server, no adb reverse.
-      if (_server != null) {
-        _server!.close(force: true);
-        _server = null;
-        _sockets.clear();
+    // VM platforms (mobile + desktop): use VM Service + public web inspector.
+    // No local HTTP server; everything goes through http://yefersonsegura.com/projects/omega/inspector.html.
+    if (_server != null) {
+      _server!.close(force: true);
+      _server = null;
+      _sockets.clear();
+    }
+    _registerVmExtension();
+    final vmUri = await _vmServiceUri();
+    if (vmUri != null && vmUri.isNotEmpty) {
+      final hash = Uri.encodeComponent(vmUri);
+      final publicUrl =
+          'http://yefersonsegura.com/projects/omega/inspector.html#$hash';
+      debugPrint(
+        'Omega Inspector [vm] — Open in your browser (no adb reverse needed):',
+      );
+      debugPrint('  $publicUrl');
+      debugPrint('  (The page will auto-connect using that VM Service URL.)');
+      debugPrint(
+        '  If needed, you can also paste this VM Service URL manually:',
+      );
+      debugPrint('  $vmUri');
+      if (openBrowser && !isMobile) {
+        // On desktop we can open the browser automatically.
+        _openBrowser(publicUrl);
       }
-      _registerVmExtension();
-      final vmUri = await _vmServiceUri();
-      if (vmUri != null && vmUri.isNotEmpty) {
-        debugPrint('Omega Inspector [mobile] — Open on your PC (no adb reverse):');
-        final hash = Uri.encodeComponent(vmUri);
-        debugPrint('  Open this URL in your PC browser:');
-        debugPrint(
-          '  http://yefersonsegura.com/projects/omega/inspector.html#$hash',
-        );
-        debugPrint('  (The page will auto-connect using that VM Service URL.)');
-        debugPrint('  If needed, you can also paste this VM Service URL manually:');
-        debugPrint('  $vmUri');
-      } else {
-        debugPrint('Omega Inspector [mobile] — VM Service URI not available. Use the in-app overlay or launcher.');
-      }
-      return 0; // No port; Inspector is via VM Service.
+    } else {
+      debugPrint(
+        'Omega Inspector [vm] — VM Service URI not available. Use the in-app overlay or launcher.',
+      );
     }
-
-    // Desktop: HTTP server + open browser.
-    if (_server != null) return _server!.port;
-    final address = InternetAddress.loopbackIPv4;
-    HttpServer? server;
-    int boundPort = 0;
-    for (int p = port; p <= _kMaxPortTry; p++) {
-      try {
-        server = await HttpServer.bind(address, p);
-        boundPort = server.port;
-        break;
-      } on SocketException catch (e) {
-        debugPrint('Omega Inspector Server: port $p in use, trying next: $e');
-      }
-    }
-    if (server == null || boundPort == 0) {
-      debugPrint('Omega Inspector Server: could not bind any port $port–$_kMaxPortTry');
-      return null;
-    }
-    _server = server;
-    _server!.listen(_onRequest);
-
-    final url = 'http://127.0.0.1:$boundPort';
-    debugPrint('Omega Inspector: $url');
-    if (openBrowser) {
-      _openBrowser(url);
-    }
-    return boundPort;
+    return 0; // No port; Inspector is via VM Service + public web.
   }
 
   static void _registerVmExtension() {
     try {
-      developer.registerExtension(_kExtGetState, (String method, Map<String, String>? params) async {
-        return developer.ServiceExtensionResponse.result(jsonEncode(<String, dynamic>{
-          'events': List<Map<String, dynamic>>.from(_recentEvents),
-          'snapshot': Map<String, dynamic>.from(_cachedSnapshot),
-        }));
+      developer.registerExtension(_kExtGetState, (
+        String method,
+        Map<String, String>? params,
+      ) async {
+        return developer.ServiceExtensionResponse.result(
+          jsonEncode(<String, dynamic>{
+            'events': List<Map<String, dynamic>>.from(_recentEvents),
+            'snapshot': Map<String, dynamic>.from(_cachedSnapshot),
+          }),
+        );
       });
     } catch (_) {}
   }
@@ -235,142 +221,4 @@ class OmegaInspectorServer {
     }
   }
 
-  static void _onRequest(HttpRequest request) {
-    if (request.uri.path == '/' || request.uri.path.isEmpty) {
-      request.response
-        ..headers.contentType = ContentType.html
-        ..write(_kInspectorHtml)
-        ..close();
-      return;
-    }
-    if (request.uri.path == '/ws' && WebSocketTransformer.isUpgradeRequest(request)) {
-      WebSocketTransformer.upgrade(request).then((ws) {
-        _sockets.add(ws);
-        ws.listen(
-          null,
-          onDone: () => _sockets.remove(ws),
-          onError: (_) => _sockets.remove(ws),
-        );
-        _sendSnapshot();
-        if (_recentEvents.isNotEmpty) {
-          ws.add(jsonEncode({'type': 'events_batch', 'data': _recentEvents}));
-        }
-      });
-      return;
-    }
-    request.response.statusCode = 404;
-    request.response.close();
-  }
-
-  static const String _kInspectorHtml = '''
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Omega Inspector</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #f3f4f8; color: #1f2937; }
-    .header { background: #1743b3; color: #fff; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
-    .header h1 { margin: 0; font-size: 15px; font-weight: 700; }
-    .badge { background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 6px; font-size: 11px; }
-    .badge.connected { background: #22c55e; }
-    .badge.disconnected { background: #ef4444; }
-    .layout { display: flex; height: calc(100vh - 42px); }
-    .panel { overflow: auto; padding: 12px; }
-    .panel.events { flex: 2; background: #fff; border-right: 1px solid #e5e7eb; }
-    .panel.flows { flex: 3; background: #fafafc; }
-    .section-title { font-size: 12px; font-weight: 700; color: #6b7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
-    .event { background: #fafafc; border-left: 4px solid #2962ff; padding: 8px 10px; margin-bottom: 6px; border-radius: 6px; font-size: 12px; }
-    .event .name { font-weight: 600; color: #1f2937; }
-    .event .time { font-size: 10px; color: #9ca3af; margin-left: 8px; }
-    .flow-row { display: flex; align-items: center; padding: 8px 10px; margin-bottom: 4px; background: #fff; border-radius: 8px; border: 1px solid #e5e7eb; font-size: 12px; }
-    .flow-row.active { border-color: #2962ff; background: #eff6ff; }
-    .flow-id { font-weight: 600; color: #1f2937; min-width: 120px; }
-    .flow-state { color: #6b7280; margin-left: 12px; }
-    .flow-expr { color: #2962ff; margin-left: 8px; font-size: 11px; }
-    .empty { color: #9ca3af; font-size: 12px; padding: 16px 0; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>Omega Inspector</h1>
-    <span id="status" class="badge disconnected">Connecting...</span>
-  </div>
-  <div class="layout">
-    <div class="panel events">
-      <div class="section-title">Events</div>
-      <div id="events"></div>
-    </div>
-    <div class="panel flows">
-      <div class="section-title">Flows</div>
-      <div id="flows"></div>
-    </div>
-  </div>
-  <script>
-    const eventsEl = document.getElementById('events');
-    const flowsEl = document.getElementById('flows');
-    const statusEl = document.getElementById('status');
-    let events = [];
-    let snapshot = null;
-
-    function connect() {
-      const ws = new WebSocket('ws://' + location.host + '/ws');
-      ws.onopen = () => {
-        statusEl.textContent = 'Connected';
-        statusEl.className = 'badge connected';
-      };
-      ws.onclose = () => {
-        statusEl.textContent = 'Disconnected';
-        statusEl.className = 'badge disconnected';
-        setTimeout(connect, 2000);
-      };
-      ws.onerror = () => {};
-      ws.onmessage = (e) => {
-        try {
-          const msg = JSON.parse(e.data);
-          if (msg.type === 'event') {
-            events.unshift({ ...msg.data, _ts: new Date().toISOString().substr(11, 8) });
-            if (events.length > 30) events.pop();
-            renderEvents();
-          } else if (msg.type === 'events_batch') {
-            events = (msg.data || []).map(d => ({ ...d, _ts: '' }));
-            renderEvents();
-          } else if (msg.type === 'snapshot') {
-            snapshot = msg.data;
-            renderFlows();
-          }
-        } catch (err) {}
-      };
-    }
-
-    function renderEvents() {
-      if (events.length === 0) {
-        eventsEl.innerHTML = '<div class="empty">No events yet</div>';
-        return;
-      }
-      eventsEl.innerHTML = events.slice(0, 25).map(e => 
-        '<div class="event"><span class="name">' + (e.name || '') + '</span><span class="time">' + (e._ts || '') + '</span></div>'
-      ).join('');
-    }
-
-    function renderFlows() {
-      if (!snapshot || !snapshot.flows || snapshot.flows.length === 0) {
-        flowsEl.innerHTML = '<div class="empty">No flows</div>';
-        return;
-      }
-      const active = snapshot.activeFlowId || '';
-      flowsEl.innerHTML = snapshot.flows.map(f => 
-        '<div class="flow-row ' + (f.flowId === active ? 'active' : '') + '">' +
-        '<span class="flow-id">' + (f.flowId || '') + '</span>' +
-        '<span class="flow-state">' + (f.state || '') + '</span>' +
-        '<span class="flow-expr">' + (f.lastExpressionType || '') + '</span></div>'
-      ).join('');
-    }
-
-    connect();
-  </script>
-</body>
-</html>
-''';
 }
