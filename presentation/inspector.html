@@ -450,7 +450,8 @@
           <div class="section-title" style="margin-bottom:0;">Events</div>
           <span id="eventsCount">0 events</span>
         </div>
-        <div id="events" class="event-scroll"></div>
+        <div id="eventsTimeline" style="margin-top:4px;"></div>
+        <div id="events" class="event-scroll" style="margin-top:4px;"></div>
       </div>
       <div class="details-card">
         <div class="details-header">
@@ -468,6 +469,7 @@
     const connectBtn = document.getElementById('connectBtn');
     const statusEl = document.getElementById('status');
     const eventsEl = document.getElementById('events');
+    const eventsTimelineEl = document.getElementById('eventsTimeline');
     const flowsEl = document.getElementById('flows');
     const errorEl = document.getElementById('error');
     const welcomeEl = document.getElementById('welcome');
@@ -562,7 +564,15 @@
       if (header) header.textContent = count + (count === 1 ? ' event' : ' events');
       if (events.length === 0) {
         eventsEl.innerHTML = '<div class="empty">No events yet</div>';
+        if (eventsTimelineEl) eventsTimelineEl.innerHTML = '';
         return;
+      }
+      if (eventsTimelineEl) {
+        const items = events.slice(0, 30).slice().reverse();
+        eventsTimelineEl.innerHTML =
+          '<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:#9ca3af;">' +
+          items.map(() => '<span style="width:8px;height:8px;border-radius:999px;background:#38bdf8;box-shadow:0 0 8px rgba(56,189,248,0.8);"></span>').join('') +
+          '</div>';
       }
       eventsEl.innerHTML = events.slice(0, 25).map((e, idx) =>
         '<div class="event" data-idx="' + idx + '">' +

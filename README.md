@@ -350,6 +350,18 @@ which opens the same hosted Inspector so you only have to paste the hash or VM S
 
 All Inspector widgets and the server are no-op in release (`kDebugMode` guards). See the [example](example/) app for full usage; [docs/INSPECTOR.md](docs/INSPECTOR.md) has a copy-paste guide and troubleshooting.
 
+#### Inspector UIs (local vs online)
+
+- **Local Inspector (web / overlay)**  
+  When you use `OmegaInspector` inside the app or open the web receiver (`OmegaInspectorReceiver` via `OmegaInspectorLauncher`), you get a dark dashboard embedded in Flutter: sidebar with flows, events list with a small timeline of dots, and a JSON details panel for the selected event/flow.
+
+  ![Local Inspector](assets/inspector_local.png)
+
+- **Online Inspector (VM Service + web)**  
+  When you open the hosted page `http://yefersonsegura.com/projects/omega/inspector.html#<encoded-VM-URL>`, you see the same layout but running in the browser: connection bar at the top (VM Service URL + auto-connect), flows on the left, events + details on the right. It talks to your running app through the Dart VM Service and works for Android, iOS and desktop.
+
+  ![Online Inspector](assets/inpector_online.png)
+
 ### Activating flows
 
 - **Several flows at once:** use `flowManager.activate("flowId")` for each. All stay in `running` and receive intents via `handleIntent`.
