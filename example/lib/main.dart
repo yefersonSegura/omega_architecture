@@ -5,7 +5,7 @@ import 'package:omega_architecture/omega_architecture.dart';
 import 'omega/app_semantics.dart';
 import 'omega/omega_setup.dart';
 
-void main() {
+void main() async {
   // Si se abre con ?omega_inspector=1 (p. ej. desde OmegaInspectorLauncher en web), mostrar solo el receiver.
   if (Uri.base.queryParameters['omega_inspector'] == '1') {
     runApp(
@@ -18,8 +18,9 @@ void main() {
     return;
   }
   final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
+  // Inspector (solo debug): Desktop → servidor HTTP + abre navegador. Móvil → VM Service; en consola se imprime la URL para abrir presentation/inspector.html en el PC.
   if (kDebugMode) {
-    OmegaInspectorServer.start(runtime.channel, runtime.flowManager);
+    await OmegaInspectorServer.start(runtime.channel, runtime.flowManager);
   }
   runApp(
     OmegaScope(

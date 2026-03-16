@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Omega Inspector (VM Service)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #f3f4f8; color: #1f2937; }
+    .header { background: #1743b3; color: #fff; padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .header h1 { margin: 0; font-size: 15px; font-weight: 700; }
+    .badge { background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 6px; font-size: 11px; }
+    .badge.connected { background: #22c55e; }
+    .badge.disconnected { background: #ef4444; }
+    .connect-box { padding: 16px; background: #fff; border-bottom: 1px solid #e5e7eb; }
+    .connect-box label { display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px; }
+    .connect-box input { width: 100%; max-width: 480px; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; }
+    .connect-box button { margin-top: 8px; padding: 8px 14px; background: #1743b3; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; }
+    .connect-box button:hover { background: #133a9e; }
+    .connect-box .hint { font-size: 11px; color: #9ca3af; margin-top: 6px; }
+    .layout { display: flex; height: calc(100vh - 120px); min-height: 300px; }
+    .panel { overflow: auto; padding: 12px; }
+    .panel.events { flex: 2; background: #fff; border-right: 1px solid #e5e7eb; }
+    .panel.flows { flex: 3; background: #fafafc; }
+    .section-title { font-size: 12px; font-weight: 700; color: #6b7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .event { background: #fafafc; border-left: 4px solid #2962ff; padding: 8px 10px; margin-bottom: 6px; border-radius: 6px; font-size: 12px; }
+    .event .name { font-weight: 600; color: #1f2937; }
+    .event .time { font-size: 10px; color: #9ca3af; margin-left: 8px; }
+    .flow-row { display: flex; align-items: center; padding: 8px 10px; margin-bottom: 4px; background: #fff; border-radius: 8px; border: 1px solid #e5e7eb; font-size: 12px; }
+    .flow-row.active { border-color: #2962ff; background: #eff6ff; }
+    .flow-id { font-weight: 600; color: #1f2937; min-width: 120px; }
+    .flow-state { color: #6b7280; margin-left: 12px; }
+    .flow-expr { color: #2962ff; margin-left: 8px; font-size: 11px; }
+    .empty { color: #9ca3af; font-size: 12px; padding: 16px 0; }
+    .error { color: #dc2626; font-size: 12px; padding: 8px 0; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Omega Inspector (VM Service)</h1>
+    <span id="status" class="badge disconnected">Disconnected</span>
+  </div>
+  <div class="connect-box">
+    <label for="vmUri">VM Service URL (paste from Flutter / app logs)</label>
+    <input type="text" id="vmUri" placeholder="http://127.0.0.1:38473/abc=/">
+    <button type="button" id="connectBtn">Connect</button>
+    <p class="hint">Use the URL printed when the app runs on a device (e.g. "Omega Inspector [mobile]: ... Paste this VM Service URL: http://127.0.0.1:XXXX/..."). Flutter forwards this port automatically.</p>
+    <p id="error" class="error" style="display:none;"></p>
+  </div>
+  <div class="layout">
+    <div class="panel events">
+      <div class="section-title">Events</div>
+      <div id="events"></div>
+    </div>
+    <div class="panel flows">
+      <div class="section-title">Flows</div>
+      <div id="flows"></div>
+    </div>
+  </div>
+  <script>
+    const vmUriInput = document.getElementById('vmUri');
+    const connectBtn = document.getElementById('connectBtn');
+    const statusEl = document.getElementById('status');
+    const eventsEl = document.getElementById('events');
+    const flowsEl = document.getElementById('flows');
+    const errorEl = document.getElementById('error');
+
+    // Prefill from hash (e.g. inspector.html#http://127.0.0.1:38473/abc=/)
+    const hash = location.hash.slice(1);
+    if (hash && hash.startsWith('http')) {
+      vmUriInput.value = decodeURIComponent(hash);
+    }
+
+    let ws = null;
+    let isolateId = null;
+    let pollTimer = null;
+    let events = [];
+    let snapshot = null;
+
+    function showError(msg) {
+      errorEl.textContent = msg || '';
+      errorEl.style.display = msg ? 'block' : 'none';
+    }
+
+    function setStatus(connected) {
+      statusEl.textContent = connected ? 'Connected' : 'Disconnected';
+      statusEl.className = 'badge ' + (connected ? 'connected' : 'disconnected');
+    }
+
+    function httpToWsUri(httpUri) {
+      const s = httpUri.trim().replace(/\/$/, '');
+      if (s.startsWith('https://')) return 'wss://' + s.slice(8) + '/ws';
+      if (s.startsWith('http://')) return 'ws://' + s.slice(7) + '/ws';
+      if (s.startsWith('ws://') || s.startsWith('wss://')) return s.endsWith('/ws') ? s : s + (s.endsWith('/') ? '' : '/') + 'ws';
+      return 'ws://' + s + '/ws';
+    }
+
+    function send(method, params, id) {
+      return new Promise((resolve, reject) => {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          reject(new Error('Not connected'));
+          return;
+        }
+        const req = { jsonrpc: '2.0', method, id };
+        if (params && Object.keys(params).length) req.params = params;
+        const onMessage = (e) => {
+          try {
+            const res = JSON.parse(e.data);
+            if (res.id === id) {
+              ws.removeEventListener('message', onMessage);
+              if (res.error) reject(new Error(res.error.message || 'RPC error'));
+              else resolve(res.result);
+            }
+          } catch (_) {}
+        };
+        ws.addEventListener('message', onMessage);
+        ws.send(JSON.stringify(req));
+      });
+    }
+
+    function pollState() {
+      if (!ws || ws.readyState !== WebSocket.OPEN || !isolateId) return;
+      send('ext.omega.inspector.getState', { isolateId }, Date.now()).then((result) => {
+        if (typeof result === 'string') {
+          try {
+            result = JSON.parse(result);
+          } catch (_) {}
+        }
+        if (result && result.events) events = result.events.slice(0, 30);
+        if (result && result.snapshot) snapshot = result.snapshot;
+        renderEvents();
+        renderFlows();
+      }).catch(() => {});
+    }
+
+    function renderEvents() {
+      if (events.length === 0) {
+        eventsEl.innerHTML = '<div class="empty">No events yet</div>';
+        return;
+      }
+      eventsEl.innerHTML = events.slice(0, 25).map(e =>
+        '<div class="event"><span class="name">' + (e.name || '') + '</span><span class="time"></span></div>'
+      ).join('');
+    }
+
+    function renderFlows() {
+      if (!snapshot || !snapshot.flows || snapshot.flows.length === 0) {
+        flowsEl.innerHTML = '<div class="empty">No flows</div>';
+        return;
+      }
+      const active = snapshot.activeFlowId || '';
+      flowsEl.innerHTML = snapshot.flows.map(f =>
+        '<div class="flow-row ' + (f.flowId === active ? 'active' : '') + '">' +
+        '<span class="flow-id">' + (f.flowId || '') + '</span>' +
+        '<span class="flow-state">' + (f.state || '') + '</span>' +
+        '<span class="flow-expr">' + (f.lastExpressionType || '') + '</span></div>'
+      ).join('');
+    }
+
+    function disconnect() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = null;
+      isolateId = null;
+      if (ws) {
+        ws.close();
+        ws = null;
+      }
+      setStatus(false);
+    }
+
+    connectBtn.addEventListener('click', () => {
+      const uri = vmUriInput.value.trim();
+      if (!uri) {
+        showError('Enter the VM Service URL from the app logs.');
+        return;
+      }
+      showError('');
+      disconnect();
+      const wsUri = httpToWsUri(uri);
+      ws = new WebSocket(wsUri);
+      ws.onopen = () => {
+        setStatus(true);
+        send('getVM', {}, 1).then((vm) => {
+          const isolates = vm && vm.isolates;
+          if (isolates && isolates.length) {
+            isolateId = isolates[0].id;
+            pollState();
+            pollTimer = setInterval(pollState, 2000);
+          } else {
+            showError('No isolate found.');
+          }
+        }).catch((e) => {
+          showError('getVM failed: ' + (e && e.message));
+        });
+      };
+      ws.onclose = () => {
+        disconnect();
+        showError('Connection closed.');
+      };
+      ws.onerror = () => {
+        showError('Connection error. Is the app running and the VM Service URL correct?');
+      };
+    });
+  </script>
+</body>
+</html>

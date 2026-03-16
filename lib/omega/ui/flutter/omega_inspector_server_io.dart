@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -15,8 +16,12 @@ import '../../flows/omega_flow_manager.dart';
 const int _kDefaultEventLimit = 30;
 const Duration _kSnapshotInterval = Duration(seconds: 2);
 
+/// Extension method name for VM Service (mobile Inspector without adb reverse).
+const String _kExtGetState = 'ext.omega.inspector.getState';
+
 /// Server that exposes Omega state over HTTP/WebSocket so the Inspector
 /// can be opened in a browser tab (e.g. http://localhost:9292).
+/// On mobile, uses the VM Service extension so the PC can connect without adb reverse.
 class OmegaInspectorServer {
   static HttpServer? _server;
   static final List<WebSocket> _sockets = [];
@@ -24,6 +29,7 @@ class OmegaInspectorServer {
   static Timer? _snapshotTimer;
   static OmegaFlowManager? _flowManager;
   static final List<Map<String, dynamic>> _recentEvents = [];
+  static Map<String, dynamic> _cachedSnapshot = const {};
   static const int _eventLimit = _kDefaultEventLimit;
 
   static const int _kMaxPortTry = 9302;
@@ -35,13 +41,55 @@ class OmegaInspectorServer {
     bool openBrowser = true,
   }) async {
     if (!kDebugMode) return null;
-    if (_server != null) return _server!.port;
     _flowManager = flowManager;
 
     final isMobile = Platform.isAndroid || Platform.isIOS;
-    // On mobile: bind to all interfaces so the PC can connect. On desktop: loopback only.
-    final address = isMobile ? InternetAddress.anyIPv4 : InternetAddress.loopbackIPv4;
 
+    // Shared: keep events and snapshot updated for both HTTP server and VM extension.
+    _eventSub?.cancel();
+    _eventSub = channel.events.listen((e) {
+      final json = _eventToEncodableMap(e);
+      _recentEvents.insert(0, json);
+      while (_recentEvents.length > _eventLimit) {
+        _recentEvents.removeLast();
+      }
+      _broadcast({'type': 'event', 'data': json});
+    });
+    _cachedSnapshot = const {};
+    _snapshotTimer?.cancel();
+    _snapshotTimer = Timer.periodic(_kSnapshotInterval, (_) {
+      final fm = _flowManager;
+      if (fm != null) {
+        try {
+          _cachedSnapshot = fm.getAppSnapshot().toJson();
+        } catch (_) {}
+      }
+      _sendSnapshot();
+    });
+
+    if (isMobile) {
+      // Mobile: use VM Service (already forwarded by Flutter). No HTTP server, no adb reverse.
+      if (_server != null) {
+        _server!.close(force: true);
+        _server = null;
+        _sockets.clear();
+      }
+      _registerVmExtension();
+      final vmUri = await _vmServiceUri();
+      if (vmUri != null && vmUri.isNotEmpty) {
+        debugPrint('Omega Inspector [mobile] — Open on your PC (no adb reverse):');
+        debugPrint('  1. Open the file presentation/inspector.html from this package in your PC browser.');
+        debugPrint('  2. Paste this VM Service URL and click Connect:');
+        debugPrint('     $vmUri');
+      } else {
+        debugPrint('Omega Inspector [mobile] — VM Service URI not available. Use the in-app overlay or launcher.');
+      }
+      return 0; // No port; Inspector is via VM Service.
+    }
+
+    // Desktop: HTTP server + open browser.
+    if (_server != null) return _server!.port;
+    final address = InternetAddress.loopbackIPv4;
     HttpServer? server;
     int boundPort = 0;
     for (int p = port; p <= _kMaxPortTry; p++) {
@@ -57,52 +105,35 @@ class OmegaInspectorServer {
       debugPrint('Omega Inspector Server: could not bind any port $port–$_kMaxPortTry');
       return null;
     }
-
     _server = server;
     _server!.listen(_onRequest);
 
-    _eventSub = channel.events.listen((e) {
-      final json = _eventToEncodableMap(e);
-      _recentEvents.insert(0, json);
-      while (_recentEvents.length > _eventLimit) {
-        _recentEvents.removeLast();
-      }
-      _broadcast({'type': 'event', 'data': json});
-    });
-
-    _snapshotTimer = Timer.periodic(_kSnapshotInterval, (_) => _sendSnapshot());
-
-    if (isMobile) {
-      // Mobile: Inspector runs on device. To open on PC use adb reverse (reliable) or same-WiFi IP (often blocked).
-      final deviceIp = await _getDeviceIp();
-      debugPrint('Omega Inspector [mobile] — To open on your PC run in a terminal:');
-      debugPrint('  adb reverse tcp:$boundPort tcp:$boundPort');
-      debugPrint('Then open in PC browser: http://127.0.0.1:$boundPort');
-      if (deviceIp != null) {
-        debugPrint('Or same WiFi (if not blocked): http://$deviceIp:$boundPort');
-      }
-    } else {
-      // Desktop: open browser on this machine.
-      final url = 'http://127.0.0.1:$boundPort';
-      debugPrint('Omega Inspector: $url');
-      if (openBrowser) {
-        _openBrowser(url);
-      }
+    final url = 'http://127.0.0.1:$boundPort';
+    debugPrint('Omega Inspector: $url');
+    if (openBrowser) {
+      _openBrowser(url);
     }
-
     return boundPort;
   }
 
-  static Future<String?> _getDeviceIp() async {
+  static void _registerVmExtension() {
     try {
-      final interfaces = await NetworkInterface.list();
-      for (final ni in interfaces) {
-        for (final addr in ni.addresses) {
-          if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
-            return addr.address;
-          }
-        }
-      }
+      developer.registerExtension(_kExtGetState, (String method, Map<String, String>? params) async {
+        return developer.ServiceExtensionResponse.result(jsonEncode(<String, dynamic>{
+          'events': List<Map<String, dynamic>>.from(_recentEvents),
+          'snapshot': Map<String, dynamic>.from(_cachedSnapshot),
+        }));
+      });
+    } catch (_) {}
+  }
+
+  /// Returns the VM Service HTTP URI (e.g. http://127.0.0.1:38473/abc=/) so the PC can open the Inspector.
+  /// Flutter already forwards this port when running on a device.
+  static Future<String?> _vmServiceUri() async {
+    try {
+      final info = await developer.Service.getInfo();
+      final uri = info.serverUri;
+      return uri?.toString();
     } catch (_) {}
     return null;
   }
@@ -140,6 +171,7 @@ class OmegaInspectorServer {
     _server = null;
     _flowManager = null;
     _recentEvents.clear();
+    _cachedSnapshot = const {};
   }
 
   static void _sendSnapshot() {

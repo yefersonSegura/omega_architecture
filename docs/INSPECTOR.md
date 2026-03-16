@@ -63,25 +63,22 @@ AppBar(
 
 ---
 
-## 3. Servidor en el navegador (desktop/móvil)
+## 3. Servidor en el navegador (desktop) o VM Service (móvil)
 
-En desktop o móvil puedes abrir el Inspector en el navegador (estilo Isar/DevTools). **En web no está disponible** (no hay `dart:io`). Si `openBrowser` es true (por defecto), se usa `url_launcher` para abrir la URL en el navegador del dispositivo (también en móvil).
+En **desktop** se levanta un servidor HTTP y se abre el navegador en `http://127.0.0.1:9292`. En **móvil** no se usa servidor HTTP ni `adb reverse`: se usa la extensión del **VM Service** (el mismo canal que Flutter ya reenvía al PC), así que el Inspector en el PC funciona sin pasos extra.
 
 ```dart
-void main() {
+void main() async {
   final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
 
   if (kDebugMode) {
-    final port = await OmegaInspectorServer.start(
+    await OmegaInspectorServer.start(
       runtime.channel,
       runtime.flowManager,
       port: 9292,
     );
-    if (port != null) {
-      // En consola ya se imprime: Omega Inspector: http://localhost:9292
-      // Abre esa URL en el navegador.
-    }
-    // Si port == null (ej. en web), usa OmegaInspectorLauncher.
+    // Desktop: se imprime la URL y se abre el navegador.
+    // Móvil: se imprime la VM Service URL; abre presentation/inspector.html en el PC y pégala.
   }
 
   runApp(OmegaScope(
@@ -92,15 +89,11 @@ void main() {
 }
 ```
 
-- **Desktop (Windows/macOS/Linux):** El servidor escucha en 127.0.0.1. Si `openBrowser: true` (por defecto), se abre el navegador **de la PC** con `http://127.0.0.1:9292` (url_launcher).
-- **Móvil (Android):** El servidor corre en el dispositivo. Para ver el Inspector en el **navegador del PC** la forma fiable es **adb reverse**. En la consola se imprime:
-  ```
-  adb reverse tcp:9292 tcp:9292
-  ```
-  Ejecuta ese comando en una terminal (con el móvil conectado por USB) y luego abre en el PC: `http://127.0.0.1:9292`. La IP del dispositivo (misma WiFi) a menudo no conecta por firewall o redes que bloquean dispositivo-a-dispositivo.
-- **Web:** `start()` devuelve `null` y en consola sale un mensaje indicando usar `OmegaInspectorLauncher`.
+- **Desktop (Windows/macOS/Linux):** El servidor HTTP escucha en 127.0.0.1. Si `openBrowser: true` (por defecto), se abre el navegador con `http://127.0.0.1:9292`.
+- **Móvil (Android/iOS):** No se levanta servidor HTTP. La app registra la extensión `ext.omega.inspector.getState` en el VM Service. Flutter ya reenvía el puerto del VM Service al PC. En la consola se imprime la **VM Service URL** (ej. `http://127.0.0.1:38473/xxxx/`). En el **PC** abre el archivo `presentation/inspector.html` del paquete omega_architecture en el navegador, pega esa URL y pulsa **Connect**. No hace falta `adb reverse`.
+- **Web:** `start()` devuelve `null`; usa `OmegaInspectorLauncher`.
 
-Para detener el servidor (opcional): `OmegaInspectorServer.stop();`
+Para detener (opcional): `OmegaInspectorServer.stop();`
 
 ---
 
@@ -190,4 +183,4 @@ class _Home extends StatelessWidget {
 3. **Launcher:** el icono de bicho (bug) en la AppBar solo se muestra en debug. Pulsa para abrir el Inspector en diálogo o ventana nueva.
 4. **Web:** el servidor no corre en web; en consola verás el mensaje del stub. Usa el botón de la AppBar (Launcher) para abrir el Inspector en otra ventana.
 5. **Desktop + servidor:** tras `OmegaInspectorServer.start(...)` en la consola sale la URL; ábrela en el navegador del PC.
-6. **App en móvil, Inspector en el PC:** si al abrir `http://<IP-del-móvil>:9292` en el PC no conecta (firewall, red que bloquea dispositivo a dispositivo), usa **adb reverse**. Con el móvil conectado por USB ejecuta en una terminal: `adb reverse tcp:9292 tcp:9292`. Luego abre en el PC: `http://127.0.0.1:9292`. El tráfico se reenvía al socket del dispositivo.
+6. **App en móvil, Inspector en el PC:** usa el flujo por **VM Service** (sin adb reverse). Al ejecutar la app en el dispositivo, en la consola se imprime la VM Service URL. En el PC abre `presentation/inspector.html` (del paquete omega_architecture), pega esa URL y pulsa Connect. Flutter ya reenvía el puerto del VM Service al host.
