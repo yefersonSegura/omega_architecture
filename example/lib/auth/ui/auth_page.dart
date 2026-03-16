@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 
 import '../../omega/app_semantics.dart';
+import '../auth_agent.dart';
 import '../auth_flow.dart';
 import '../auth_events.dart';
+import '../auth_state.dart';
 
 class OmegaLoginPage extends StatefulWidget {
-  const OmegaLoginPage({super.key});
+  const OmegaLoginPage({super.key, required this.authAgent});
+
+  final AuthAgent authAgent;
 
   @override
   State<OmegaLoginPage> createState() => _OmegaLoginPageState();
@@ -32,11 +36,12 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
     flow = flowManager.getFlow("authFlow") as AuthFlow;
     flow.expressions.listen((exp) {
       setState(() {
-        uiState = exp.type;
-        // Payload tipado: en "success" usar payloadAs<LoginSuccessPayload>()
+        // UI state is driven by the flow only for semantic milestones.
+        // Loading/error are rendered from AuthAgent viewState via OmegaAgentBuilder.
+        uiState = exp.type == "success" ? "success" : "idle";
         uiPayload = exp.type == "success"
             ? exp.payloadAs<LoginSuccessPayload>()
-            : exp.payload;
+            : null;
       });
     });
   }
@@ -54,28 +59,7 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    Widget body;
-
-    switch (uiState) {
-      case "idle":
-        body = _buildLoginForm();
-        break;
-
-      case "loading":
-        body = const Center(child: CircularProgressIndicator());
-        break;
-
-      case "success":
-        body = _buildSuccess();
-        break;
-
-      case "error":
-        body = _buildError();
-        break;
-
-      default:
-        body = _buildLoginForm();
-    }
+    final body = uiState == "success" ? _buildSuccess() : _buildLoginForm();
 
     return Scaffold(
       appBar: AppBar(title: const Text("Omega Login")),
@@ -89,6 +73,28 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          OmegaAgentBuilder<AuthAgent, AuthViewState>(
+            agent: widget.authAgent,
+            builder: (context, agentState) {
+              if (agentState.isLoading) {
+                return const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: LinearProgressIndicator(),
+                );
+              }
+              if (agentState.errorMessage != null &&
+                  agentState.errorMessage!.isNotEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    agentState.errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                );
+              }
+              return const SizedBox(height: 0);
+            },
+          ),
           TextField(
             controller: emailCtrl,
             decoration: const InputDecoration(labelText: "Email"),
@@ -106,27 +112,6 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
     );
   }
 
-  Widget _buildError() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            uiPayload?.toString() ?? "Error desconocido",
-            style: const TextStyle(color: Colors.red, fontSize: 18),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              flow.emitExpression("idle");
-            },
-            child: const Text("Volver"),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSuccess() {
     // uiPayload ya viene tipado por payloadAs<LoginSuccessPayload>() en el listener
     final data = uiPayload as LoginSuccessPayload?;
@@ -137,9 +122,7 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
           const Icon(Icons.check_circle, color: Colors.green, size: 100),
           const SizedBox(height: 20),
           Text(
-            data != null
-                ? "Bienvenido ${data.user["name"]}"
-                : "Bienvenido",
+            data != null ? "Bienvenido ${data.user["name"]}" : "Bienvenido",
             style: const TextStyle(fontSize: 20),
           ),
           const SizedBox(height: 40),

@@ -3,10 +3,16 @@ import 'package:omega_architecture/omega_architecture.dart';
 import '../omega/app_semantics.dart';
 import 'auth_behavior.dart';
 import 'auth_events.dart';
+import 'auth_state.dart';
 
-class AuthAgent extends OmegaAgent {
+class AuthAgent extends OmegaStatefulAgent<AuthViewState> {
   AuthAgent(OmegaEventBus channel)
-    : super(id: "Auth", channel: channel, behavior: AuthBehavior());
+    : super(
+        id: "Auth",
+        channel: channel,
+        behavior: AuthBehavior(),
+        initialState: AuthViewState.empty,
+      );
 
   static final _contract = OmegaAgentContract.fromTyped(
     agentId: 'Auth',
@@ -56,6 +62,7 @@ class AuthAgent extends OmegaAgent {
       return;
     }
 
+    setViewState(viewState.copyWith(isLoading: true, errorMessage: null));
     channel.emit(OmegaEvent.fromName(AppEvent.authLoginStarted));
 
     await Future.delayed(const Duration(seconds: 1));
@@ -69,6 +76,7 @@ class AuthAgent extends OmegaAgent {
           payload: LoginSuccessPayload(token: token!, user: user!),
         ),
       );
+      setViewState(viewState.copyWith(isLoading: false, errorMessage: null));
     } else {
       channel.emit(
         OmegaEvent.fromName(
@@ -80,6 +88,12 @@ class AuthAgent extends OmegaAgent {
           ),
         ),
       );
+      setViewState(
+        viewState.copyWith(
+          isLoading: false,
+          errorMessage: "Credenciales inválidas",
+        ),
+      );
     }
   }
 
@@ -87,5 +101,6 @@ class AuthAgent extends OmegaAgent {
     token = null;
     user = null;
     channel.emit(OmegaEvent.fromName(AppEvent.authLogoutSuccess));
+    setViewState(AuthViewState.empty);
   }
 }

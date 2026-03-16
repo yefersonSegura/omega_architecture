@@ -15,16 +15,20 @@ OmegaConfig createOmegaConfig(OmegaChannel channel) {
   final authNs = channel.namespace('auth');
   final providerNs = channel.namespace('provider');
   final ordersNs = channel.namespace('orders');
+  final authAgent = AuthAgent(authNs);
 
   return OmegaConfig(
-    agents: <OmegaAgent>[ProviderAgent(providerNs), AuthAgent(authNs)],
+    agents: <OmegaAgent>[ProviderAgent(providerNs), authAgent],
     flows: <OmegaFlow>[
       ProviderFlow(providerNs),
       AuthFlow(authNs),
       OrdersFlow(ordersNs, offlineQueue),
     ],
     routes: [
-      OmegaRoute(id: "login", builder: (context) => const OmegaLoginPage()),
+      OmegaRoute(
+        id: "login",
+        builder: (context) => OmegaLoginPage(authAgent: authAgent),
+      ),
       // Ruta tipada: la vista recibe LoginSuccessPayload? (ej. tras login desde el flow)
       OmegaRoute.typed<LoginSuccessPayload>(
         id: "home",

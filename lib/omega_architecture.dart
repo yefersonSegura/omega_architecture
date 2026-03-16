@@ -23,6 +23,7 @@ export 'omega/core/types/omega_object.dart';
 
 // AGENTS
 export 'omega/agents/omega_agent.dart';
+export 'omega/agents/omega_stateful_agent.dart';
 export 'omega/agents/behavior/omega_agent_behavior_context.dart';
 export 'omega/agents/behavior/omega_agent_behavior_engine.dart';
 export 'omega/agents/behavior/omega_agent_behavior_rule.dart';
@@ -51,6 +52,7 @@ export 'omega/flows/omega_flow_expression.dart';
 export 'omega/flows/omega_flow_context.dart';
 export 'omega/flows/omega_flow_snapshot.dart';
 export 'omega/flows/omega_snapshot_storage.dart';
+export 'omega/flows/omega_workflow_flow.dart';
 
 // UI NAVIGATION
 export 'omega/ui/navigation/omega_navigator.dart';
@@ -60,6 +62,7 @@ export 'omega/ui/navigation/omega_navigation_entry.dart';
 // UI INTEGRATION (FLUTTER)
 export 'omega/ui/flutter/omega_scope.dart';
 export 'omega/ui/flutter/omega_builder.dart';
+export 'omega/ui/flutter/omega_agent_builder.dart';
 export 'omega/ui/flutter/omega_inspector.dart';
 export 'omega/ui/flutter/omega_inspector_launcher.dart';
 export 'omega/ui/flutter/omega_inspector_receiver.dart';
