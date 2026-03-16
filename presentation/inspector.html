@@ -18,6 +18,9 @@
     .connect-box button { margin-top: 8px; padding: 8px 14px; background: #1743b3; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; }
     .connect-box button:hover { background: #133a9e; }
     .connect-box .hint { font-size: 11px; color: #9ca3af; margin-top: 6px; }
+    .welcome { font-size: 12px; color: #4b5563; margin-top: 10px; }
+    .welcome span.loader { display: inline-block; width: 10px; height: 10px; border-radius: 999px; border: 2px solid #9ca3af; border-top-color: #1743b3; margin-right: 6px; animation: spin 0.8s linear infinite; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .layout { display: flex; height: calc(100vh - 120px); min-height: 300px; }
     .panel { overflow: auto; padding: 12px; }
     .panel.events { flex: 2; background: #fff; border-right: 1px solid #e5e7eb; }
@@ -45,6 +48,10 @@
     <input type="text" id="vmUri" placeholder="http://127.0.0.1:38473/abc=/">
     <button type="button" id="connectBtn">Connect</button>
     <p class="hint">Use the URL printed when the app runs on a device (e.g. "Omega Inspector [mobile]: ... Paste this VM Service URL: http://127.0.0.1:XXXX/..."). Flutter forwards this port automatically.</p>
+    <p id="welcome" class="welcome">
+      <span class="loader"></span>
+      Waiting for connection… if the URL came from OmegaInspectorServer we will connect automatically.
+    </p>
     <p id="error" class="error" style="display:none;"></p>
   </div>
   <div class="layout">
@@ -64,11 +71,24 @@
     const eventsEl = document.getElementById('events');
     const flowsEl = document.getElementById('flows');
     const errorEl = document.getElementById('error');
+    const welcomeEl = document.getElementById('welcome');
 
-    // Prefill from hash (e.g. inspector.html#http://127.0.0.1:38473/abc=/)
-    const hash = location.hash.slice(1);
-    if (hash && hash.startsWith('http')) {
-      vmUriInput.value = decodeURIComponent(hash);
+    // Prefill from hash (e.g. inspector.html#http://127.0.0.1:38473/abc=/ or encoded)
+    const rawHash = location.hash.slice(1);
+    let hasAutoUrl = false;
+    if (rawHash) {
+      try {
+        const decoded = decodeURIComponent(rawHash);
+        if (decoded.startsWith('http')) {
+          vmUriInput.value = decoded;
+          hasAutoUrl = true;
+        }
+      } catch (_) {
+        if (rawHash.startsWith('http')) {
+          vmUriInput.value = rawHash;
+          hasAutoUrl = true;
+        }
+      }
     }
 
     let ws = null;
@@ -168,18 +188,28 @@
       setStatus(false);
     }
 
-    connectBtn.addEventListener('click', () => {
+    function connectNow(auto) {
       const uri = vmUriInput.value.trim();
       if (!uri) {
-        showError('Enter the VM Service URL from the app logs.');
+        if (!auto) {
+          showError('Enter the VM Service URL from the app logs.');
+        }
         return;
       }
       showError('');
+      if (welcomeEl) {
+        welcomeEl.textContent = auto
+          ? 'Connecting to Omega Inspector…'
+          : 'Connecting…';
+      }
       disconnect();
       const wsUri = httpToWsUri(uri);
       ws = new WebSocket(wsUri);
       ws.onopen = () => {
         setStatus(true);
+        if (welcomeEl) {
+          welcomeEl.textContent = 'Connected. Streaming Omega events and flows.';
+        }
         send('getVM', {}, 1).then((vm) => {
           const isolates = vm && vm.isolates;
           if (isolates && isolates.length) {
@@ -200,7 +230,14 @@
       ws.onerror = () => {
         showError('Connection error. Is the app running and the VM Service URL correct?');
       };
-    });
+    }
+
+    connectBtn.addEventListener('click', () => connectNow(false));
+
+    // Auto-connect a few moments after load when URL came from hash.
+    if (hasAutoUrl) {
+      setTimeout(() => connectNow(true), 1000);
+    }
   </script>
 </body>
 </html>

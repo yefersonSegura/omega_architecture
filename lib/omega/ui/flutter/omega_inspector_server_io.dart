@@ -77,10 +77,11 @@ class OmegaInspectorServer {
       _registerVmExtension();
       final vmUri = await _vmServiceUri();
       if (vmUri != null && vmUri.isNotEmpty) {
+        final inspectorPath = 'presentation/inspector.html#${Uri.encodeComponent(vmUri)}';
         debugPrint('Omega Inspector [mobile] — Open on your PC (no adb reverse):');
-        debugPrint('  1. Open the file presentation/inspector.html from this package in your PC browser.');
-        debugPrint('  2. Paste this VM Service URL and click Connect:');
-        debugPrint('     $vmUri');
+        debugPrint('  Inspector URL (open this file in PC browser, VM URL is in the hash):');
+        debugPrint('  $inspectorPath');
+        debugPrint('  VM Service URL: $vmUri');
       } else {
         debugPrint('Omega Inspector [mobile] — VM Service URI not available. Use the in-app overlay or launcher.');
       }

@@ -44,6 +44,10 @@ void main(List<String> args) {
   }
 
   switch (arg) {
+    case "inspector":
+      OmegaInspectorCommand.run();
+      return;
+
     case "doc":
       _openDoc();
       return;
@@ -88,6 +92,9 @@ void printHelp() {
     "  doc                  Open the web documentation (official site in browser)",
   );
   stdout.writeln(
+    "  inspector            Open the local Omega Inspector HTML (desktop/mobile VM Service)",
+  );
+  stdout.writeln(
     "  init [--force]       Create lib/omega/omega_setup.dart (use --force to overwrite)",
   );
   stdout.writeln(
@@ -96,7 +103,9 @@ void printHelp() {
   stdout.writeln(
     "  g agent <Name>       Generate only agent + behavior in current directory",
   );
-  stdout.writeln("  g flow <Name>        Generate only flow in current directory");
+  stdout.writeln(
+    "  g flow <Name>        Generate only flow in current directory",
+  );
   stdout.writeln(
     "  validate             Check omega_setup.dart (structure, duplicate ids)",
   );
@@ -113,12 +122,17 @@ void printHelp() {
   stdout.writeln("");
   stdout.writeln("Examples:");
   stdout.writeln("  omega doc                 # open web documentation");
+  stdout.writeln(
+    "  omega inspector           # open local inspector.html in browser",
+  );
   stdout.writeln("  omega init");
   stdout.writeln("  omega init --force");
   stdout.writeln(
     "  omega g ecosystem Auth    # auth_agent, auth_flow, auth_behavior, auth_page",
   );
-  stdout.writeln("  omega g agent Orders      # orders_agent, orders_behavior only");
+  stdout.writeln(
+    "  omega g agent Orders      # orders_agent, orders_behavior only",
+  );
   stdout.writeln("  omega g flow Orders       # orders_flow only");
   stdout.writeln("  omega validate");
   stdout.writeln("  omega trace view trace.json    # summarize trace file");
@@ -457,6 +471,38 @@ void _formatFile(String path) {
   Process.runSync('dart', ['format', path]);
 }
 
+/// Open local Inspector HTML (presentation/inspector.html) in the default browser.
+/// Works both when running inside this repo and when omega_architecture is installed from pub.dev.
+class OmegaInspectorCommand {
+  static void run() {
+    // Prefer the package root (where bin/omega.dart lives) when running as omega CLI.
+    String? root = _packageRootFromScript();
+    root ??= findProjectRoot();
+
+    final htmlPath = _path(root, ["presentation", "inspector.html"]);
+    final file = File(htmlPath);
+    if (!file.existsSync()) {
+      _err("Inspector HTML not found.");
+      stdout.writeln("  Expected at: ${_absPath(htmlPath)}");
+      stdout.writeln("  Make sure omega_architecture is installed correctly.");
+      return;
+    }
+
+    final uri = Uri.file(file.path).toString();
+    _openInBrowser(uri);
+    stdout.writeln("Opening Omega Inspector HTML:");
+    stdout.writeln("  ${_absPath(file.path)}");
+    stdout.writeln("");
+    stdout.writeln("Tip:");
+    stdout.writeln(
+      "  If your app is running on a device, copy the line printed by OmegaInspectorServer",
+    );
+    stdout.writeln(
+      "  like 'presentation/inspector.html#<encoded-VM-URL>' and append the hash to this URL.",
+    );
+  }
+}
+
 /// Normaliza path para comparación (unificado y sin trailing separator).
 String _normPath(String path) {
   final p = Directory(
@@ -527,13 +573,13 @@ void registerInOmegaSetup(
     flowImport = "import '${_relativePath(setupDir, flowPath)}';";
   }
 
-  final agentFile = nameLower + "_agent.dart";
-  final flowFile = nameLower + "_flow.dart";
+  final agentFile = "${nameLower}_agent.dart";
+  final flowFile = "${nameLower}_flow.dart";
   final agentPattern = RegExp(
-    "import\\s+['\"].*" + RegExp.escape(agentFile) + "['\"];\\s*",
+    "import\\s+['\"].*${RegExp.escape(agentFile)}['\"];\\s*",
   );
   final flowPattern = RegExp(
-    "import\\s+['\"].*" + RegExp.escape(flowFile) + "['\"];\\s*",
+    "import\\s+['\"].*${RegExp.escape(flowFile)}['\"];\\s*",
   );
   // Solo quitar el import del artefacto que estamos registrando (no el del otro)
   if (registerAgent) content = content.replaceFirst(agentPattern, "");
@@ -756,7 +802,9 @@ class OmegaValidateCommand {
         : null;
     stdout.writeln("Directorio (bash): ${_absPath(getBashCwd())}");
     if (startFrom != null) {
-      stdout.writeln("Buscar desde: ${_absPath(Directory(startFrom).absolute.path)}");
+      stdout.writeln(
+        "Buscar desde: ${_absPath(Directory(startFrom).absolute.path)}",
+      );
     }
     String root;
     try {
@@ -810,19 +858,25 @@ class OmegaValidateCommand {
     final duplicateFlows = _duplicates(flowNames);
     if (duplicateAgents.isNotEmpty) {
       _err("Duplicate agent registration: ${duplicateAgents.join(", ")}.");
-      stdout.writeln("  Remove duplicate XAgent(channel) from omega_setup.dart.");
+      stdout.writeln(
+        "  Remove duplicate XAgent(channel) from omega_setup.dart.",
+      );
       ok = false;
     }
     if (duplicateFlows.isNotEmpty) {
       _err("Duplicate flow registration: ${duplicateFlows.join(", ")}.");
-      stdout.writeln("  Remove duplicate XFlow(channel) from omega_setup.dart.");
+      stdout.writeln(
+        "  Remove duplicate XFlow(channel) from omega_setup.dart.",
+      );
       ok = false;
     }
 
     if (ok) {
       stdout.writeln("Valid.");
       stdout.writeln("  File: ${_absPath(setupPath)}");
-      stdout.writeln("  Agents: ${agentNames.length}, Flows: ${flowNames.length}");
+      stdout.writeln(
+        "  Agents: ${agentNames.length}, Flows: ${flowNames.length}",
+      );
     }
   }
 
@@ -868,7 +922,9 @@ class OmegaTraceCommand {
       exit(ok ? 0 : 1);
     }
     _err("Unknown trace subcommand: $sub");
-    stdout.writeln("  Use: omega trace view <file> | omega trace validate <file>");
+    stdout.writeln(
+      "  Use: omega trace view <file> | omega trace validate <file>",
+    );
   }
 
   static void _printTraceHelp() {
@@ -966,7 +1022,9 @@ class OmegaDoctorCommand {
     final bashCwd = getBashCwd();
     stdout.writeln("Directorio (bash): ${_absPath(bashCwd)}");
     if (startFrom != null) {
-      stdout.writeln("Buscar desde: ${_absPath(Directory(startFrom).absolute.path)}");
+      stdout.writeln(
+        "Buscar desde: ${_absPath(Directory(startFrom).absolute.path)}",
+      );
     }
     String root;
     try {
