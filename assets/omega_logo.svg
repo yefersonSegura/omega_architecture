@@ -1,0 +1,42 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="omega_bg" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0EA5E9"/>
+      <stop offset="0.5" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#A855F7"/>
+    </linearGradient>
+    <linearGradient id="omega_inner" x1="176" y1="120" x2="336" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F9FAFB"/>
+      <stop offset="1" stop-color="#E5E7EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#omega_bg)"/>
+
+  <!-- Inner dark circle -->
+  <circle cx="256" cy="256" r="176" fill="#020617"/>
+
+  <!-- Minimal Omega glyph -->
+  <path
+    d="
+      M 176 184
+      C 176 142 210 112 256 112
+        302 112 336 142 336 184
+        336 222 314 248 280 260
+        310 272 332 302 332 344
+        332 364 328 380 320 392
+      L 288 392
+      C 297 382 304 366 304 344
+        304 306 283 280 256 280
+        229 280 208 306 208 344
+        208 366 215 382 224 392
+      L 192 392
+      C 184 380 180 364 180 344
+        180 302 202 272 232 260
+        198 248 176 222 176 184
+      Z
+    "
+    fill="url(#omega_inner)"/>
+</svg>
+

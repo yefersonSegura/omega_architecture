@@ -1,5 +1,9 @@
 # Ω Omega Architecture
 
+<p align="center">
+  <img src="assets/omega_logo.svg" alt="Omega Architecture Logo" width="220">
+</p>
+
 [![pub package](https://img.shields.io/pub/v/omega_architecture.svg)](https://pub.dev/packages/omega_architecture) [![documentation](https://img.shields.io/badge/docs-API%20%26%20web-blue)](https://pub.dev/documentation/omega_architecture/latest)
 
 A reactive, agent-based architecture framework for Flutter applications.
