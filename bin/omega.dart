@@ -587,7 +587,7 @@ void registerInOmegaSetup(
   if (registerAgent) newImports.add(agentImport);
   if (registerFlow) newImports.add(flowImport);
   if (newImports.isNotEmpty) {
-    content = newImports.join("\n") + "\n" + content;
+    content = '${newImports.join("\n")}\n$content';
   }
 
   if (registerAgent && !content.contains("${pascal}Agent(channel)")) {
