@@ -471,67 +471,21 @@ void _formatFile(String path) {
   Process.runSync('dart', ['format', path]);
 }
 
-/// Returns the root directory of the omega_architecture package when used as a dependency.
-/// It reads .dart_tool/package_config.json from the current project and looks for
-/// the package named "omega_architecture".
-String? _omegaPackageRootFromPackageConfig() {
-  try {
-    final projectRoot = findProjectRoot();
-    final configFile = File("$projectRoot/.dart_tool/package_config.json");
-    if (!configFile.existsSync()) return null;
-    final map = jsonDecode(configFile.readAsStringSync());
-    if (map is! Map) return null;
-    final packages = map["packages"];
-    if (packages is! List) return null;
-    for (final p in packages) {
-      if (p is! Map) continue;
-      if (p["name"] == "omega_architecture") {
-        final rootUri = p["rootUri"];
-        if (rootUri is String) {
-          final uri = Uri.parse(rootUri);
-          if (uri.scheme == "file") {
-            return uri.toFilePath();
-          }
-          // Relative uri from project root.
-          return Uri.file(projectRoot).resolveUri(uri).toFilePath();
-        }
-      }
-    }
-  } catch (_) {}
-  return null;
-}
-
-/// Open local Inspector HTML (presentation/inspector.html) in the default browser.
-/// Works both when running inside this repo and when omega_architecture is installed from pub.dev.
+/// Open the online Omega Inspector (VM Service) in the default browser.
+/// It uses the hosted page at http://yefersonsegura.com/projects/omega/inspector.html.
 class OmegaInspectorCommand {
   static void run() {
-    // 1) If running inside omega_architecture repo, use that root.
-    String? root = _packageRootFromScript();
-    // 2) Otherwise, resolve omega_architecture as a dependency from package_config.
-    root ??= _omegaPackageRootFromPackageConfig();
-    // 3) Fallback: current project root (only works if presentation/inspector.html is vendored there).
-    root ??= findProjectRoot();
-
-    final htmlPath = _path(root, ["presentation", "inspector.html"]);
-    final file = File(htmlPath);
-    if (!file.existsSync()) {
-      _err("Inspector HTML not found.");
-      stdout.writeln("  Expected at: ${_absPath(htmlPath)}");
-      stdout.writeln("  Make sure omega_architecture is installed correctly.");
-      return;
-    }
-
-    final uri = Uri.file(file.path).toString();
-    _openInBrowser(uri);
-    stdout.writeln("Opening Omega Inspector HTML:");
-    stdout.writeln("  ${_absPath(file.path)}");
+    const url = "http://yefersonsegura.com/projects/omega/inspector.html";
+    _openInBrowser(url);
+    stdout.writeln("Opening Omega Inspector (online):");
+    stdout.writeln("  $url");
     stdout.writeln("");
     stdout.writeln("Tip:");
     stdout.writeln(
-      "  If your app is running on a device, copy the line printed by OmegaInspectorServer",
+      "  When running on a device, OmegaInspectorServer will print the same URL with a #<encoded-VM-URL> hash.",
     );
     stdout.writeln(
-      "  like 'presentation/inspector.html#<encoded-VM-URL>' and append the hash to this URL.",
+      "  You can either open that full URL directly, or paste the VM Service URL manually in the page.",
     );
   }
 }

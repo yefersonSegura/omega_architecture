@@ -80,10 +80,13 @@ class OmegaInspectorServer {
       if (vmUri != null && vmUri.isNotEmpty) {
         debugPrint('Omega Inspector [mobile] — Open on your PC (no adb reverse):');
         final hash = Uri.encodeComponent(vmUri);
-        debugPrint('  1) On your PC terminal run: omega inspector');
-        debugPrint('  2) If needed, append this hash to the opened URL:');
-        debugPrint('     #$hash');
-        debugPrint('  VM Service URL: $vmUri');
+        debugPrint('  Open this URL in your PC browser:');
+        debugPrint(
+          '  http://yefersonsegura.com/projects/omega/inspector.html#$hash',
+        );
+        debugPrint('  (The page will auto-connect using that VM Service URL.)');
+        debugPrint('  If needed, you can also paste this VM Service URL manually:');
+        debugPrint('  $vmUri');
       } else {
         debugPrint('Omega Inspector [mobile] — VM Service URI not available. Use the in-app overlay or launcher.');
       }
