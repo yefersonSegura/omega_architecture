@@ -471,12 +471,45 @@ void _formatFile(String path) {
   Process.runSync('dart', ['format', path]);
 }
 
+/// Returns the root directory of the omega_architecture package when used as a dependency.
+/// It reads .dart_tool/package_config.json from the current project and looks for
+/// the package named "omega_architecture".
+String? _omegaPackageRootFromPackageConfig() {
+  try {
+    final projectRoot = findProjectRoot();
+    final configFile = File("$projectRoot/.dart_tool/package_config.json");
+    if (!configFile.existsSync()) return null;
+    final map = jsonDecode(configFile.readAsStringSync());
+    if (map is! Map) return null;
+    final packages = map["packages"];
+    if (packages is! List) return null;
+    for (final p in packages) {
+      if (p is! Map) continue;
+      if (p["name"] == "omega_architecture") {
+        final rootUri = p["rootUri"];
+        if (rootUri is String) {
+          final uri = Uri.parse(rootUri);
+          if (uri.scheme == "file") {
+            return uri.toFilePath();
+          }
+          // Relative uri from project root.
+          return Uri.file(projectRoot).resolveUri(uri).toFilePath();
+        }
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
 /// Open local Inspector HTML (presentation/inspector.html) in the default browser.
 /// Works both when running inside this repo and when omega_architecture is installed from pub.dev.
 class OmegaInspectorCommand {
   static void run() {
-    // Prefer the package root (where bin/omega.dart lives) when running as omega CLI.
+    // 1) If running inside omega_architecture repo, use that root.
     String? root = _packageRootFromScript();
+    // 2) Otherwise, resolve omega_architecture as a dependency from package_config.
+    root ??= _omegaPackageRootFromPackageConfig();
+    // 3) Fallback: current project root (only works if presentation/inspector.html is vendored there).
     root ??= findProjectRoot();
 
     final htmlPath = _path(root, ["presentation", "inspector.html"]);
