@@ -1,4 +1,4 @@
-## 0.0.19
+## 0.0.20
 
 - **Inspector (VM Service + public web):** [OmegaInspectorServer] now exposes Omega state via a VM Service extension instead of a local HTTP server. On Android/iOS/desktop it prints a URL of the form `http://yefersonsegura.com/projects/omega/inspector.html#<encoded-VM-URL>` that opens the online Inspector and auto-connects; no `adb reverse` is required.
 - **Inspector CLI:** New CLI command `omega inspector` opens the hosted Inspector page in the browser. When combined with the URL printed by [OmegaInspectorServer], you can debug a device from the PC without searching for the HTML file.
