@@ -322,7 +322,7 @@ if (kDebugMode)
 
 **2. Launcher button (dialog on desktop/mobile, new window on web)**
 
-Add the launcher in the AppBar (or anywhere); in debug it shows a button that opens the Inspector in a dialog (non-web) or in a new browser tab (web). On web, the app must show `OmegaInspectorReceiver` when the URL has `?omega_inspector=1` (e.g. in `main.dart`: if the query param is set, run only `OmegaInspectorReceiver` as the app).
+Add the launcher in the AppBar (or anywhere); in debug it shows a button that opens the Inspector in a dialog (Android/iOS/desktop) or in a new browser tab (web). On web, the app must show `OmegaInspectorReceiver` when the URL has `?omega_inspector=1` (e.g. in `main.dart`: if the query param is set, run only `OmegaInspectorReceiver` as the app). The web receiver uses the same dark dashboard layout as the online inspector (flows sidebar, events list, JSON details panel).
 
 ```dart
 if (kDebugMode)
@@ -332,18 +332,23 @@ if (kDebugMode)
   )
 ```
 
-**3. Inspector in browser (desktop/mobile only)**
+**3. Online Inspector (VM Service + web)**
 
-Start a small HTTP server so you can open the Inspector at `http://localhost:9292` without the in-app overlay. On web this is a no-op.
+On Android/iOS/desktop you can debug the app from the PC using the hosted Inspector page. `OmegaInspectorServer.start` registers a VM Service extension and prints a URL like:
 
-```dart
-if (kDebugMode) {
-  OmegaInspectorServer.start(runtime.channel, runtime.flowManager);
-}
-// Console prints: Omega Inspector: http://localhost:9292
+```text
+http://yefersonsegura.com/projects/omega/inspector.html#<encoded-VM-URL>
 ```
 
-All Inspector widgets and the server are no-op in release (`kDebugMode` guards). See the [example](example/) app: `main.dart` uses (2) and (3); [docs/GUIA.md](docs/GUIA.md) has more detail.
+Open that URL in a desktop browser and the page will auto-connect to your running app; alternatively, copy the raw VM Service URL that Flutter prints (e.g. `http://127.0.0.1:PORT/TOKEN=/`) and paste it in the Inspector input. You can also run:
+
+```bash
+dart run omega_architecture:omega inspector
+```
+
+which opens the same hosted Inspector so you only have to paste the hash or VM Service URL from the app logs.
+
+All Inspector widgets and the server are no-op in release (`kDebugMode` guards). See the [example](example/) app for full usage; [docs/INSPECTOR.md](docs/INSPECTOR.md) has a copy-paste guide and troubleshooting.
 
 ### Activating flows
 

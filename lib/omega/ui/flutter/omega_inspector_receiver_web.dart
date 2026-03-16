@@ -11,14 +11,16 @@ import 'package:web/web.dart' as web;
 
 const String _kChannelName = 'omega_inspector';
 
-// Visual theme (aligned with omega_inspector.dart).
-const Color _kInspectorPrimary = Color(0xFF2962FF);
-const Color _kInspectorPrimaryDark = Color(0xFF1743B3);
-const Color _kInspectorSurface = Color(0xFFF3F4F8);
-const Color _kInspectorCard = Color(0xFFFAFAFC);
-const Color _kInspectorText = Color(0xFF1F2937);
-const Color _kInspectorTextMuted = Color(0xFF6B7280);
-const double _kCardRadius = 10.0;
+// Visual theme: aligned with presentation/inspector.html (dark dashboard).
+const Color _kInspectorBg = Color(0xFF020617);
+const Color _kInspectorBgSoft = Color(0xFF0F172A);
+const Color _kInspectorHeaderDark = Color(0xFF020617);
+const Color _kInspectorHeaderDark2 = Color(0xFF0B1120);
+const Color _kInspectorAccent = Color(0xFF38BDF8);
+const Color _kInspectorAccent2 = Color(0xFF6366F1);
+const Color _kInspectorText = Color(0xFFE5E7EB);
+const Color _kInspectorTextMuted = Color(0xFF9CA3AF);
+const double _kCardRadius = 14.0;
 
 /// In the window opened with ?omega_inspector=1, this widget listens to BroadcastChannel and displays the inspector.
 class OmegaInspectorReceiver extends StatefulWidget {
@@ -34,6 +36,8 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
   List<Map<String, dynamic>> _flows = [];
   web.BroadcastChannel? _channel;
   String _error = '';
+  int? _selectedEventIndex;
+  String? _selectedFlowId;
 
   void _onMessage(web.Event e) {
     final me = e as web.MessageEvent;
@@ -92,58 +96,23 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
     }
     return Material(
       child: Container(
-        color: _kInspectorSurface,
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.topLeft,
+            radius: 1.2,
+            colors: [Color(0xFF1F2937), _kInspectorBg],
+          ),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildHeader(),
-            if (_error.isNotEmpty)
-              Container(
-                margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(_kCardRadius),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.error_outline_rounded, size: 18, color: Colors.red.shade700),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(_error, style: TextStyle(color: Colors.red.shade700, fontSize: 12))),
-                  ],
-                ),
-              ),
+            if (_error.isNotEmpty) _buildErrorBanner(),
             Expanded(
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Left: events
-                  Expanded(
-                    flex: 2,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border(
-                          right: BorderSide(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            width: 1,
-                          ),
-                        ),
-                      ),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(12),
-                        child: _buildEventsSection(),
-                      ),
-                    ),
-                  ),
-                  // Right: flows
-                  Expanded(
-                    flex: 3,
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(12),
-                      child: _buildFlowsSection(),
-                    ),
-                  ),
+                  _buildSidebar(),
+                  Expanded(child: _buildMainPanels()),
                 ],
               ),
             ),
@@ -156,21 +125,119 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
   Widget _buildHeader() {
     return Container(
       decoration: const BoxDecoration(
-        color: _kInspectorPrimaryDark,
+        gradient: LinearGradient(
+          colors: [_kInspectorHeaderDark, _kInspectorHeaderDark2],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        border: Border(
+          bottom: BorderSide(color: Color(0xFF94A3B8), width: 0.6),
+        ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.insights, color: Colors.white, size: 20),
+          Row(
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const SweepGradient(
+                    colors: [_kInspectorAccent, _kInspectorAccent2, Color(0xFFA855F7), _kInspectorAccent],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _kInspectorAccent.withValues(alpha: 0.6),
+                      blurRadius: 18,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _kInspectorBg,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Omega Inspector',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Flows · Events · Web bridge',
+                    style: TextStyle(
+                      color: _kInspectorTextMuted,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'Omega Inspector (ventana remota)',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.3),
+          const Spacer(),
+          _buildStatusBadge(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge() {
+    final isConnected = _events.isNotEmpty || _flows.isNotEmpty;
+    final dotColor = isConnected ? const Color(0xFF22C55E) : const Color(0xFFEF4444);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: isConnected ? const Color(0xFF4ADE80) : const Color(0xFFEF4444),
+          width: 0.7,
+        ),
+        gradient: LinearGradient(
+          colors: isConnected
+              ? [const Color(0xFF16A34A).withValues(alpha: 0.2), _kInspectorHeaderDark2]
+              : [const Color(0xFF991B1B).withValues(alpha: 0.2), _kInspectorHeaderDark2],
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: dotColor,
+              boxShadow: [
+                BoxShadow(
+                  color: dotColor.withValues(alpha: 0.7),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isConnected ? 'Connected' : 'Waiting...',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              letterSpacing: 0.06,
             ),
           ),
         ],
@@ -178,18 +245,135 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
     );
   }
 
-  Widget _buildSectionTitle(String title, String? subtitle) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+  Widget _buildErrorBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.red.shade900.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.red.shade500.withValues(alpha: 0.7)),
+      ),
       child: Row(
         children: [
-          Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kInspectorText, letterSpacing: 0.2)),
+          Icon(Icons.error_outline_rounded, size: 18, color: Colors.red.shade200),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _error,
+              style: TextStyle(color: Colors.red.shade100, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebar() {
+    return Container(
+      width: 260,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF0F172A), Color(0xFF020617)],
+        ),
+        border: Border(
+          right: BorderSide(color: Color(0xFF111827), width: 1),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Flows',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: _kInspectorTextMuted,
+              letterSpacing: 0.06,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: _flows.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No flows',
+                      style: TextStyle(fontSize: 12, color: _kInspectorTextMuted),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _flows.length,
+                    itemBuilder: (context, index) {
+                      final f = _flows[index];
+                      return _flowTile(f);
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainPanels() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 640;
+          if (isNarrow) {
+            return Column(
+              children: [
+                Expanded(child: _buildEventsCard()),
+                const SizedBox(height: 12),
+                SizedBox(height: 200, child: _buildDetailsCard()),
+              ],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(flex: 3, child: _buildEventsCard()),
+              const SizedBox(width: 10),
+              Expanded(flex: 2, child: _buildDetailsCard()),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, String? subtitle) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: _kInspectorTextMuted,
+              letterSpacing: 0.06,
+            ),
+          ),
           if (subtitle != null && subtitle.isNotEmpty) ...[
             const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(color: _kInspectorPrimary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-              child: Text(subtitle, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _kInspectorPrimary)),
+              decoration: BoxDecoration(
+                color: _kInspectorAccent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: _kInspectorAccent,
+                ),
+              ),
             ),
           ],
         ],
@@ -197,19 +381,43 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
     );
   }
 
-  Widget _buildEventsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle('Events', '${_events.length}'),
-        if (_events.isEmpty)
-          _emptyState('Esperando datos del canal…')
-        else ...[
-          _buildTimelineRow(),
-          const SizedBox(height: 8),
-          ..._events.take(20).map((e) => _eventTile(e)),
+  Widget _buildEventsCard() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        border: Border.all(color: const Color(0xFF111827)),
+        gradient: const RadialGradient(
+          center: Alignment.topLeft,
+          radius: 1.2,
+          colors: [Color(0xFF1F2937), _kInspectorBgSoft],
+        ),
+      ),
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildSectionTitle('Events', '${_events.length}'),
+              Text(
+                _events.isEmpty
+                    ? 'No events'
+                    : '${_events.length == 1 ? "1 event" : "${_events.length} events"}',
+                style: const TextStyle(fontSize: 11, color: _kInspectorTextMuted),
+              ),
+            ],
+          ),
+          if (_events.isEmpty) _emptyState('Esperando datos del canal…') else _buildTimelineRow(),
+          const SizedBox(height: 6),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _events.length.clamp(0, 25),
+              itemBuilder: (context, index) => _eventTile(_events[index], index),
+            ),
+          ),
         ],
-      ],
+      ),
     );
   }
 
@@ -217,69 +425,78 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       alignment: Alignment.center,
-      child: Text(text, style: const TextStyle(fontSize: 12, color: _kInspectorTextMuted)),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 12, color: _kInspectorTextMuted),
+      ),
     );
   }
 
-  Widget _eventTile(Map<String, dynamic> e) {
+  Widget _eventTile(Map<String, dynamic> e, int index) {
     final name = e['name'] as String? ?? '';
     final timeStr = _formatTime(e['time'] as String?);
-    final payload = (e['payload'] as String? ?? '').toString();
-    final hasPayload = payload.isNotEmpty;
+    final ns = e['namespace'] as String?;
+    final isSelected = _selectedEventIndex == index;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
-        color: _kInspectorCard,
+        color: isSelected ? _kInspectorBgSoft : const Color(0xFF0F172A),
         borderRadius: BorderRadius.circular(_kCardRadius),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.03)),
+        border: Border.all(
+          color: isSelected ? _kInspectorAccent.withValues(alpha: 0.8) : const Color(0xFF1F2937),
+        ),
       ),
-      child: ClipRRect(
+      child: InkWell(
         borderRadius: BorderRadius.circular(_kCardRadius),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        onTap: () {
+          setState(() {
+            _selectedEventIndex = index;
+          });
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(9),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 4,
-                decoration: BoxDecoration(color: _kInspectorPrimary.withValues(alpha: 0.5)),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: _kInspectorSurface, borderRadius: BorderRadius.circular(6)),
-                            child: Text(timeStr, style: const TextStyle(fontSize: 10, color: _kInspectorTextMuted, fontFamily: 'monospace')),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              name,
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kInspectorText, fontFamily: 'monospace'),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF020617),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      timeStr,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: _kInspectorTextMuted,
+                        fontFamily: 'monospace',
                       ),
-                      if (hasPayload) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          payload,
-                          style: const TextStyle(fontSize: 10, color: _kInspectorTextMuted, height: 1.3),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _kInspectorText,
+                        fontFamily: 'monospace',
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
+              if (ns != null && ns.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  ns,
+                  style: const TextStyle(fontSize: 10, color: Color(0xFF93C5FD)),
+                ),
+              ],
             ],
           ),
         ),
@@ -287,17 +504,71 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
     );
   }
 
-  Widget _buildFlowsSection() {
-    final subtitle = _activeFlowId != null ? 'activo: $_activeFlowId' : null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle('Flows', subtitle),
-        if (_flows.isEmpty)
-          _emptyState('None yet')
-        else
-          ..._flows.map((f) => _flowTile(f)),
-      ],
+  Widget _buildDetailsCard() {
+    final Map<String, dynamic>? selectedEvent =
+        _selectedEventIndex != null && _selectedEventIndex! >= 0 && _selectedEventIndex! < _events.length
+            ? _events[_selectedEventIndex!]
+            : null;
+    final Map<String, dynamic>? selectedFlow = (_selectedFlowId != null)
+        ? _flows.firstWhere(
+            (f) => f['flowId'] == _selectedFlowId,
+            orElse: () => <String, dynamic>{},
+          )
+        : null;
+
+    final hasSelection = selectedEvent != null || (selectedFlow != null && selectedFlow.isNotEmpty);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        border: Border.all(color: const Color(0xFF111827)),
+        gradient: const RadialGradient(
+          center: Alignment.topRight,
+          radius: 1.2,
+          colors: [Color(0xFF111827), _kInspectorBgSoft],
+        ),
+      ),
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildSectionTitle('Details', hasSelection ? '' : null),
+              Text(
+                selectedEvent != null
+                    ? 'Event payload'
+                    : selectedFlow != null && selectedFlow.isNotEmpty
+                        ? 'Flow snapshot'
+                        : 'Select an event or flow',
+                style: const TextStyle(fontSize: 11, color: _kInspectorTextMuted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: hasSelection
+                ? SingleChildScrollView(
+                    child: Text(
+                      const JsonEncoder.withIndent('  ')
+                          .convert(selectedEvent ?? selectedFlow),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: _kInspectorText,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  )
+                : const Center(
+                    child: Text(
+                      'No selection yet.',
+                      style: TextStyle(fontSize: 12, color: _kInspectorTextMuted),
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -305,60 +576,86 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
     final flowId = f['flowId'] as String? ?? '';
     final stateStr = f['state'] as String? ?? '';
     final stateColor = _colorForState(stateStr);
+    final isActive = _activeFlowId == flowId;
+    final isSelected = _selectedFlowId == flowId;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: _kInspectorCard,
         borderRadius: BorderRadius.circular(_kCardRadius),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.03)),
+        color: isSelected ? _kInspectorBgSoft : const Color(0xFF020617),
+        border: Border.all(
+          color: isSelected ? _kInspectorAccent2.withValues(alpha: 0.9) : const Color(0xFF1F2937),
+        ),
       ),
-      child: ClipRRect(
+      child: InkWell(
         borderRadius: BorderRadius.circular(_kCardRadius),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        onTap: () {
+          setState(() {
+            _selectedFlowId = flowId;
+          });
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(9),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 4,
-                decoration: BoxDecoration(color: stateColor),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              flowId,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: _kInspectorText),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: stateColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(stateStr, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: stateColor)),
-                          ),
-                        ],
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      flowId,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: _kInspectorText,
                       ),
-                      if (f['lastExpressionType'] != null) ...[
-                        const SizedBox(height: 6),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: stateColor.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isActive) ...[
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.greenAccent.shade200,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
                         Text(
-                          'Last expression: ${f['lastExpressionType']}',
-                          style: const TextStyle(fontSize: 11, color: _kInspectorTextMuted),
+                          stateStr,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: stateColor,
+                          ),
                         ),
                       ],
-                      if ((f['memoryKeys'] as int? ?? 0) > 0)
-                        Text('memory: ${f['memoryKeys']} keys', style: const TextStyle(fontSize: 10, color: _kInspectorTextMuted)),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
+              if (f['lastExpressionType'] != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Last: ${f['lastExpressionType']}',
+                  style: const TextStyle(fontSize: 10, color: _kInspectorTextMuted),
+                ),
+              ],
+              if ((f['memoryKeys'] as int? ?? 0) > 0)
+                Text(
+                  'Memory: ${f['memoryKeys']} keys',
+                  style: const TextStyle(fontSize: 10, color: _kInspectorTextMuted),
+                ),
             ],
           ),
         ),
@@ -401,7 +698,7 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
                 margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _kInspectorPrimary.withValues(alpha: 0.8),
+                  color: _kInspectorAccent.withValues(alpha: 0.8),
                 ),
               ),
             ),

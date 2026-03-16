@@ -1,5 +1,13 @@
 ## 0.0.19
 
+- **Inspector (VM Service + public web):** [OmegaInspectorServer] now exposes Omega state via a VM Service extension instead of a local HTTP server. On Android/iOS/desktop it prints a URL of the form `http://yefersonsegura.com/projects/omega/inspector.html#<encoded-VM-URL>` that opens the online Inspector and auto-connects; no `adb reverse` is required.
+- **Inspector CLI:** New CLI command `omega inspector` opens the hosted Inspector page in the browser. When combined with the URL printed by [OmegaInspectorServer], you can debug a device from the PC without searching for the HTML file.
+- **Inspector UI refresh (web + public):** `presentation/inspector.html` and the web receiver (`OmegaInspectorReceiver` in `omega_inspector_receiver_web.dart`) share a modern dark dashboard layout: flows sidebar, events list with timeline, and a JSON details panel for the selected event/flow. Layout adapts to desktop, tablet and mobile widths.
+- **Inspector server (web stub):** When [OmegaInspectorServer.start] is called on web, a debug message is printed explaining that the server is not available on web and to use [OmegaInspectorLauncher] instead.
+
+
+## 0.0.19
+
 - **Channel namespaces:** [OmegaChannel.namespace](lib/omega/core/channel/omega_channel.dart) and [OmegaChannelNamespace] for scoped events (e.g. `auth`, `checkout`). [OmegaEvent] and [OmegaIntent] have optional `namespace`; [OmegaEventBus] abstraction so [OmegaFlow] and [OmegaAgent] accept either the global channel or a namespace view. Example app uses namespaces per domain (auth, provider, orders). ROADMAP and [docs/GUIA.md](docs/GUIA.md) updated.
 - **Inspector server (web stub):** When [OmegaInspectorServer.start] is called on web, a debug message is printed explaining that the server is not available on web and to use [OmegaInspectorLauncher] instead.
 - **Inspector example and docs:** Example app shows overlay + launcher + server in debug; [docs/INSPECTOR.md](docs/INSPECTOR.md) added with full copy-paste guide (overlay, launcher, server) and "Inspector not showing" troubleshooting.

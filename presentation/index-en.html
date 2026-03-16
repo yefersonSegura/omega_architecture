@@ -1649,8 +1649,8 @@ scope.flowManager.handleIntent(...);</code></pre>
                     <p class="animate" style="font-size: 14px; margin-bottom: 8px;">Three options; in release all are no-op.</p>
                     <ul class="animate" style="font-size: 13px; line-height: 1.6; margin-left: 20px;">
                         <li><strong>1. Overlay:</strong> <code>Stack(children: [MyContent(), Positioned(..., child: OmegaInspector())])</code> with <code>kDebugMode</code>.</li>
-                        <li><strong>2. Launcher:</strong> <code>AppBar(actions: [OmegaInspectorLauncher()])</code> — on web opens a new window; on desktop/mobile opens a dialog.</li>
-                        <li><strong>3. In the browser (desktop/mobile):</strong> <code>OmegaInspectorServer.start(channel, flowManager)</code> in debug; open the URL printed in the console (e.g. <code>http://localhost:9292</code>).</li>
+                        <li><strong>2. Launcher:</strong> <code>AppBar(actions: [OmegaInspectorLauncher()])</code> — on web opens a remote window with <code>OmegaInspectorReceiver</code> (BroadcastChannel); on desktop/mobile opens a dialog.</li>
+                        <li><strong>3. Online Inspector (VM Service + web):</strong> on Android/iOS/desktop call <code>OmegaInspectorServer.start(channel, flowManager)</code>; the console prints a URL like <code>http://yefersonsegura.com/projects/omega/inspector.html#&lt;encoded-VM-URL&gt;</code>. Open it in your desktop browser (or paste the VM Service URL in the input) and the inspector will auto-connect.</li>
                     </ul>
                 </section>
 

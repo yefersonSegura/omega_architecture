@@ -63,35 +63,36 @@ AppBar(
 
 ---
 
-## 3. Servidor en el navegador (desktop) o VM Service (móvil)
+## 3. Inspector en navegador (VM Service + web pública)
 
-En **desktop** se levanta un servidor HTTP y se abre el navegador en `http://127.0.0.1:9292`. En **móvil** no se usa servidor HTTP ni `adb reverse`: se usa la extensión del **VM Service** (el mismo canal que Flutter ya reenvía al PC), así que el Inspector en el PC funciona sin pasos extra.
+En **Android/iOS/desktop (VM)** ya no se levanta un servidor HTTP propio; el Inspector se sirve desde la web pública y se conecta a tu app a través del **Dart VM Service**.
 
 ```dart
 void main() async {
   final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
 
-  if (kDebugMode) {
+  if (kDebugMode && !kIsWeb) {
     await OmegaInspectorServer.start(
       runtime.channel,
       runtime.flowManager,
-      port: 9292,
     );
-    // Desktop: se imprime la URL y se abre el navegador.
-    // Móvil: se imprime la VM Service URL; abre presentation/inspector.html en el PC y pégala.
+    // En consola se imprime una URL como:
+    //   http://yefersonsegura.com/projects/omega/inspector.html#<VM-URL-encodeada>
+    // Ábrela en el navegador del PC; la página se conecta sola.
   }
 
   runApp(OmegaScope(
     channel: runtime.channel,
     flowManager: runtime.flowManager,
+    initialFlowId: runtime.initialFlowId,
     child: MyApp(),
   ));
 }
 ```
 
-- **Desktop (Windows/macOS/Linux):** El servidor HTTP escucha en 127.0.0.1. Si `openBrowser: true` (por defecto), se abre el navegador con `http://127.0.0.1:9292`.
-- **Móvil (Android/iOS):** No se levanta servidor HTTP. La app registra la extensión `ext.omega.inspector.getState` en el VM Service. Flutter ya reenvía el puerto del VM Service al PC. En la consola se imprime la **VM Service URL** (ej. `http://127.0.0.1:38473/xxxx/`). En el **PC** abre el archivo `presentation/inspector.html` del paquete omega_architecture en el navegador, pega esa URL y pulsa **Connect**. No hace falta `adb reverse`.
-- **Web:** `start()` devuelve `null`; usa `OmegaInspectorLauncher`.
+- **VM (Android/iOS/desktop):** [OmegaInspectorServer.start] registra una extensión `ext.omega.inspector.getState` en el VM Service y obtiene la `serverUri`. En consola imprime una URL de la forma `http://yefersonsegura.com/projects/omega/inspector.html#<encoded-VM-URL>`. Abre esa URL en el navegador del PC y el inspector online se conectará automáticamente; si prefieres, también puedes pegar la VM Service URL a mano.
+- **CLI (`omega inspector`):** Ejecuta `dart run omega_architecture:omega inspector` para abrir `http://yefersonsegura.com/projects/omega/inspector.html` directamente y luego pega el hash o la VM Service URL que imprime la app.
+- **Web:** `OmegaInspectorServer.start` no hace nada en web (stub); usa **OmegaInspectorLauncher** para abrir una ventana remota con `OmegaInspectorReceiver`, que ahora comparte el mismo layout general (flows a la izquierda, events + detalles a la derecha).
 
 Para detener (opcional): `OmegaInspectorServer.stop();`
 
