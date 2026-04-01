@@ -16,7 +16,7 @@
 ## 0.0.21
 
 - **Typed events (OmegaTypedEvent + emitTyped):** New [OmegaTypedEvent] interface and [OmegaEventBus.emitTyped] method so you can model events as classes (e.g. `LoginRequestedEvent`) instead of plain string names with loose payloads. The channel wraps them into [OmegaEvent] with the instance as payload; listeners use `event.payloadAs<LoginRequestedEvent>()` for full type safety. Example app updated (AuthFlow, AuthAgent, `auth/models.dart`) and tests added in `omega_channel_test.dart`.
-- **Docs (GUIA, README, ROADMAP):** [docs/GUIA.md](docs/GUIA.md) now has a dedicated “Eventos tipados (clase como evento)” section with a full example; README’s feature list highlights typed events as the recommended style; [docs/ROADMAP.md](docs/ROADMAP.md) marks typed events as completed under “Contratos y convenciones”.
+- **Docs (GUIA, README, ROADMAP):** [doc/GUIA.md](doc/GUIA.md) now has a dedicated “Eventos tipados (clase como evento)” section with a full example; README’s feature list highlights typed events as the recommended style; [doc/ROADMAP.md](doc/ROADMAP.md) marks typed events as completed under “Contratos y convenciones”.
 - **Web docs — What’s new section:** `presentation/index.html` and `index-en.html` include a new “Nuevas mejoras / What’s new” slide with a collapsible block per version (`<details><summary>…</summary>`) starting with 0.0.21 and a concrete code snippet for `LoginRequestedEvent + emitTyped`. Future releases can append new collapsibles there.
 - **Analytics for documentation site:** Both `presentation/index.html` and `index-en.html` now embed Google Analytics 4 (`G-Q2XTRMEHHH`) so you can track visits to the Omega documentation pages.
 
@@ -30,9 +30,9 @@
 
 ## 0.0.19
 
-- **Channel namespaces:** [OmegaChannel.namespace](lib/omega/core/channel/omega_channel.dart) and [OmegaChannelNamespace] for scoped events (e.g. `auth`, `checkout`). [OmegaEvent] and [OmegaIntent] have optional `namespace`; [OmegaEventBus] abstraction so [OmegaFlow] and [OmegaAgent] accept either the global channel or a namespace view. Example app uses namespaces per domain (auth, provider, orders). ROADMAP and [docs/GUIA.md](docs/GUIA.md) updated.
+- **Channel namespaces:** [OmegaChannel.namespace](lib/omega/core/channel/omega_channel.dart) and [OmegaChannelNamespace] for scoped events (e.g. `auth`, `checkout`). [OmegaEvent] and [OmegaIntent] have optional `namespace`; [OmegaEventBus] abstraction so [OmegaFlow] and [OmegaAgent] accept either the global channel or a namespace view. Example app uses namespaces per domain (auth, provider, orders). ROADMAP and [doc/GUIA.md](doc/GUIA.md) updated.
 - **Inspector server (web stub):** When [OmegaInspectorServer.start] is called on web, a debug message is printed explaining that the server is not available on web and to use [OmegaInspectorLauncher] instead.
-- **Inspector example and docs:** Example app shows overlay + launcher + server in debug; [docs/INSPECTOR.md](docs/INSPECTOR.md) added with full copy-paste guide (overlay, launcher, server) and "Inspector not showing" troubleshooting.
+- **Inspector example and docs:** Example app shows overlay + launcher + server in debug; [doc/INSPECTOR.md](doc/INSPECTOR.md) added with full copy-paste guide (overlay, launcher, server) and "Inspector not showing" troubleshooting.
 - **Inspector server (IO) encoding fix:** Events whose payload is an [OmegaIntent] (e.g. `navigation.intent`) are now serialized safely for WebSocket broadcast; fixes "Converting object to an encodable object failed: Instance of 'OmegaIntent'" when running on mobile or desktop with the Inspector server.
 
 ## 0.0.18
@@ -41,7 +41,7 @@
 
 ## 0.0.17
 
-- **OmegaInspectorServer:** Inspector in browser (desktop/mobile): [OmegaInspectorServer.start](lib/omega/ui/flutter/omega_inspector_server.dart) runs an HTTP/WebSocket server so you can open the Inspector at e.g. `http://localhost:9292` without the in-app overlay. Stub on web (no-op). Example and [docs/GUIA.md](docs/GUIA.md) updated.
+- **OmegaInspectorServer:** Inspector in browser (desktop/mobile): [OmegaInspectorServer.start](lib/omega/ui/flutter/omega_inspector_server.dart) runs an HTTP/WebSocket server so you can open the Inspector at e.g. `http://localhost:9292` without the in-app overlay. Stub on web (no-op). Example and [doc/GUIA.md](doc/GUIA.md) updated.
 - **Inspector safe for production:** [OmegaInspector], [OmegaInspectorLauncher], [OmegaInspectorReceiver] and [OmegaInspectorServer] guard with `kDebugMode`: in release they do not subscribe, show the button, or start the server; receiver shows a short message. No inspector code runs in production.
 - **CLI:** Replaced `print` with `stdout.writeln` in `bin/omega.dart` to satisfy the `avoid_print` lint.
 - **Docs:** README and example/README with Inspector usage (overlay, launcher, server). Web docs (ES/EN): "Uso del Inspector" in OmegaScope section and API section updated with OmegaInspectorServer and release behavior.
@@ -52,7 +52,7 @@
 - **omega doctor:** CLI command that checks project health: validates `omega_setup.dart` (structure, duplicate IDs) and optionally lists flows/agents without a contract (recommendation).
 - **Trace serialization:** [OmegaEvent.toJson]/[OmegaEvent.fromJson] and [OmegaRecordedSession.toJson]/[OmegaRecordedSession.fromJson] to save and load recorded sessions (time-travel, debugging).
 - **CLI documentation:** CLI section on the web (ES/EN) in tabs (doc, init, g ecosystem, g agent, g flow, validate, trace, doctor) with "Why", instruction (both forms when applicable), concept and examples. README: commands listed one under the other with **Why**, instruction, concept and examples; `omega doctor` and `omega init` in both forms (with/without path, with/without `--force`).
-- **Export session to JSON:** In [docs/TIME_TRAVEL.md](docs/TIME_TRAVEL.md) section "Export session to JSON (trace file)" with examples for mobile (path_provider + File), web (blob + download) and minimal usage. README and trace tab on the web with snippet and link to TIME_TRAVEL.md.
+- **Export session to JSON:** In [doc/TIME_TRAVEL.md](doc/TIME_TRAVEL.md) section "Export session to JSON (trace file)" with examples for mobile (path_provider + File), web (blob + download) and minimal usage. README and trace tab on the web with snippet and link to TIME_TRAVEL.md.
 - **Example:** Contracts added to OrdersFlow, ProviderFlow and ProviderAgent so `omega doctor` does not list them under "Optional (contracts)".
 
 ## 0.0.15
@@ -62,10 +62,10 @@
 ## 0.0.14
 
 - **Declarative contracts:** [OmegaFlowContract] and [OmegaAgentContract] to declare which events a flow listens to, which intents it accepts, and which expression types it emits (and for agents: events and intents). In debug mode Omega warns in the console when something undeclared is received or emitted. Optional `contract` override on [OmegaFlow] and [OmegaAgent]; empty sets = no restriction. Factory `fromTyped` for [OmegaEventName]/[OmegaIntentName] enums.
-- **Time-travel:** [OmegaTimeTravelRecorder] records channel events and an initial snapshot; [OmegaRecordedSession] stores them. `replay(session, channel, flowManager, upToIndex: n)` restores the snapshot and re-emits events up to index n for debugging or reproducing a session. See [docs/TIME_TRAVEL.md](docs/TIME_TRAVEL.md). Web (presentation): "Time-travel" section in Spanish and English.
+- **Time-travel:** [OmegaTimeTravelRecorder] records channel events and an initial snapshot; [OmegaRecordedSession] stores them. `replay(session, channel, flowManager, upToIndex: n)` restores the snapshot and re-emits events up to index n for debugging or reproducing a session. See [doc/TIME_TRAVEL.md](doc/TIME_TRAVEL.md). Web (presentation): "Time-travel" section in Spanish and English.
 - **Offline-first (infra):** New types [OmegaQueuedIntent], [OmegaOfflineQueue] and [OmegaMemoryOfflineQueue] to queue intents when the network fails and re-emit them when connectivity is restored. Example in `example/` (`OrdersFlow` + "Crear pedido (offline demo)" button on `HomePage`).
 - **Inspector / DevTools:** Cleaner dashboard-style inspector: two columns (events on the left, flow state on the right) with a small timeline of recent events above the list, in both overlay and web window.
-- **Docs:** [docs/CONTRACTS.md](docs/CONTRACTS.md) with guide and examples; [docs/TIME_TRAVEL.md](docs/TIME_TRAVEL.md) and Offline-first section in [docs/GUIA.md](docs/GUIA.md); web (presentation) with glossary and mentions of contracts, time-travel, offline queue and timeline.
+- **Docs:** [doc/CONTRACTS.md](doc/CONTRACTS.md) with guide and examples; [doc/TIME_TRAVEL.md](doc/TIME_TRAVEL.md) and Offline-first section in [doc/GUIA.md](doc/GUIA.md); web (presentation) with glossary and mentions of contracts, time-travel, offline queue and timeline.
 
 ## 0.0.13
 
@@ -80,7 +80,7 @@
 
 ## 0.0.11
 
-- **Documentation:** [docs/COMPARATIVA.md](docs/COMPARATIVA.md) with Omega vs BLoC vs Riverpod comparison and when to choose each. Web (presentation) declared as full documentation; "Comparativa" link in navigation. README and ROADMAP updated.
+- **Documentation:** [doc/COMPARATIVA.md](doc/COMPARATIVA.md) with Omega vs BLoC vs Riverpod comparison and when to choose each. Web (presentation) declared as full documentation; "Comparativa" link in navigation. README and ROADMAP updated.
 - **Inspector:** Modern design (blue theme, gradients, shadowed cards, pills for state and counts). Same style in overlay and remote (web) window.
 - **Inspector web:** When closing the inspector window and reopening, a unique window name is used so the browser opens a new window correctly.
 
@@ -108,7 +108,7 @@
 - **Snapshot (Step 2):** `OmegaFlowSnapshot` and `OmegaAppSnapshot` for debugging, persistence, and time-travel. `OmegaFlow.getSnapshot()`, `OmegaFlowManager.getFlowSnapshot`, `getSnapshots`, `getAppSnapshot`. Documentation of purpose in dartdoc and ARQUITECTURA.
 - **Logging (Step 3):** Replaced `print` with `debugPrint` in `omega_navigator.dart` and `omega_bootstrap.dart` (lib) so diagnostics only appear in debug mode.
 - **Navigation (Step 4):** Contract documented (`navigation.intent`, `navigate.*`). `navigate.<id>` = pushReplacement, `navigate.push.<id>` = push. Intent payload passed as `RouteSettings.arguments`. Constant `navigationIntentEvent`.
-- **Testing (Step 5):** More unit tests (agent receiveIntent, flow receiveIntent running/idle, OmegaFlowExpression). `example/README.md` for minimal login flow. `docs/TESTING.md` for testing agents and flows without Flutter.
+- **Testing (Step 5):** More unit tests (agent receiveIntent, flow receiveIntent running/idle, OmegaFlowExpression). `example/README.md` for minimal login flow. `doc/TESTING.md` for testing agents and flows without Flutter.
 - **CLI (Step 6):** Clearer error messages (prefix "Error:", absolute paths). New generators: `omega g agent <Name>`, `omega g flow <Name>`. `omega validate` checks omega_setup.dart (structure, duplicate ids). All generators create files in the terminal's current directory (CWD).
 - **Docs:** ARQUITECTURA.md and README kept in sync with snapshot, navigation, testing, and CLI.
 
@@ -130,7 +130,7 @@
 
 ## 0.0.2
 
-- Publish on pub.dev and switch docs/install to pub.dev usage (`omega_architecture: ^0.0.2`).
+- Publish on pub.dev and switch doc/install to pub.dev usage (`omega_architecture: ^0.0.2`).
 - Add web documentation (presentation) and architecture diagram.
 - Improve CLI behavior (flows/agents registration, no auto-route creation).
 - Clarify runtime bootstrap and flow activation from the app host.

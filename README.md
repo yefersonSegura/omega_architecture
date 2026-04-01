@@ -8,7 +8,7 @@
 
 A reactive, agent-based architecture framework for Flutter applications.
 
-**What Omega does:** Business logic lives in **agents** and **flows** that communicate through a central **event channel**. The UI only emits **intents** (e.g. "login", "navigate to home") and reacts to **events** and **expressions**; it does not call domain methods or hold navigation state. A **FlowManager** routes intents to the active flow(s); a **navigator** turns navigation intents into screens. So you get a clear separation: UI → intents/events → flows and agents → expressions/navigation → UI. For a **guided tour with examples** of each component, see **[docs/GUIA.md](docs/GUIA.md)**.
+**What Omega does:** Business logic lives in **agents** and **flows** that communicate through a central **event channel**. The UI only emits **intents** (e.g. "login", "navigate to home") and reacts to **events** and **expressions**; it does not call domain methods or hold navigation state. A **FlowManager** routes intents to the active flow(s); a **navigator** turns navigation intents into screens. So you get a clear separation: UI → intents/events → flows and agents → expressions/navigation → UI. For a **guided tour with examples** of each component, see **[doc/GUIA.md](doc/GUIA.md)**.
 
 ## Features
 
@@ -18,22 +18,22 @@ A reactive, agent-based architecture framework for Flutter applications.
 - **Event-Driven** — Global communication through `OmegaChannel`.
 - **Flow Management** — Orchestrate complex state transitions and business logic flows; run one or multiple flows at once.
 - **Workflow Flows (optional)** — [OmegaWorkflowFlow] adds step-based orchestration (`defineStep`, `startAt`, `next`, `failStep`) for complex multi-step processes such as checkout/onboarding while keeping [OmegaFlow] as the default.
-- **Semantic Intents** — High-level abstraction for user or system requests. Optional **typed names** via [OmegaEventName]/[OmegaIntentName] and [OmegaEvent.fromName]/[OmegaIntent.fromName] to avoid magic strings and ease refactors. **Typed events (recommended):** define a class implementing [OmegaTypedEvent] (e.g. `LoginRequestedEvent(email, password)`) and emit with `channel.emitTyped(LoginRequestedEvent(...))`; listeners use `event.payloadAs<LoginRequestedEvent>()` for full type safety. **Typed payload when reading:** use the `payloadAs<T>()` extension on [OmegaEvent], [OmegaIntent], and [OmegaFlowExpression] to get a safely cast payload. See the [example](example/lib/omega/app_semantics.dart) and [GUIA § Eventos tipados](docs/GUIA.md) for full usage.
+- **Semantic Intents** — High-level abstraction for user or system requests. Optional **typed names** via [OmegaEventName]/[OmegaIntentName] and [OmegaEvent.fromName]/[OmegaIntent.fromName] to avoid magic strings and ease refactors. **Typed events (recommended):** define a class implementing [OmegaTypedEvent] (e.g. `LoginRequestedEvent(email, password)`) and emit with `channel.emitTyped(LoginRequestedEvent(...))`; listeners use `event.payloadAs<LoginRequestedEvent>()` for full type safety. **Typed payload when reading:** use the `payloadAs<T>()` extension on [OmegaEvent], [OmegaIntent], and [OmegaFlowExpression] to get a safely cast payload. See the [example](example/lib/omega/app_semantics.dart) and [GUIA § Eventos tipados](doc/GUIA.md) for full usage.
 - **Persistence & restore** — Serialize [OmegaAppSnapshot] to JSON and restore on launch ([toJson]/[fromJson], [OmegaFlowManager.restoreFromSnapshot], optional [OmegaSnapshotStorage]).
 - **Typed routes** — Use `OmegaRoute.typed<T>` so the route builder receives the intent payload as `T?`; or `routeArguments<T>(context)` when you don't use typed. See the [example](example/lib/omega/omega_setup.dart) (home route with `LoginSuccessPayload`).
-- **Declarative contracts** — Optional [OmegaFlowContract] and [OmegaAgentContract] declare which events a flow listens to, which intents it accepts, and which expression types it emits (and for agents: events and intents). In **debug** mode Omega warns in the console when something is received or emitted that is not in the contract. **Example:** The [example](example/) app implements contracts in [AuthFlow](example/lib/auth/auth_flow.dart) and [AuthAgent](example/lib/auth/auth_agent.dart); run `cd example && flutter run` to see them in action. See [docs/CONTRACTS.md](docs/CONTRACTS.md).
-- **Time-travel** — [OmegaTimeTravelRecorder] records channel events and an initial snapshot; [OmegaRecordedSession] holds them. Replay a session (or replay up to an event index) to restore state and re-emit events for debugging or demos. See [docs/TIME_TRAVEL.md](docs/TIME_TRAVEL.md).
+- **Declarative contracts** — Optional [OmegaFlowContract] and [OmegaAgentContract] declare which events a flow listens to, which intents it accepts, and which expression types it emits (and for agents: events and intents). In **debug** mode Omega warns in the console when something is received or emitted that is not in the contract. **Example:** The [example](example/) app implements contracts in [AuthFlow](example/lib/auth/auth_flow.dart) and [AuthAgent](example/lib/auth/auth_agent.dart); run `cd example && flutter run` to see them in action. See [doc/CONTRACTS.md](doc/CONTRACTS.md).
+- **Time-travel** — [OmegaTimeTravelRecorder] records channel events and an initial snapshot; [OmegaRecordedSession] holds them. Replay a session (or replay up to an event index) to restore state and re-emit events for debugging or demos. See [doc/TIME_TRAVEL.md](doc/TIME_TRAVEL.md).
 - **CLI** — Scaffold setup and generate ecosystems (agent, flow, behavior, page) from the command line.
 
 **Documentation:**  
-- **[docs/GUIA.md](docs/GUIA.md)** — What each Omega component does, with **code examples** (channel, event, intent, agent, flow, manager, scope, navigator, routes, persistence, inspector). Start here to see how everything fits together.  
+- **[doc/GUIA.md](doc/GUIA.md)** — What each Omega component does, with **code examples** (channel, event, intent, agent, flow, manager, scope, navigator, routes, persistence, inspector). Start here to see how everything fits together.  
 - **Documentation** — [API reference](https://pub.dev/documentation/omega_architecture/latest) (pub.dev). Full web doc (architecture, comparison, CLI, inspector): `yefersonsegura.com/proyects/omega/`. Local copy: [presentation/index.html](presentation/index.html). Run `dart run omega_architecture:omega doc` to open the doc in the browser.  
-- **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)** — Technical reference for each component.  
-- **[docs/COMPARATIVA.md](docs/COMPARATIVA.md)** — When to choose Omega; full comparison table.  
-- **[docs/TESTING.md](docs/TESTING.md)** — Testing agents and flows without Flutter.  
-- **[docs/CONTRACTS.md](docs/CONTRACTS.md)** — Declarative contracts for flows and agents (events, intents, expression types); debug-time validation. The [example](example/) app is the reference implementation (AuthFlow, AuthAgent).
-- **[docs/TIME_TRAVEL.md](docs/TIME_TRAVEL.md)** — Record and replay sessions; time-travel to a previous event index for debugging or demos.
-- **[docs/ROADMAP.md](docs/ROADMAP.md)** — Long-term vision.
+- **[doc/ARQUITECTURA.md](doc/ARQUITECTURA.md)** — Technical reference for each component.  
+- **[doc/COMPARATIVA.md](doc/COMPARATIVA.md)** — When to choose Omega; full comparison table.  
+- **[doc/TESTING.md](doc/TESTING.md)** — Testing agents and flows without Flutter.  
+- **[doc/CONTRACTS.md](doc/CONTRACTS.md)** — Declarative contracts for flows and agents (events, intents, expression types); debug-time validation. The [example](example/) app is the reference implementation (AuthFlow, AuthAgent).
+- **[doc/TIME_TRAVEL.md](doc/TIME_TRAVEL.md)** — Record and replay sessions; time-travel to a previous event index for debugging or demos.
+- **[doc/ROADMAP.md](doc/ROADMAP.md)** — Long-term vision.
 
 ## Core Concepts
 
@@ -187,7 +187,7 @@ Valid.
 
 **Concept:** A **trace** is a JSON file with a recorded session (channel events and optional initial snapshot). It is built by **OmegaTimeTravelRecorder** in your app when you call `stopRecording()`; the developer chooses where to save the JSON (e.g. path_provider on mobile, download on web). `trace view` shows a summary (events count, snapshot). `trace validate` checks the structure; exit 0 if valid, 1 otherwise. Used for debugging, reproducing bugs, or sharing a case.
 
-**Export example:** After `stopRecording()`, use `jsonEncode(session.toJson())` to get a string, then write it to a file (mobile: `path_provider` + `File.writeAsString`; web: blob + `<a download>`). See [docs/TIME_TRAVEL.md](docs/TIME_TRAVEL.md) § “Export session to JSON (trace file)” for full code.
+**Export example:** After `stopRecording()`, use `jsonEncode(session.toJson())` to get a string, then write it to a file (mobile: `path_provider` + `File.writeAsString`; web: blob + `<a download>`). See [doc/TIME_TRAVEL.md](doc/TIME_TRAVEL.md) § “Export session to JSON (trace file)” for full code.
 
 **Example view (success):**
 ```
@@ -417,7 +417,7 @@ dart run omega_architecture:omega inspector
 
 which opens the same hosted Inspector so you only have to paste the hash or VM Service URL from the app logs.
 
-All Inspector widgets and the server are no-op in release (`kDebugMode` guards). See the [example](example/) app for full usage; [docs/INSPECTOR.md](docs/INSPECTOR.md) has a copy-paste guide and troubleshooting.
+All Inspector widgets and the server are no-op in release (`kDebugMode` guards). See the [example](example/) app for full usage; [doc/INSPECTOR.md](doc/INSPECTOR.md) has a copy-paste guide and troubleshooting.
 
 #### Inspector UIs (local vs online)
 
@@ -442,7 +442,7 @@ To save app state and restore it when the user reopens the app:
 
 1. **Serialize:** `final json = flowManager.getAppSnapshot().toJson()` then save (e.g. `jsonEncode(json)` to a file or `SharedPreferences`). Flow `memory` values must be JSON-serializable.
 2. **Restore:** On startup, load the saved map, then `final snapshot = OmegaAppSnapshot.fromJson(jsonDecode(loaded)); flowManager.restoreFromSnapshot(snapshot);`. This restores each flow's memory and activates the previous active flow.
-3. **Optional:** Implement [OmegaSnapshotStorage] (`save` / `load`) with your preferred backend (file, prefs, API) and call it from app lifecycle. See [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) for details.
+3. **Optional:** Implement [OmegaSnapshotStorage] (`save` / `load`) with your preferred backend (file, prefs, API) and call it from app lifecycle. See [doc/ARQUITECTURA.md](doc/ARQUITECTURA.md) for details.
 
 ### Declarative contracts (optional)
 
@@ -465,7 +465,7 @@ OmegaAgentContract? get contract => OmegaAgentContract.fromTyped(
 );
 ```
 
-**Reference:** The [example](example/) app implements contracts in [AuthFlow](example/lib/auth/auth_flow.dart) and [AuthAgent](example/lib/auth/auth_agent.dart)—run `cd example && flutter run` to try it. See **[docs/CONTRACTS.md](docs/CONTRACTS.md)** for full details.
+**Reference:** The [example](example/) app implements contracts in [AuthFlow](example/lib/auth/auth_flow.dart) and [AuthAgent](example/lib/auth/auth_agent.dart)—run `cd example && flutter run` to try it. See **[doc/CONTRACTS.md](doc/CONTRACTS.md)** for full details.
 
 ### Lifecycle and dispose
 

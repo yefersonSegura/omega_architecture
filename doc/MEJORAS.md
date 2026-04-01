@@ -61,7 +61,7 @@ Lista de mejoras propuestas para Omega. No se cierran hasta que se implementen o
 
 ## Visión y roadmap (próximos horizontes)
 
-Para que Omega sea la arquitectura más visionaria y única, ver **[docs/ROADMAP.md](ROADMAP.md)**. Resumen de bloques:
+Para que Omega sea la arquitectura más visionaria y única, ver **[doc/ROADMAP.md](ROADMAP.md)**. Resumen de bloques:
 
 - [ ] **Omega DevTools** — Inspección en tiempo real (canal, flows, agentes), time-travel, replay.
 - [ ] **Contratos y semántica** — Eventos/intents tipados o registrados, contratos por flow, versionado.

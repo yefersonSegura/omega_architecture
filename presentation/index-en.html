@@ -183,7 +183,7 @@
                             <strong>everything the framework offers</strong>, examples by use case, core concepts,
                             comparison with BLoC and Riverpod, diagram, installation, CLI, integration, flow lifecycle,
                             <strong>API reference</strong> for each class, persistence, inspector and testing. For more
-                            examples in the repo see <strong>docs/GUIA.md</strong> and the <strong>example/</strong>
+                            examples in the repo see <strong>doc/GUIA.md</strong> and the <strong>example/</strong>
                             app. <strong>Production app built with Omega:</strong> <a
                                 href="http://yefersonsegura.com/projects/kashira/" target="_blank"
                                 rel="noopener noreferrer" style="color: var(--accent);">Kashira</a> (full working
@@ -290,7 +290,7 @@ OmegaAgentBuilder&lt;AuthAgent, AuthViewState&gt;(
                                 <li><strong>Updated example</strong>: the auth flow in the example app uses typed events to
                                     showcase the recommended pattern.</li>
                                 <li><strong>Docs aligned</strong>: <code>README.md</code> and
-                                    <code>docs/GUIA.md</code> now present typed events as the preferred style, reducing
+                                    <code>doc/GUIA.md</code> now present typed events as the preferred style, reducing
                                     magic strings and runtime bugs.</li>
                             </ul>
                             <p style="margin-top: 8px; font-weight: 600;">Example:</p>
@@ -486,7 +486,7 @@ if (ev != null) {
                                     (<code>OmegaQueuedIntent</code>, <code>OmegaOfflineQueue</code>,
                                     <code>OmegaMemoryOfflineQueue</code>). A flow enqueues intents on connectivity
                                     failures and another service retries them when the connection comes back. See the
-                                    <em>Offline-first (intent queue)</em> section in <code>docs/GUIA.md</code>.</td>
+                                    <em>Offline-first (intent queue)</em> section in <code>doc/GUIA.md</code>.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -748,7 +748,7 @@ class AuthFlow extends OmegaFlow {
                             traceability (named events/intents). Navigation in Omega does not depend on
                             <code>context</code>.</p>
                         <p style="margin-top: 12px; font-size: 13px; color: var(--text-dim);">For a detailed table and
-                            when to choose each one, see <code>docs/COMPARATIVA.md</code> in the repo.</p>
+                            when to choose each one, see <code>doc/COMPARATIVA.md</code> in the repo.</p>
                     </div>
                 </section>
 
@@ -1475,7 +1475,7 @@ dart run omega_architecture:omega trace validate &lt;file.json&gt;</code></pre>
 final session = recorder.stopRecording();
 final jsonString = jsonEncode(session.toJson());
 // Mobile: path_provider + File(path).writeAsString(jsonString)
-// Web: blob + &lt;a download&gt; (see docs/TIME_TRAVEL.md)</code></pre>
+// Web: blob + &lt;a download&gt; (see doc/TIME_TRAVEL.md)</code></pre>
                             <p style="font-size: 12px; color: var(--text-dim);">Full code (mobile/web) in <strong>TIME_TRAVEL.md</strong> → “Export session to JSON (trace file)”.</p>
                             <h4>Example view (success)</h4>
                             <pre class="glass"><code>Trace: C:\...\trace.json
@@ -1582,7 +1582,7 @@ OMEGA_AI_LANG=es|en|pt|...</code></pre>
                 <section id="docs-extra" class="slide">
                     <span class="section-tag">Documentation</span>
                     <h2 class="animate">Other <span class="gradient-text">documentation</span></h2>
-                    <p class="subtitle animate" style="margin-bottom: 16px;">In the repository (<code>docs/</code>) there are additional guides and references:</p>
+                    <p class="subtitle animate" style="margin-bottom: 16px;">In the repository (<code>doc/</code>) there are additional guides and references:</p>
                     <ul class="animate" style="line-height: 1.8;">
                         <li><strong>CONTRACTS.md</strong> — Declarative contracts (OmegaFlowContract, OmegaAgentContract), examples and using the <code>contract</code> getter for semantics and debug warnings.</li>
                         <li><strong>TIME_TRAVEL.md</strong> — Recording and replaying sessions with OmegaTimeTravelRecorder and OmegaRecordedSession; replay for debugging.</li>
@@ -1592,7 +1592,7 @@ OMEGA_AI_LANG=es|en|pt|...</code></pre>
                         <li><strong>ARQUITECTURA.md</strong> — Architecture vision and design decisions.</li>
                         <li><strong>MEJORAS.md</strong> — History of improvements applied (steps 1–7, etc.).</li>
                     </ul>
-                    <p class="animate" style="color: var(--text-dim); margin-top: 16px; font-size: 14px;">This web is the main documentation; the <code>docs/</code> folder complements it with detail and examples in the repo.</p>
+                    <p class="animate" style="color: var(--text-dim); margin-top: 16px; font-size: 14px;">This web is the main documentation; the <code>doc/</code> folder complements it with detail and examples in the repo.</p>
                 </section>
 
                 <!-- Uso: Agent y Behavior -->
@@ -1982,7 +1982,7 @@ OmegaAgentContract? get contract => OmegaAgentContract.fromTyped(
                     <p class="animate" style="margin-top: 20px; color: var(--text-dim); font-size: 14px;">
                         Empty sets mean no constraint. Validation runs only in <code>kDebugMode</code>; release builds
                         are unaffected. Full reference: <code>example/</code> app (AuthFlow, AuthAgent) and
-                        <code>docs/CONTRACTS.md</code>.
+                        <code>doc/CONTRACTS.md</code>.
                     </p>
                 </section>
 
@@ -2009,7 +2009,7 @@ recorder.replay(session, channel, flowManager);
 // Go to step 5 (time-travel)
 recorder.replay(session, channel, flowManager, upToIndex: 5);</code></pre>
                     <p class="animate" style="margin-top: 16px; color: var(--text-dim); font-size: 14px;">
-                        <code>OmegaRecordedSession</code> holds <code>initialSnapshot</code> and <code>events</code>. During replay the recorder does not record again. See <code>docs/TIME_TRAVEL.md</code>.
+                        <code>OmegaRecordedSession</code> holds <code>initialSnapshot</code> and <code>events</code>. During replay the recorder does not record again. See <code>doc/TIME_TRAVEL.md</code>.
                     </p>
                 </section>
 
@@ -2436,7 +2436,7 @@ if (s != null) flowManager.restoreFromSnapshot(OmegaAppSnapshot.fromJson(jsonDec
                         <code>flow.expressions</code>, call <code>flow.receiveIntent(intent)</code> or emit events.
                         After a delay, check the received expression. No WidgetTester or Flutter is required.
                     </p>
-                    <p>See <code>docs/TESTING.md</code> in the repo for complete examples.</p>
+                    <p>See <code>doc/TESTING.md</code> in the repo for complete examples.</p>
                 </section>
 
                 <!-- Conclusión -->

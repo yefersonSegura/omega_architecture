@@ -7,7 +7,7 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 ## 1. Omega DevTools (inspección en tiempo real)
 
 - [x] **Inspector mínimo ([OmegaInspector]):** panel en la app que muestra últimos N eventos del canal (nombre, payload, timestamp) y snapshot de flows (id, estado, última expresión, memory). Colapsable; refresco cada 2 s. Ver [OmegaInspector] en la UI.
-- [x] **Time-travel:** [OmegaTimeTravelRecorder] graba eventos + snapshot inicial; [OmegaRecordedSession] los guarda; `replay(session, upToIndex: n)` restaura el snapshot y reemite eventos hasta n. Ver [docs/TIME_TRAVEL.md](TIME_TRAVEL.md).
+- [x] **Time-travel:** [OmegaTimeTravelRecorder] graba eventos + snapshot inicial; [OmegaRecordedSession] los guarda; `replay(session, upToIndex: n)` restaura el snapshot y reemite eventos hasta n. Ver [doc/TIME_TRAVEL.md](TIME_TRAVEL.md).
 - [x] **Replay:** reemite la sesión grabada (o hasta un índice) para reproducir un bug o demo; mismo API que time-travel.
 
 **Objetivo:** Que Omega sea la arquitectura donde “ves todo lo que pasa”.
@@ -72,7 +72,7 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 ## 7. Diferenciación (mensaje)
 
 - [x] **Un párrafo claro:** “En [COMPARATIVA.md](COMPARATIVA.md) y en la web (presentation): estado observable, persistible y reproducible; agentes, flows e intents en el centro; la UI solo refleja.”
-- [x] **Comparativa honesta:** [docs/COMPARATIVA.md](COMPARATIVA.md) y sección en la web: "Omega vs BLoC vs Riverpod", tabla y **cuándo elegir Omega**. README enlaza la web como documentación completa.
+- [x] **Comparativa honesta:** [doc/COMPARATIVA.md](COMPARATIVA.md) y sección en la web: "Omega vs BLoC vs Riverpod", tabla y **cuándo elegir Omega**. README enlaza la web como documentación completa.
 
 **Objetivo:** Que la comunidad entienda por qué y cuándo elegir Omega.
 

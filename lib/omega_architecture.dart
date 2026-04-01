@@ -8,7 +8,7 @@
 /// - [OmegaNavigator] / [OmegaRoute]: navegación por intents.
 ///
 /// Para arrancar la app usa [OmegaRuntime.bootstrap] (ver paquete omega/bootstrap).
-/// Documentación detallada: docs/ARQUITECTURA.md.
+/// Documentación detallada: doc/ARQUITECTURA.md.
 library;
 
 // CORE EXPORTS
