@@ -228,6 +228,21 @@
                     </p>
                     <div class="card glass animate">
                         <details>
+                            <summary><strong>0.0.23 — AI Evolution & Advanced Generation</strong></summary>
+                            <p style="margin-top: 12px;">
+                                Supercharge your development workflow with AI-assisted commands to diagnose, audit, and generate full modules following Omega's best practices.
+                            </p>
+                            <ul>
+                                <li><strong>omega ai coach module:</strong> Generates full ecosystems (WorkflowFlow, StatefulAgent, Typed Events, Contracts, and Tests) with a single command.</li>
+                                <li><strong>Feature Auditing:</strong> <code>ai coach audit</code> analyzes your real project, detecting wiring (setup) gaps, missing contracts, or tests for a feature.</li>
+                                <li><strong>Editor Reports:</strong> AI commands now default to opening a temporary Markdown report in your editor for better readability, with a <code>--stdout</code> option.</li>
+                                <li><strong>Plug-and-Play UI Templates:</strong> Generated UI pages now dynamically connect to <code>FlowManager</code> via <code>OmegaScope</code> without manually passing the agent.</li>
+                            </ul>
+                            <p style="margin-top: 8px; font-weight: 600;">Command Example:</p>
+                            <pre class="glass" style="margin-top: 8px; padding: 12px; font-size: 13px;"><code># Generate a full module with assisted advanced architecture
+dart run omega_architecture:omega ai coach module "Payment" --template advanced</code></pre>
+                        </details>
+                        <details>
                             <summary><strong>0.0.22 — Reactive agents and workflow flow</strong></summary>
                             <p style="margin-top: 12px;">
                                 This release adds two optional capabilities to scale UI/processes without compromising the core:
@@ -1365,6 +1380,7 @@ if (loaded != null) {
                         <button type="button" class="cli-tab-btn" data-tab="cli-validate" role="tab">validate</button>
                         <button type="button" class="cli-tab-btn" data-tab="cli-trace" role="tab">trace</button>
                         <button type="button" class="cli-tab-btn" data-tab="cli-doctor" role="tab">doctor</button>
+                        <button type="button" class="cli-tab-btn" data-tab="cli-ai" role="tab">ai</button>
                     </div>
                     <div class="cli-tab-content">
                         <div id="cli-doc" class="cli-tab-panel active" role="tabpanel">
@@ -1503,6 +1519,44 @@ Optional (contracts):
   Tip: add a contract getter for clearer semantics and debug warnings.
 
 Health check passed.</code></pre>
+                        </div>
+                        <div id="cli-ai" class="cli-tab-panel" role="tabpanel">
+                            <h4>Why</h4>
+                            <p>Diagnose traces with optional AI assistance while keeping a zero-cost offline mode as default/fallback.</p>
+                            <h4>Instruction</h4>
+                            <pre class="glass"><code>dart run omega_architecture:omega ai doctor
+dart run omega_architecture:omega ai env
+dart run omega_architecture:omega ai explain &lt;file.json&gt;
+dart run omega_architecture:omega ai explain &lt;file.json&gt; --json
+dart run omega_architecture:omega ai explain &lt;file.json&gt; --provider-api
+dart run omega_architecture:omega ai explain &lt;file.json&gt; --stdout
+dart run omega_architecture:omega ai coach start "&lt;feature&gt;"
+dart run omega_architecture:omega ai coach audit "&lt;feature&gt;"
+dart run omega_architecture:omega ai coach module "&lt;Name&gt;" --template advanced</code></pre>
+                            <h4>Concept</h4>
+                            <p><code>ai explain</code> uses the same trace structure as <code>omega trace</code> (<code>events</code> list + optional <code>initialSnapshot</code>). Without flags it runs local heuristics (top events, namespaces, error/repetition patterns). With <code>--provider-api</code>, it tries provider mode (OpenAI today) and automatically falls back to offline on config/network failure.</p>
+                            <p><strong>Default output:</strong> <code>ai explain</code> and <code>ai coach</code> write a temporary report to <code>.dart_tool/omega_ai_temp</code> and open it; use <code>--stdout</code> for direct console output.</p>
+                            <p><code>ai coach start</code> builds an implementation guide (steps, required artifacts and validation checks). <code>ai coach audit</code> audits a real feature and returns score, findings and gaps (wiring, contracts, tests, etc.). <code>ai coach module</code> generates a complete ecosystem using optimized templates (WorkflowFlow, StatefulAgent, etc.).</p>
+                            <h4>Future Capabilities (WIP)</h4>
+                            <ul style="font-size: 14px; margin-top: 8px; color: var(--text-dim);">
+                                <li><code>ai coach fix-gaps</code> — Automatically creates files and wiring detected in audit.</li>
+                                <li><code>ai coach generate-tests</code> — Generates real test cases by analyzing flow/agent logic.</li>
+                                <li><code>ai suggest-contracts</code> — Proposes declarative contract definitions by analyzing code.</li>
+                                <li><code>ai review-architecture</code> — Senior-level architectural report (couplings, naming, complexity).</li>
+                            </ul>
+                            <h4>Response language</h4>
+                            <p>Provider and offline output follow the system locale (country/language). You can override it with <code>OMEGA_AI_LANG</code> or <code>OMEGA_AI_LANGUAGE</code>.</p>
+                            <h4>Environment variables</h4>
+                            <pre class="glass"><code>OMEGA_AI_ENABLED=true|false
+OMEGA_AI_PROVIDER=openai|anthropic|gemini|ollama|none
+OMEGA_AI_API_KEY=...
+OMEGA_AI_MODEL=...
+OMEGA_AI_BASE_URL=...
+OMEGA_AI_LANG=es|en|pt|...</code></pre>
+                            <h4>Example (provider)</h4>
+                            <pre class="glass"><code>dart run omega_architecture:omega ai explain trace.json --provider-api</code></pre>
+                            <h4>Example (coach audit)</h4>
+                            <pre class="glass"><code>dart run omega_architecture:omega ai coach audit "auth"</code></pre>
                         </div>
                     </div>
                     <p class="animate" style="color: var(--text-dim); margin-top: 16px; font-size: 13px;">Global options: <code>-h, --help</code> · <code>-v, --version</code></p>

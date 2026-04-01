@@ -1,3 +1,12 @@
+## 0.0.23 (AI Evolution)
+
+- **omega ai coach module:** New AI-guided command to generate complete ecosystems with advanced boilerplate. Use `--template advanced` to generate `OmegaWorkflowFlow`, `OmegaStatefulAgent`, typed events, declarative contracts, and initial test files.
+- **AI-assisted diagnosis and auditing:** Added `omega ai coach start` (step-by-step guidance) and `omega ai coach audit` (project gap analysis for features).
+- **Plug-and-play UI templates:** Generated UI pages now dynamically connect to `OmegaFlowManager` via `OmegaScope` and use `StreamBuilder<OmegaFlowExpression>` for a reactive, decoupled experience.
+- **Improved generator accuracy:** Fixed null-safety issues (`ctx.intent?.name`) and API usage (`OmegaEvent.fromName`) in all generated templates.
+- **AI CLI output options:** AI commands now default to opening a temporary Markdown report in the editor for better readability, with a `--stdout` flag for console output.
+- **Localization for AI:** AI reports and CLI messages now respect system locale or `OMEGA_AI_LANG` environment variables.
+
 ## 0.0.22
 
 - **Reactive agent state (optional):** Added [OmegaStatefulAgent] and [OmegaAgentBuilder]. Agents can expose a typed reactive `viewState` (`stateStream`) for UI widgets while preserving Omega’s core event/intent model.

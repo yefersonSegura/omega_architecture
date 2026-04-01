@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -27,7 +28,7 @@ String _absPath(String path) {
   return File(path).absolute.path;
 }
 
-void main(List<String> args) {
+Future<void> main(List<String> args) async {
   if (args.isEmpty) {
     printHelp();
     return;
@@ -74,6 +75,10 @@ void main(List<String> args) {
       OmegaDoctorCommand.run(args.length > 1 ? args.sublist(1) : []);
       break;
 
+    case "ai":
+      await OmegaAiCommand.run(args.length > 1 ? args.sublist(1) : []);
+      return;
+
     default:
       _err("Unknown command: $arg");
       stdout.writeln("");
@@ -115,6 +120,9 @@ void printHelp() {
   stdout.writeln(
     "  doctor [path]        Project health (path = start search from, e.g. example or .)",
   );
+  stdout.writeln(
+    "  ai <doctor|env|explain>  AI setup and offline trace explanation",
+  );
   stdout.writeln("");
   stdout.writeln("Options:");
   stdout.writeln("  -h, --help     Show this help");
@@ -139,6 +147,16 @@ void printHelp() {
   stdout.writeln("  omega trace validate trace.json # validate and exit 0/1");
   stdout.writeln(
     "  omega doctor                   # from app root, or: omega doctor example",
+  );
+  stdout.writeln(
+    "  omega ai doctor                # check AI provider/api key setup",
+  );
+  stdout.writeln("  omega ai env                   # print env variable names");
+  stdout.writeln(
+    "  omega ai explain trace.json    # offline explanation from trace",
+  );
+  stdout.writeln(
+    "  omega ai explain trace.json --provider-api   # try OpenAI then fallback",
   );
   stdout.writeln("");
   stdout.writeln(
@@ -1154,5 +1172,1768 @@ class OmegaDoctorCommand {
       } catch (_) {}
     }
     return result;
+  }
+}
+
+/// AI tooling bootstrap (no provider call yet).
+/// Helps users configure environment variables in a safe, optional way.
+class OmegaAiCommand {
+  static Future<void> run(List<String> args) async {
+    if (args.isEmpty || args[0] == "-h" || args[0] == "--help") {
+      _printHelp();
+      return;
+    }
+
+    final sub = args[0].toLowerCase();
+    switch (sub) {
+      case "doctor":
+        _doctor();
+        return;
+      case "env":
+        _env();
+        return;
+      case "explain":
+        final explainArgs = args.sublist(1);
+        final asJson = explainArgs.contains("--json");
+        final useProviderApi = explainArgs.contains("--provider-api");
+        final toTempFile = !explainArgs.contains("--stdout");
+        final path = explainArgs.firstWhere(
+          (a) => !a.startsWith("-"),
+          orElse: () => "",
+        );
+        if (path.isEmpty) {
+          _err("Missing trace file path.");
+          stdout.writeln(
+            "  Usage: omega ai explain <file.json> [--json] [--provider-api] [--stdout]",
+          );
+          return;
+        }
+        await _explain(
+          path,
+          asJson: asJson,
+          useProviderApi: useProviderApi,
+          toTempFile: toTempFile,
+        );
+        return;
+      case "coach":
+        await _coach(args.sublist(1));
+        return;
+      default:
+        _err("Unknown ai subcommand: $sub");
+        stdout.writeln(
+          "  Use: omega ai doctor | omega ai env | omega ai explain <file> [--json] [--provider-api] [--stdout] | omega ai coach start \"<feature>\" [--json] [--provider-api] [--stdout]",
+        );
+    }
+  }
+
+  static void _printHelp() {
+    stdout.writeln("Usage: omega ai <doctor|env|explain|coach>");
+    stdout.writeln("");
+    stdout.writeln(
+      "  doctor   Check AI env setup (enabled/provider/model/base-url/key).",
+    );
+    stdout.writeln(
+      "  env      Print supported AI env variable names and examples.",
+    );
+    stdout.writeln(
+      "  explain  Explain a trace file using offline heuristics (no API cost).",
+    );
+    stdout.writeln("           Add --json for machine-readable output.");
+    stdout.writeln(
+      "           Add --provider-api to use configured OpenAI API.",
+    );
+    stdout.writeln(
+      "           Writes to a temp file by default; add --stdout to print in console.",
+    );
+    stdout.writeln(
+      "  coach    Guided coding assistant. First mode: coach start \"<feature>\".",
+    );
+    stdout.writeln("           Audit mode: coach audit \"<feature>\".");
+    stdout.writeln("");
+  }
+
+  static void _doctor() {
+    final env = Platform.environment;
+    final enabled = _readBool(env["OMEGA_AI_ENABLED"], defaultValue: false);
+    final provider = (env["OMEGA_AI_PROVIDER"] ?? "none").trim();
+    final model = (env["OMEGA_AI_MODEL"] ?? "not-set").trim();
+    final baseUrl = (env["OMEGA_AI_BASE_URL"] ?? "default-provider-url").trim();
+    final key = env["OMEGA_AI_API_KEY"];
+
+    final needsKey = provider != "none" && provider != "ollama";
+    final hasKey = key != null && key.trim().isNotEmpty;
+
+    stdout.writeln("Omega AI Doctor");
+    stdout.writeln("  Enabled : $enabled");
+    stdout.writeln("  Provider: $provider");
+    stdout.writeln("  Model   : $model");
+    stdout.writeln("  Base URL: $baseUrl");
+    stdout.writeln("  API key : ${hasKey ? "configured" : "missing"}");
+    stdout.writeln("");
+
+    if (!enabled) {
+      stdout.writeln("AI is disabled (default-safe mode).");
+      stdout.writeln("Set OMEGA_AI_ENABLED=true to enable AI CLI commands.");
+      return;
+    }
+
+    if (provider == "none") {
+      _err("OMEGA_AI_PROVIDER is not set.");
+      stdout.writeln("  Suggested: openai | anthropic | gemini | ollama");
+      return;
+    }
+
+    if (needsKey && !hasKey) {
+      _err("Provider '$provider' usually requires OMEGA_AI_API_KEY.");
+      stdout.writeln("  Set your key and run: omega ai doctor");
+      return;
+    }
+
+    stdout.writeln("AI base configuration looks good.");
+    stdout.writeln(
+      "Next step: wire a provider adapter in CLI commands (explain/suggest/gen).",
+    );
+  }
+
+  static void _env() {
+    stdout.writeln("Omega AI environment variables");
+    stdout.writeln("");
+    stdout.writeln("  OMEGA_AI_ENABLED   true|false (default: false)");
+    stdout.writeln(
+      "  OMEGA_AI_PROVIDER  openai | anthropic | gemini | ollama | none",
+    );
+    stdout.writeln(
+      "  OMEGA_AI_API_KEY   provider API key (optional for ollama)",
+    );
+    stdout.writeln("  OMEGA_AI_MODEL     model id (provider specific)");
+    stdout.writeln("  OMEGA_AI_BASE_URL  custom endpoint (optional)");
+    stdout.writeln("");
+    stdout.writeln("PowerShell example:");
+    stdout.writeln('  setx OMEGA_AI_ENABLED "true"');
+    stdout.writeln('  setx OMEGA_AI_PROVIDER "openai"');
+    stdout.writeln('  setx OMEGA_AI_API_KEY "sk-..."');
+    stdout.writeln('  setx OMEGA_AI_MODEL "gpt-4o-mini"');
+    stdout.writeln("");
+  }
+
+  static Future<void> _explain(
+    String path, {
+    bool asJson = false,
+    bool useProviderApi = false,
+    bool toTempFile = false,
+  }) async {
+    final json = OmegaTraceCommand._loadTraceJson(path);
+    if (json == null) return;
+    if (!OmegaTraceCommand._isValidTraceStructure(json)) {
+      _err(
+        "Invalid trace structure (expected 'events' list and optional 'initialSnapshot').",
+      );
+      return;
+    }
+
+    final events = (json["events"] as List)
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+    if (events.isEmpty) {
+      final noEvents = _tr(
+        en: "No events found.",
+        es: "No se encontraron eventos.",
+        pt: "Nenhum evento encontrado.",
+        fr: "Aucun evenement trouve.",
+        it: "Nessun evento trovato.",
+        de: "Keine Ereignisse gefunden.",
+      );
+      if (asJson) {
+        _emitAiOutput(
+          content: jsonEncode({
+            "trace": _absPath(path),
+            "events": 0,
+            "status": "empty",
+            "diagnosis": [noEvents],
+            "mode": "offline",
+          }),
+          toTempFile: toTempFile,
+          kind: "explain",
+          extension: "json",
+        );
+      } else {
+        _emitAiOutput(
+          content: _formatExplainMarkdown(
+            mode: "offline",
+            tracePath: _absPath(path),
+            eventsCount: 0,
+            firstEvent: "-",
+            lastEvent: "-",
+            top: const <MapEntry<String, int>>[],
+            nsEntries: const <MapEntry<String, int>>[],
+            diagnosis: [noEvents],
+          ),
+          toTempFile: toTempFile,
+          kind: "explain",
+          extension: "md",
+        );
+      }
+      return;
+    }
+
+    final firstName = (events.first["name"] ?? "unknown").toString();
+    final lastName = (events.last["name"] ?? "unknown").toString();
+    final byName = <String, int>{};
+    final byNamespace = <String, int>{};
+    final suspicious = <Map<String, dynamic>>[];
+
+    for (final e in events) {
+      final name = (e["name"] ?? "unknown").toString();
+      byName[name] = (byName[name] ?? 0) + 1;
+
+      final namespace = (e["namespace"] ?? "global").toString();
+      byNamespace[namespace] = (byNamespace[namespace] ?? 0) + 1;
+
+      final lower = name.toLowerCase();
+      if (lower.contains("error") ||
+          lower.contains("fail") ||
+          lower.contains("exception") ||
+          lower.contains("timeout")) {
+        suspicious.add(e);
+      }
+    }
+
+    final topEvents = byName.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final top = topEvents.take(3).toList();
+    final repeated = top.where((x) => x.value >= 5).toList();
+    final diagnosis = <String>[];
+
+    final nsEntries = byNamespace.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    if (suspicious.isNotEmpty) {
+      final sName = (suspicious.first["name"] ?? "unknown").toString();
+      diagnosis.add(
+        _tr(
+          en: "Detected suspicious event(s) like '$sName' (error/fail/exception).",
+          es: "Se detectaron eventos sospechosos como '$sName' (error/fail/exception).",
+          pt: "Eventos suspeitos detectados como '$sName' (error/fail/exception).",
+          fr: "Evenements suspects detectes comme '$sName' (error/fail/exception).",
+          it: "Eventi sospetti rilevati come '$sName' (error/fail/exception).",
+          de: "Verdaechtige Ereignisse erkannt wie '$sName' (error/fail/exception).",
+        ),
+      );
+      diagnosis.add(
+        _tr(
+          en: "Review the first suspicious event and previous 3 events in timeline.",
+          es: "Revisa el primer evento sospechoso y los 3 eventos anteriores en la linea de tiempo.",
+          pt: "Revise o primeiro evento suspeito e os 3 eventos anteriores na linha do tempo.",
+          fr: "Examinez le premier evenement suspect et les 3 evenements precedents dans la chronologie.",
+          it: "Rivedi il primo evento sospetto e i 3 eventi precedenti nella timeline.",
+          de: "Pruefe das erste verdaechtige Ereignis und die 3 vorherigen Ereignisse in der Timeline.",
+        ),
+      );
+    } else if (repeated.isNotEmpty) {
+      diagnosis.add(
+        _tr(
+          en: "Repeated events may indicate a loop/retry without stop condition.",
+          es: "Eventos repetidos pueden indicar un ciclo/reintento sin condicion de salida.",
+          pt: "Eventos repetidos podem indicar loop/repeticao sem condicao de parada.",
+          fr: "Des evenements repetes peuvent indiquer une boucle/reessai sans condition d'arret.",
+          it: "Eventi ripetuti possono indicare un ciclo/tentativo senza condizione di uscita.",
+          de: "Wiederholte Ereignisse koennen auf eine Schleife/Wiederholung ohne Abbruchbedingung hinweisen.",
+        ),
+      );
+      diagnosis.add(
+        _tr(
+          en: "Check guards in flow/agent for: ${repeated.map((x) => x.key).join(", ")}.",
+          es: "Revisa las guardas en flow/agent para: ${repeated.map((x) => x.key).join(", ")}.",
+          pt: "Verifique os guards em flow/agent para: ${repeated.map((x) => x.key).join(", ")}.",
+          fr: "Verifiez les gardes dans flow/agent pour: ${repeated.map((x) => x.key).join(", ")}.",
+          it: "Controlla le guardie in flow/agent per: ${repeated.map((x) => x.key).join(", ")}.",
+          de: "Pruefe Guards in flow/agent fuer: ${repeated.map((x) => x.key).join(", ")}.",
+        ),
+      );
+    } else {
+      diagnosis.add(
+        _tr(
+          en: "No explicit error pattern detected; flow appears structurally healthy.",
+          es: "No se detecto un patron de error explicito; el flow parece estructuralmente sano.",
+          pt: "Nenhum padrao explicito de erro detectado; o flow parece estruturalmente saudavel.",
+          fr: "Aucun schema d'erreur explicite detecte; le flow semble structurellement sain.",
+          it: "Nessun pattern di errore esplicito rilevato; il flow sembra strutturalmente sano.",
+          de: "Kein explizites Fehlermuster erkannt; der Flow wirkt strukturell stabil.",
+        ),
+      );
+      diagnosis.add(
+        _tr(
+          en: "If behavior is wrong, validate contracts and business invariants.",
+          es: "Si el comportamiento es incorrecto, valida contratos e invariantes de negocio.",
+          pt: "Se o comportamento estiver errado, valide contratos e invariantes de negocio.",
+          fr: "Si le comportement est incorrect, validez les contrats et invariants metier.",
+          it: "Se il comportamento e errato, valida contratti e invarianti di business.",
+          de: "Wenn das Verhalten falsch ist, pruefe Vertraege und Geschaeftsinvarianten.",
+        ),
+      );
+    }
+
+    var mode = "offline";
+    if (useProviderApi) {
+      final aiDiagnosis = await _runWithProgress<List<String>?>(
+        _tr(
+          en: "Consulting AI provider",
+          es: "Consultando proveedor IA",
+          pt: "Consultando provedor IA",
+          fr: "Consultation du fournisseur IA",
+          it: "Consultazione provider IA",
+          de: "KI-Anbieter wird abgefragt",
+        ),
+        () => _providerExplain(events),
+      );
+      if (aiDiagnosis != null && aiDiagnosis.isNotEmpty) {
+        diagnosis
+          ..clear()
+          ..addAll(aiDiagnosis);
+        mode = "provider-api";
+      }
+    }
+
+    if (asJson) {
+      _emitAiOutput(
+        content: jsonEncode({
+          "trace": _absPath(path),
+          "events": events.length,
+          "firstEvent": firstName,
+          "lastEvent": lastName,
+          "topEvents": [
+            for (final item in top) {"name": item.key, "count": item.value},
+          ],
+          "namespaces": [
+            for (final item in nsEntries)
+              {"name": item.key, "count": item.value},
+          ],
+          "diagnosis": diagnosis,
+          "mode": mode,
+        }),
+        toTempFile: toTempFile,
+        kind: "explain",
+        extension: "json",
+      );
+      return;
+    }
+
+    final output = _formatExplainMarkdown(
+      mode: mode,
+      tracePath: _absPath(path),
+      eventsCount: events.length,
+      firstEvent: firstName,
+      lastEvent: lastName,
+      top: top,
+      nsEntries: nsEntries,
+      diagnosis: diagnosis,
+    );
+    _emitAiOutput(
+      content: output,
+      toTempFile: toTempFile,
+      kind: "explain",
+      extension: "md",
+    );
+  }
+
+  static Future<void> _coach(List<String> args) async {
+    if (args.isEmpty || args[0] == "-h" || args[0] == "--help") {
+      stdout.writeln(
+        'Usage: omega ai coach <start|audit|module> "<feature>" [--json] [--provider-api] [--stdout] [--template basic|advanced]',
+      );
+      stdout.writeln("");
+      stdout.writeln(
+        "  start   ${_tr(en: "Build a guided implementation plan for a feature.", es: "Construye un plan guiado de implementacion para una feature.", pt: "Cria um plano guiado de implementacao para uma feature.", fr: "Construit un plan guide d'implementation pour une fonctionnalite.", it: "Costruisce un piano guidato di implementazione per una feature.", de: "Erstellt einen gefuehrten Implementierungsplan fuer ein Feature.")}",
+      );
+      stdout.writeln(
+        "  audit   ${_tr(en: "Audit current project gaps for a feature.", es: "Audita brechas actuales del proyecto para una feature.")}",
+      );
+      stdout.writeln(
+        "  module  ${_tr(en: "Create a complete ecosystem module (AI-guided).", es: "Crea un modulo de ecosistema completo (guiado por IA).")}",
+      );
+      stdout.writeln(
+        "          ${_tr(en: "Use --template advanced for workflow/stateful/contracts/tests scaffold.", es: "Usa --template advanced para scaffold con workflow/stateful/contratos/tests.")}",
+      );
+      return;
+    }
+
+    final action = args[0].toLowerCase();
+    if (action != "start" && action != "audit" && action != "module") {
+      _err("Unknown coach action: $action");
+      stdout.writeln(
+        "  Use: omega ai coach <start|audit|module> \"<feature>\" [--json] [--provider-api] [--stdout]",
+      );
+      return;
+    }
+
+    final rest = args.sublist(1);
+    final asJson = rest.contains("--json");
+    final useProviderApi = rest.contains("--provider-api");
+    final toTempFile = !rest.contains("--stdout");
+    final template = (_optionValue(rest, "--template") ?? "basic")
+        .trim()
+        .toLowerCase();
+    if (template != "basic" && template != "advanced") {
+      _err("Invalid template: $template");
+      stdout.writeln("  Allowed: basic, advanced");
+      return;
+    }
+    final feature = _collectPositionalArgs(
+      rest,
+      optionsWithValue: const ["--template"],
+    ).join(" ").trim();
+    if (feature.isEmpty) {
+      _err(
+        _tr(
+          en: "Missing feature description.",
+          es: "Falta la descripcion de la feature.",
+          pt: "Falta a descricao da feature.",
+          fr: "Description de fonctionnalite manquante.",
+          it: "Descrizione della feature mancante.",
+          de: "Feature-Beschreibung fehlt.",
+        ),
+      );
+      stdout.writeln("  ${_tr(en: "Example", es: "Ejemplo")}:");
+      stdout.writeln('  omega ai coach start "login con MFA"');
+      stdout.writeln('  omega ai coach audit "login con MFA"');
+      stdout.writeln('  omega ai coach module "login con MFA"');
+      return;
+    }
+
+    if (action == "audit") {
+      await _coachAudit(
+        feature: feature,
+        asJson: asJson,
+        useProviderApi: useProviderApi,
+        toTempFile: toTempFile,
+      );
+      return;
+    }
+
+    if (action == "module") {
+      await _coachModule(
+        feature: feature,
+        template: template,
+        asJson: asJson,
+        useProviderApi: useProviderApi,
+        toTempFile: toTempFile,
+      );
+      return;
+    }
+
+    final artifacts = _coachRequiredArtifacts(feature);
+    final checks = _coachValidationChecks();
+    final steps = _offlineCoachPlan(feature);
+    final insights = <String>[];
+    var mode = "offline";
+    if (useProviderApi) {
+      final providerSteps = await _runWithProgress<List<String>?>(
+        _tr(
+          en: "Consulting AI provider",
+          es: "Consultando proveedor IA",
+          pt: "Consultando provedor IA",
+          fr: "Consultation du fournisseur IA",
+          it: "Consultazione provider IA",
+          de: "KI-Anbieter wird abgefragt",
+        ),
+        () => _providerCoachPlan(feature),
+      );
+      if (providerSteps != null && providerSteps.isNotEmpty) {
+        insights.addAll(providerSteps);
+        mode = "provider-api";
+      }
+    }
+
+    if (asJson) {
+      _emitAiOutput(
+        content: jsonEncode({
+          "mode": mode,
+          "feature": feature,
+          "coach": "start",
+          "requiredArtifacts": artifacts,
+          "steps": steps,
+          "validationChecks": checks,
+          "insights": insights,
+        }),
+        toTempFile: toTempFile,
+        kind: "coach",
+        extension: "json",
+      );
+      return;
+    }
+
+    final output = _formatCoachMarkdown(
+      mode: mode,
+      feature: feature,
+      requiredArtifacts: artifacts,
+      steps: steps,
+      validationChecks: checks,
+      insights: insights,
+      nextCommand:
+          "omega g ecosystem ${toPascalCase(feature.split(" ").first)}",
+    );
+    _emitAiOutput(
+      content: output,
+      toTempFile: toTempFile,
+      kind: "coach",
+      extension: "md",
+    );
+  }
+
+  static List<String> _offlineCoachPlan(String feature) {
+    return [
+      _tr(
+        en: "Define semantic intents/events for '$feature' (typed names or typed event classes).",
+        es: "Define intents/eventos semanticos para '$feature' (nombres tipados o clases de evento tipado).",
+      ),
+      _tr(
+        en: "Model the journey in a Flow (or OmegaWorkflowFlow if multi-step) with explicit expressions.",
+        es: "Modela el journey en un Flow (u OmegaWorkflowFlow si es multi-paso) con expresiones explicitas.",
+      ),
+      _tr(
+        en: "Create/reuse Agent + behavior rules for side effects, retries, and async boundaries.",
+        es: "Crea/reutiliza Agent + reglas de behavior para efectos secundarios, reintentos y limites async.",
+      ),
+      _tr(
+        en: "Wire routes/flow/agent in omega_setup.dart and keep UI constrained to intents + reactive state.",
+        es: "Registra rutas/flow/agent en omega_setup.dart y limita la UI a intents + estado reactivo.",
+      ),
+      _tr(
+        en: "Define flow/agent contracts to lock accepted intents/events and emitted expressions.",
+        es: "Define contratos de flow/agent para fijar intents/eventos aceptados y expresiones emitidas.",
+      ),
+      _tr(
+        en: "Create tests: happy path, failure path, and replay trace for regression.",
+        es: "Crea pruebas: happy path, failure path y replay de traza para regresion.",
+      ),
+      _tr(
+        en: "Run architecture checks: validate + doctor + ai explain on captured traces.",
+        es: "Ejecuta validaciones de arquitectura: validate + doctor + ai explain sobre trazas capturadas.",
+      ),
+      _tr(
+        en: "Document decisions: event naming, payload schema, invariants, and rollout plan.",
+        es: "Documenta decisiones: naming de eventos, esquema de payload, invariantes y plan de despliegue.",
+      ),
+    ];
+  }
+
+  static List<String> _coachRequiredArtifacts(String feature) {
+    final slug = feature.toLowerCase().replaceAll(RegExp(r"[^a-z0-9]+"), "_");
+    return [
+      "Flow: ${slug}_flow.dart (or omega_workflow_flow usage)",
+      "Agent: ${slug}_agent.dart + behavior",
+      "Semantics: ${slug}_events.dart (intents/events, typed payloads)",
+      "UI entry: ${slug}_page.dart (emit intents only)",
+      "Setup wiring: omega_setup.dart (imports, routes, registrations)",
+      "Contracts: OmegaFlowContract + OmegaAgentContract",
+      "Tests: flow/agent + trace replay fixture",
+      "Observability: trace export + ai explain report",
+    ];
+  }
+
+  static List<String> _coachValidationChecks() {
+    return [
+      "dart run omega_architecture:omega validate",
+      "dart run omega_architecture:omega doctor",
+      "dart run omega_architecture:omega ai explain <trace.json> --json",
+      "flutter test",
+    ];
+  }
+
+  static void _applyAdvancedModuleTemplate({
+    required String appRoot,
+    required String modulePath,
+    required String moduleName,
+  }) {
+    final lower = moduleName.toLowerCase();
+    final agentPath = "$modulePath${Platform.pathSeparator}${lower}_agent.dart";
+    final behaviorPath =
+        "$modulePath${Platform.pathSeparator}${lower}_behavior.dart";
+    final eventsPath =
+        "$modulePath${Platform.pathSeparator}${lower}_events.dart";
+    final flowPath = "$modulePath${Platform.pathSeparator}${lower}_flow.dart";
+    final pagePath =
+        "$modulePath${Platform.pathSeparator}ui${Platform.pathSeparator}${lower}_page.dart";
+    final testPath =
+        "$appRoot${Platform.pathSeparator}test${Platform.pathSeparator}${lower}_module_test.dart";
+
+    File(eventsPath).writeAsStringSync('''
+import 'package:omega_architecture/omega_architecture.dart';
+
+enum ${moduleName}Intent implements OmegaIntentName {
+  start,
+  retry;
+
+  @override
+  String get name => '$lower.\${toString().split('.').last}';
+}
+
+enum ${moduleName}Event implements OmegaEventName {
+  requested,
+  succeeded,
+  failed;
+
+  @override
+  String get name => '$lower.\${toString().split('.').last}';
+}
+
+class ${moduleName}RequestedEvent implements OmegaTypedEvent {
+  const ${moduleName}RequestedEvent({required this.input});
+  final String input;
+
+  @override
+  String get name => ${moduleName}Event.requested.name;
+}
+
+class ${moduleName}ViewState {
+  const ${moduleName}ViewState({
+    this.isLoading = false,
+    this.error,
+  });
+
+  final bool isLoading;
+  final String? error;
+
+  ${moduleName}ViewState copyWith({bool? isLoading, String? error}) {
+    return ${moduleName}ViewState(
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+    );
+  }
+
+  static const idle = ${moduleName}ViewState();
+}
+''');
+
+    File(behaviorPath).writeAsStringSync('''
+import 'package:omega_architecture/omega_architecture.dart';
+import '${lower}_events.dart';
+
+class ${moduleName}Behavior extends OmegaAgentBehaviorEngine {
+  ${moduleName}Behavior() {
+    addRule(
+      OmegaAgentBehaviorRule(
+        condition: (ctx) => ctx.event?.name == ${moduleName}Event.requested.name,
+        reaction: (ctx) => const OmegaAgentReaction('processRequest'),
+      ),
+    );
+  }
+}
+''');
+
+    File(agentPath).writeAsStringSync('''
+import 'package:omega_architecture/omega_architecture.dart';
+import '${lower}_behavior.dart';
+import '${lower}_events.dart';
+
+class ${moduleName}Agent extends OmegaStatefulAgent<${moduleName}ViewState> {
+  ${moduleName}Agent(OmegaEventBus channel)
+      : super(
+          id: '$moduleName',
+          channel: channel,
+          behavior: ${moduleName}Behavior(),
+          initialState: ${moduleName}ViewState.idle,
+        );
+
+  @override
+  OmegaAgentContract? get contract => OmegaAgentContract(
+    listenedEventNames: {${moduleName}Event.requested.name},
+  );
+
+  @override
+  void onAction(String action, dynamic payload) {
+    if (action == 'processRequest') {
+      setViewState(viewState.copyWith(isLoading: true, error: null));
+      setViewState(viewState.copyWith(isLoading: false));
+      channel.emit(OmegaEvent.fromName(${moduleName}Event.succeeded));
+    }
+  }
+
+  @override
+  void onMessage(OmegaAgentMessage msg) {}
+}
+''');
+
+    File(flowPath).writeAsStringSync('''
+import 'package:omega_architecture/omega_architecture.dart';
+import '${lower}_events.dart';
+
+class ${moduleName}Flow extends OmegaWorkflowFlow {
+  ${moduleName}Flow(OmegaEventBus channel)
+      : super(id: '$moduleName', channel: channel) {
+    defineStep('start', () => emitExpression('loading'));
+    defineStep('done', () => completeWorkflow());
+  }
+
+  @override
+  OmegaFlowContract? get contract => OmegaFlowContract(
+    acceptedIntentNames: {${moduleName}Intent.start.name, ${moduleName}Intent.retry.name},
+    listenedEventNames: {${moduleName}Event.succeeded.name, ${moduleName}Event.failed.name},
+    emittedExpressionTypes: {'idle', 'loading', 'success', 'error', 'workflow.done'},
+  );
+
+  @override
+  void onStart() {
+    emitExpression('idle');
+  }
+
+  @override
+  void onIntent(OmegaFlowContext ctx) {
+    final intentName = ctx.intent?.name;
+    if (intentName == ${moduleName}Intent.start.name) {
+      channel.emitTyped(const ${moduleName}RequestedEvent(input: 'initial'));
+      startAt('start');
+    }
+    if (intentName == ${moduleName}Intent.retry.name) {
+      channel.emitTyped(const ${moduleName}RequestedEvent(input: 'retry'));
+      next('start');
+    }
+  }
+
+  @override
+  void onEvent(OmegaFlowContext ctx) {
+    final event = ctx.event;
+    if (event?.name == ${moduleName}Event.succeeded.name) {
+      emitExpression('success');
+      next('done');
+    }
+    if (event?.name == ${moduleName}Event.failed.name) {
+      emitExpression('error', payload: event?.payload);
+      failStep('request.failed');
+    }
+  }
+}
+''');
+
+    File(pagePath).writeAsStringSync('''
+import 'package:flutter/material.dart';
+import 'package:omega_architecture/omega_architecture.dart';
+import '../${lower}_events.dart';
+
+class ${moduleName}Page extends StatelessWidget {
+  const ${moduleName}Page({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = OmegaScope.of(context);
+    final flow = scope.flowManager.getFlow('$moduleName');
+    if (flow == null) {
+      return const Scaffold(
+        body: Center(child: Text('Flow not registered in omega_setup.dart')),
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('$moduleName')),
+      body: Center(
+        child: StreamBuilder<OmegaFlowExpression>(
+          stream: flow.expressions,
+          builder: (context, snapshot) {
+            final expr = snapshot.data;
+            if (expr?.type == 'loading') {
+              return const CircularProgressIndicator();
+            }
+            if (expr?.type == 'error') {
+              final msg = expr?.payloadAs<String>() ?? 'Unknown error';
+              return Text(msg);
+            }
+            return ElevatedButton(
+              onPressed: () => scope.flowManager.handleIntent(
+                OmegaIntent.fromName(${moduleName}Intent.start),
+              ),
+              child: const Text('Start'),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+''');
+
+    final testDir = Directory("$appRoot${Platform.pathSeparator}test");
+    if (!testDir.existsSync()) {
+      testDir.createSync(recursive: true);
+    }
+    File(testPath).writeAsStringSync('''
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  test('${moduleName} module scaffold compiles', () {
+    expect(true, isTrue);
+  });
+}
+''');
+
+    for (final p in [
+      eventsPath,
+      behaviorPath,
+      agentPath,
+      flowPath,
+      pagePath,
+      testPath,
+    ]) {
+      _formatFile(p);
+    }
+  }
+
+  static Future<void> _coachAudit({
+    required String feature,
+    required bool asJson,
+    required bool useProviderApi,
+    required bool toTempFile,
+  }) async {
+    String root;
+    try {
+      root = findAppRoot();
+    } catch (_) {
+      root = Directory.current.absolute.path;
+    }
+    final repoExampleSetup = File(
+      "$root${Platform.pathSeparator}example${Platform.pathSeparator}lib${Platform.pathSeparator}omega${Platform.pathSeparator}omega_setup.dart",
+    );
+    final rootSetup = File(
+      "$root${Platform.pathSeparator}lib${Platform.pathSeparator}omega${Platform.pathSeparator}omega_setup.dart",
+    );
+    if (!rootSetup.existsSync() && repoExampleSetup.existsSync()) {
+      root = "$root${Platform.pathSeparator}example";
+    }
+    final libDir = Directory("$root/lib");
+    final testDir = Directory("$root/test");
+    final setupFile = File("$root/lib/omega/omega_setup.dart");
+    final slug = feature.toLowerCase().replaceAll(RegExp(r"[^a-z0-9]+"), "_");
+
+    final flowPath = _findFeatureFile(libDir, "${slug}_flow.dart");
+    final agentPath = _findFeatureFile(libDir, "${slug}_agent.dart");
+    final behaviorPath = _findFeatureFile(libDir, "${slug}_behavior.dart");
+    final eventsPath = _findFeatureFile(libDir, "${slug}_events.dart");
+    final pagePath = _findFeatureFile(libDir, "${slug}_page.dart");
+
+    final testMatches = _findFeatureFiles(
+      testDir,
+      RegExp("${RegExp.escape(slug)}.*\\.dart\$"),
+    );
+
+    final setupContent = setupFile.existsSync()
+        ? setupFile.readAsStringSync()
+        : "";
+    final pascalBase = toPascalCase(slug);
+    final hasFlowRegistration = setupContent.contains("${pascalBase}Flow(");
+    final hasAgentRegistration = setupContent.contains("${pascalBase}Agent(");
+
+    final gaps = <String>[];
+    final findings = <String>[];
+    findings.add("Audit root: ${_absPath(root)}");
+    findings.add("Audit pattern: ${slug}_*.dart");
+
+    void checkRequired(String label, String? path) {
+      if (path == null) {
+        gaps.add("Missing $label");
+      } else {
+        findings.add("$label: ${_absPath(path)}");
+      }
+    }
+
+    checkRequired("Flow file", flowPath);
+    checkRequired("Agent file", agentPath);
+    checkRequired("Behavior file", behaviorPath);
+    checkRequired("Events file", eventsPath);
+    checkRequired("UI page file", pagePath);
+
+    if (!setupFile.existsSync()) {
+      gaps.add("Missing omega_setup.dart");
+    } else {
+      findings.add("Setup file: ${_absPath(setupFile.path)}");
+      if (!hasFlowRegistration) {
+        gaps.add("Flow is not registered in omega_setup.dart");
+      }
+      if (!hasAgentRegistration) {
+        gaps.add("Agent is not registered in omega_setup.dart");
+      }
+    }
+
+    if (testMatches.isEmpty) {
+      gaps.add("No feature-focused tests found under /test");
+    } else {
+      findings.add("Tests found: ${testMatches.length}");
+    }
+
+    if (flowPath == null &&
+        agentPath == null &&
+        behaviorPath == null &&
+        eventsPath == null &&
+        pagePath == null) {
+      findings.add(
+        _tr(
+          en: "No files matched '${slug}_*'. If your ecosystem uses a different base name (e.g. auth), run audit with that feature name.",
+          es: "No hubo coincidencias con '${slug}_*'. Si tu ecosistema usa otro nombre base (por ejemplo auth), ejecuta el audit con ese nombre.",
+        ),
+      );
+    }
+
+    if (flowPath != null) {
+      final flowContent = File(flowPath).readAsStringSync();
+      if (!flowContent.contains("OmegaFlowContract") &&
+          !flowContent.contains("contract")) {
+        gaps.add("Flow contract appears missing");
+      }
+    }
+    if (agentPath != null) {
+      final agentContent = File(agentPath).readAsStringSync();
+      if (!agentContent.contains("OmegaAgentContract") &&
+          !agentContent.contains("contract")) {
+        gaps.add("Agent contract appears missing");
+      }
+    }
+
+    final score = (100 - (gaps.length * 12)).clamp(0, 100);
+    final summary = gaps.isEmpty
+        ? _tr(
+            en: "Feature looks structurally healthy for Omega.",
+            es: "La feature se ve estructuralmente saludable para Omega.",
+          )
+        : _tr(
+            en: "Feature has architectural gaps to resolve.",
+            es: "La feature tiene brechas arquitectonicas por resolver.",
+          );
+
+    final aiInsights = <String>[];
+    var mode = "offline";
+    if (useProviderApi) {
+      final provider = await _runWithProgress<List<String>?>(
+        _tr(en: "Consulting AI provider", es: "Consultando proveedor IA"),
+        () => _providerAuditInsights(feature, gaps, findings),
+      );
+      if (provider != null && provider.isNotEmpty) {
+        aiInsights.addAll(provider);
+        mode = "provider-api";
+      }
+    }
+
+    if (asJson) {
+      _emitAiOutput(
+        content: jsonEncode({
+          "coach": "audit",
+          "mode": mode,
+          "feature": feature,
+          "score": score,
+          "summary": summary,
+          "gaps": gaps,
+          "findings": findings,
+          "insights": aiInsights,
+        }),
+        toTempFile: toTempFile,
+        kind: "coach_audit",
+        extension: "json",
+      );
+      return;
+    }
+
+    _emitAiOutput(
+      content: _formatCoachAuditMarkdown(
+        mode: mode,
+        feature: feature,
+        score: score,
+        summary: summary,
+        gaps: gaps,
+        findings: findings,
+        insights: aiInsights,
+      ),
+      toTempFile: toTempFile,
+      kind: "coach_audit",
+      extension: "md",
+    );
+  }
+
+  static Future<void> _coachModule({
+    required String feature,
+    required String template,
+    required bool asJson,
+    required bool useProviderApi,
+    required bool toTempFile,
+  }) async {
+    final moduleName = toPascalCase(
+      feature
+          .replaceAll(RegExp(r"[^a-zA-Z0-9_ ]"), " ")
+          .replaceAll(RegExp(r"\s+"), " ")
+          .trim(),
+    );
+    final requiredArtifacts = _coachRequiredArtifacts(moduleName);
+    final checks = _coachValidationChecks();
+    final insights = <String>[];
+    var mode = "offline";
+
+    if (useProviderApi) {
+      final providerSteps = await _runWithProgress<List<String>?>(
+        _tr(en: "Consulting AI provider", es: "Consultando proveedor IA"),
+        () => _providerCoachPlan(feature),
+      );
+      if (providerSteps != null && providerSteps.isNotEmpty) {
+        insights.addAll(providerSteps);
+        mode = "provider-api";
+      }
+    }
+
+    String appRoot;
+    try {
+      appRoot = findAppRoot();
+    } catch (_) {
+      appRoot = Directory.current.absolute.path;
+    }
+    final appLib = Directory(
+      "$appRoot${Platform.pathSeparator}lib",
+    ).absolute.path;
+    final setupPath =
+        "$appRoot${Platform.pathSeparator}lib${Platform.pathSeparator}omega${Platform.pathSeparator}omega_setup.dart";
+    final hasSetup = File(setupPath).existsSync();
+
+    final modulePath =
+        "$appLib${Platform.pathSeparator}${moduleName.toLowerCase()}";
+    final expectedFiles = <String>[
+      "$modulePath${Platform.pathSeparator}${moduleName.toLowerCase()}_agent.dart",
+      "$modulePath${Platform.pathSeparator}${moduleName.toLowerCase()}_flow.dart",
+      "$modulePath${Platform.pathSeparator}${moduleName.toLowerCase()}_behavior.dart",
+      "$modulePath${Platform.pathSeparator}${moduleName.toLowerCase()}_events.dart",
+      "$modulePath${Platform.pathSeparator}ui${Platform.pathSeparator}${moduleName.toLowerCase()}_page.dart",
+    ];
+
+    var created = false;
+    final originalCwd = Directory.current.path;
+    if (hasSetup) {
+      await _runWithProgress<void>(
+        _tr(
+          en: "Generating ecosystem module",
+          es: "Generando modulo de ecosistema",
+        ),
+        () async {
+          Directory.current = appLib;
+          OmegaGenerateCommand._createEcosystem(moduleName);
+        },
+      );
+      created = true;
+      if (template == "advanced") {
+        _applyAdvancedModuleTemplate(
+          appRoot: appRoot,
+          modulePath: modulePath,
+          moduleName: moduleName,
+        );
+      }
+    } else {
+      insights.add(
+        _tr(
+          en: "Missing omega_setup.dart in app root; run omega init first in your app.",
+          es: "Falta omega_setup.dart en la raiz de la app; ejecuta omega init primero en tu app.",
+        ),
+      );
+    }
+    Directory.current = originalCwd;
+
+    final createdFiles = expectedFiles
+        .where((p) => File(p).existsSync())
+        .toList();
+    final testFile =
+        "$appRoot${Platform.pathSeparator}test${Platform.pathSeparator}${moduleName.toLowerCase()}_module_test.dart";
+    if (File(testFile).existsSync()) {
+      createdFiles.add(testFile);
+    }
+
+    if (asJson) {
+      _emitAiOutput(
+        content: jsonEncode({
+          "coach": "module",
+          "mode": mode,
+          "feature": feature,
+          "moduleName": moduleName,
+          "template": template,
+          "modulePath": _absPath(modulePath),
+          "requiredArtifacts": requiredArtifacts,
+          "created": created,
+          "createdFiles": createdFiles.map(_absPath).toList(),
+          "validationChecks": checks,
+          "insights": insights,
+        }),
+        toTempFile: toTempFile,
+        kind: "coach_module",
+        extension: "json",
+      );
+      return;
+    }
+
+    final out = StringBuffer()
+      ..writeln("# Omega AI Coach Module ($mode)")
+      ..writeln("")
+      ..writeln("- Feature: `$feature`")
+      ..writeln("- Module name: `$moduleName`")
+      ..writeln("- Template: `$template`")
+      ..writeln("- Module path: `${_absPath(modulePath)}`")
+      ..writeln("- Created: `${created ? "yes" : "no"}`")
+      ..writeln("")
+      ..writeln(
+        "## ${_tr(en: "What Omega needs", es: "Lo que Omega necesita")}",
+      );
+    for (final item in requiredArtifacts) {
+      out.writeln("- $item");
+    }
+    out
+      ..writeln("")
+      ..writeln("## ${_tr(en: "Created files", es: "Archivos creados")}");
+    if (createdFiles.isEmpty) {
+      out.writeln(
+        "- ${_tr(en: "No files were created.", es: "No se crearon archivos.")}",
+      );
+    } else {
+      for (final file in createdFiles) {
+        out.writeln("- `${_absPath(file)}`");
+      }
+    }
+    out
+      ..writeln("")
+      ..writeln(
+        "## ${_tr(en: "Validation checks", es: "Checks de validacion")}",
+      );
+    for (final item in checks) {
+      out.writeln("- `$item`");
+    }
+    if (insights.isNotEmpty) {
+      out
+        ..writeln("")
+        ..writeln("## ${_tr(en: "AI insights", es: "Insights de IA")}");
+      for (final i in insights) {
+        out.writeln("- $i");
+      }
+    }
+    _emitAiOutput(
+      content: out.toString(),
+      toTempFile: toTempFile,
+      kind: "coach_module",
+      extension: "md",
+    );
+  }
+
+  static String? _findFeatureFile(Directory dir, String fileName) {
+    final matches = _findFeatureFiles(dir, RegExp(RegExp.escape(fileName)));
+    if (matches.isEmpty) return null;
+    return matches.first;
+  }
+
+  static List<String> _findFeatureFiles(Directory dir, RegExp pattern) {
+    if (!dir.existsSync()) return const <String>[];
+    final matches = <String>[];
+    for (final e in dir.listSync(recursive: true)) {
+      if (e is File) {
+        final parts = e.path.split(Platform.pathSeparator);
+        final name = parts.isEmpty ? e.path : parts.last;
+        if (pattern.hasMatch(name)) {
+          matches.add(e.path);
+        }
+      }
+    }
+    matches.sort();
+    return matches;
+  }
+
+  static Future<List<String>?> _providerCoachPlan(String feature) async {
+    final env = Platform.environment;
+    final enabled = _readBool(env["OMEGA_AI_ENABLED"], defaultValue: false);
+    if (!enabled) return null;
+
+    final provider = (env["OMEGA_AI_PROVIDER"] ?? "").trim().toLowerCase();
+    if (provider != "openai") return null;
+
+    final apiKey = (env["OMEGA_AI_API_KEY"] ?? "").trim();
+    if (apiKey.isEmpty) return null;
+
+    final model = (env["OMEGA_AI_MODEL"] ?? "gpt-4o-mini").trim();
+    final targetLanguage = _preferredAiLanguage();
+    final base = (env["OMEGA_AI_BASE_URL"] ?? "https://api.openai.com/v1")
+        .trim();
+    final endpoint = base.endsWith("/chat/completions")
+        ? base
+        : "${base.replaceAll(RegExp(r"/+$"), "")}/chat/completions";
+
+    final requestBody = {
+      "model": model,
+      "temperature": 0.2,
+      "messages": [
+        {
+          "role": "system",
+          "content":
+              "You are Omega coding coach. Respond strictly in $targetLanguage. Return 5-7 concise numbered steps with practical guidance for implementation.",
+        },
+        {
+          "role": "user",
+          "content":
+              "Create a practical step-by-step coding guide in Omega architecture for this feature: '$feature'. Include flow, agent, intents/events, setup wiring, and testing.",
+        },
+      ],
+    };
+
+    HttpClient? client;
+    try {
+      client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+      final request = await client.postUrl(Uri.parse(endpoint));
+      request.headers.set(HttpHeaders.authorizationHeader, "Bearer $apiKey");
+      request.headers.set(HttpHeaders.contentTypeHeader, "application/json");
+      request.write(jsonEncode(requestBody));
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 25),
+      );
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+
+      final decoded = jsonDecode(body);
+      if (decoded is! Map<String, dynamic>) return null;
+      final choices = decoded["choices"];
+      if (choices is! List || choices.isEmpty) return null;
+      final first = choices.first;
+      if (first is! Map) return null;
+      final message = first["message"];
+      if (message is! Map) return null;
+      final content = (message["content"] ?? "").toString().trim();
+      if (content.isEmpty) return null;
+
+      final lines = content
+          .split("\n")
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .map(
+            (l) => l
+                .replaceFirst(RegExp(r"^[-*•]\s*"), "")
+                .replaceFirst(RegExp(r"^\d+[\.\)]\s*"), ""),
+          )
+          .where((l) => l.isNotEmpty)
+          .take(8)
+          .toList();
+      return lines.isEmpty ? [content] : lines;
+    } catch (_) {
+      return null;
+    } finally {
+      client?.close(force: true);
+    }
+  }
+
+  static Future<List<String>?> _providerAuditInsights(
+    String feature,
+    List<String> gaps,
+    List<String> findings,
+  ) async {
+    final env = Platform.environment;
+    final enabled = _readBool(env["OMEGA_AI_ENABLED"], defaultValue: false);
+    if (!enabled) return null;
+
+    final provider = (env["OMEGA_AI_PROVIDER"] ?? "").trim().toLowerCase();
+    if (provider != "openai") return null;
+
+    final apiKey = (env["OMEGA_AI_API_KEY"] ?? "").trim();
+    if (apiKey.isEmpty) return null;
+
+    final model = (env["OMEGA_AI_MODEL"] ?? "gpt-4o-mini").trim();
+    final targetLanguage = _preferredAiLanguage();
+    final base = (env["OMEGA_AI_BASE_URL"] ?? "https://api.openai.com/v1")
+        .trim();
+    final endpoint = base.endsWith("/chat/completions")
+        ? base
+        : "${base.replaceAll(RegExp(r"/+$"), "")}/chat/completions";
+
+    final requestBody = {
+      "model": model,
+      "temperature": 0.2,
+      "messages": [
+        {
+          "role": "system",
+          "content":
+              "You are Omega architecture reviewer. Respond strictly in $targetLanguage with short actionable bullet points.",
+        },
+        {
+          "role": "user",
+          "content":
+              "Feature: $feature\nCurrent findings: ${jsonEncode(findings)}\nCurrent gaps: ${jsonEncode(gaps)}\nReturn 3-6 prioritized actions to close gaps in Omega architecture.",
+        },
+      ],
+    };
+
+    HttpClient? client;
+    try {
+      client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+      final request = await client.postUrl(Uri.parse(endpoint));
+      request.headers.set(HttpHeaders.authorizationHeader, "Bearer $apiKey");
+      request.headers.set(HttpHeaders.contentTypeHeader, "application/json");
+      request.write(jsonEncode(requestBody));
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 25),
+      );
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+
+      final decoded = jsonDecode(body);
+      if (decoded is! Map<String, dynamic>) return null;
+      final choices = decoded["choices"];
+      if (choices is! List || choices.isEmpty) return null;
+      final first = choices.first;
+      if (first is! Map) return null;
+      final message = first["message"];
+      if (message is! Map) return null;
+      final content = (message["content"] ?? "").toString().trim();
+      if (content.isEmpty) return null;
+
+      final lines = content
+          .split("\n")
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .map(
+            (l) => l
+                .replaceFirst(RegExp(r"^[-*•]\s*"), "")
+                .replaceFirst(RegExp(r"^\d+[\.\)]\s*"), ""),
+          )
+          .where((l) => l.isNotEmpty)
+          .take(8)
+          .toList();
+      return lines.isEmpty ? [content] : lines;
+    } catch (_) {
+      return null;
+    } finally {
+      client?.close(force: true);
+    }
+  }
+
+  static Future<List<String>?> _providerExplain(
+    List<Map<String, dynamic>> events,
+  ) async {
+    final env = Platform.environment;
+    final enabled = _readBool(env["OMEGA_AI_ENABLED"], defaultValue: false);
+    if (!enabled) return null;
+
+    final provider = (env["OMEGA_AI_PROVIDER"] ?? "").trim().toLowerCase();
+    if (provider != "openai") return null;
+
+    final apiKey = (env["OMEGA_AI_API_KEY"] ?? "").trim();
+    if (apiKey.isEmpty) return null;
+
+    final model = (env["OMEGA_AI_MODEL"] ?? "gpt-4o-mini").trim();
+    final targetLanguage = _preferredAiLanguage();
+    final base = (env["OMEGA_AI_BASE_URL"] ?? "https://api.openai.com/v1")
+        .trim();
+    final endpoint = base.endsWith("/chat/completions")
+        ? base
+        : "${base.replaceAll(RegExp(r"/+$"), "")}/chat/completions";
+
+    final compactEvents = events
+        .take(80)
+        .map(
+          (e) => {
+            "name": (e["name"] ?? "unknown").toString(),
+            "namespace": (e["namespace"] ?? "global").toString(),
+            if (e["payload"] != null) "payload": e["payload"],
+          },
+        )
+        .toList();
+
+    final requestBody = {
+      "model": model,
+      "temperature": 0.2,
+      "messages": [
+        {
+          "role": "system",
+          "content":
+              "You are Omega architecture assistant. Return concise diagnostics as plain bullet lines only. Respond strictly in $targetLanguage.",
+        },
+        {
+          "role": "user",
+          "content":
+              "Analyze this Omega trace event sequence and return 2-4 short bullet points: root cause guess, risky pattern, and concrete next check. Do not use markdown styling.\n${jsonEncode(compactEvents)}",
+        },
+      ],
+    };
+
+    HttpClient? client;
+    try {
+      client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+      final request = await client.postUrl(Uri.parse(endpoint));
+      request.headers.set(HttpHeaders.authorizationHeader, "Bearer $apiKey");
+      request.headers.set(HttpHeaders.contentTypeHeader, "application/json");
+      request.write(jsonEncode(requestBody));
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 25),
+      );
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+
+      final decoded = jsonDecode(body);
+      if (decoded is! Map<String, dynamic>) return null;
+      final choices = decoded["choices"];
+      if (choices is! List || choices.isEmpty) return null;
+      final first = choices.first;
+      if (first is! Map) return null;
+      final message = first["message"];
+      if (message is! Map) return null;
+      final content = (message["content"] ?? "").toString().trim();
+      if (content.isEmpty) return null;
+
+      final lines = content
+          .split("\n")
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .map(
+            (l) => l
+                .replaceFirst(RegExp(r"^[-*•]\s*"), "")
+                .replaceFirst(RegExp(r"^\d+[\.\)]\s*"), ""),
+          )
+          .where((l) => l.isNotEmpty)
+          .take(6)
+          .toList();
+      return lines.isEmpty ? [content] : lines;
+    } catch (_) {
+      return null;
+    } finally {
+      client?.close(force: true);
+    }
+  }
+
+  static bool _readBool(String? raw, {required bool defaultValue}) {
+    if (raw == null) return defaultValue;
+    final value = raw.trim().toLowerCase();
+    if (value == "1" || value == "true" || value == "yes" || value == "on") {
+      return true;
+    }
+    if (value == "0" || value == "false" || value == "no" || value == "off") {
+      return false;
+    }
+    return defaultValue;
+  }
+
+  static String? _optionValue(List<String> args, String option) {
+    final inline = args.firstWhere(
+      (a) => a.startsWith("$option="),
+      orElse: () => "",
+    );
+    if (inline.isNotEmpty) {
+      return inline.substring(option.length + 1).trim();
+    }
+    final i = args.indexOf(option);
+    if (i >= 0 && i + 1 < args.length && !args[i + 1].startsWith("-")) {
+      return args[i + 1].trim();
+    }
+    return null;
+  }
+
+  static List<String> _collectPositionalArgs(
+    List<String> args, {
+    required List<String> optionsWithValue,
+  }) {
+    final result = <String>[];
+    for (var i = 0; i < args.length; i++) {
+      final a = args[i];
+      if (a.startsWith("-")) {
+        if (optionsWithValue.contains(a) && i + 1 < args.length) {
+          i++;
+        }
+        continue;
+      }
+      result.add(a);
+    }
+    return result;
+  }
+
+  static void _emitAiOutput({
+    required String content,
+    required bool toTempFile,
+    required String kind,
+    required String extension,
+  }) {
+    if (!toTempFile) {
+      stdout.writeln(content);
+      return;
+    }
+
+    final path = _writeTempAiFile(
+      content: content,
+      kind: kind,
+      extension: extension,
+    );
+    stdout.writeln(
+      _tr(
+        en: "AI output saved to temporary file:",
+        es: "Salida de IA guardada en archivo temporal:",
+        pt: "Saida da IA salva em arquivo temporario:",
+        fr: "Sortie IA enregistree dans un fichier temporaire:",
+        it: "Output IA salvato in file temporaneo:",
+        de: "KI-Ausgabe in temporaerer Datei gespeichert:",
+      ),
+    );
+    stdout.writeln("  ${_absPath(path)}");
+    try {
+      _openInBrowser(path);
+    } catch (_) {}
+  }
+
+  static String _writeTempAiFile({
+    required String content,
+    required String kind,
+    required String extension,
+  }) {
+    String root;
+    try {
+      root = findProjectRoot();
+    } catch (_) {
+      root = Directory.current.absolute.path;
+    }
+    final dir = Directory("$root/.dart_tool/omega_ai_temp");
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
+    }
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final file = File("${dir.path}/omega_ai_${kind}_$ts.$extension");
+    file.writeAsStringSync(content);
+    return file.path;
+  }
+
+  static String _formatExplainMarkdown({
+    required String mode,
+    required String tracePath,
+    required int eventsCount,
+    required String firstEvent,
+    required String lastEvent,
+    required List<MapEntry<String, int>> top,
+    required List<MapEntry<String, int>> nsEntries,
+    required List<String> diagnosis,
+  }) {
+    final b = StringBuffer();
+    b.writeln("# Omega AI Explain ($mode)");
+    b.writeln("");
+    b.writeln("## ${_tr(en: "Summary", es: "Resumen")}");
+    b.writeln("- Trace: `$tracePath`");
+    b.writeln(
+      "- ${_tr(en: "Events", es: "Eventos", pt: "Eventos", fr: "Evenements", it: "Eventi", de: "Ereignisse")}: `$eventsCount`",
+    );
+    b.writeln(
+      "- ${_tr(en: "First event", es: "Primer evento", pt: "Primeiro evento", fr: "Premier evenement", it: "Primo evento", de: "Erstes Ereignis")}: `$firstEvent`",
+    );
+    b.writeln(
+      "- ${_tr(en: "Last event", es: "Ultimo evento", pt: "Ultimo evento", fr: "Dernier evenement", it: "Ultimo evento", de: "Letztes Ereignis")}: `$lastEvent`",
+    );
+    b.writeln("");
+    b.writeln(
+      "## ${_tr(en: "Top events", es: "Eventos principales", pt: "Principais eventos", fr: "Evenements principaux", it: "Eventi principali", de: "Top-Ereignisse")}",
+    );
+    if (top.isEmpty) {
+      b.writeln("- ${_tr(en: "No data", es: "Sin datos")}");
+    } else {
+      for (final item in top) {
+        b.writeln("- `${item.key}`: ${item.value}");
+      }
+    }
+    b.writeln("");
+    b.writeln("## Namespaces");
+    if (nsEntries.isEmpty) {
+      b.writeln("- ${_tr(en: "No data", es: "Sin datos")}");
+    } else {
+      for (final item in nsEntries) {
+        b.writeln("- `${item.key}`: ${item.value}");
+      }
+    }
+    b.writeln("");
+    b.writeln(
+      "## ${_tr(en: "Heuristic diagnosis", es: "Diagnostico heuristico", pt: "Diagnostico heuristico", fr: "Diagnostic heuristique", it: "Diagnosi euristica", de: "Heuristische Diagnose")}",
+    );
+    for (final line in diagnosis) {
+      b.writeln("- $line");
+    }
+    return b.toString();
+  }
+
+  static String _formatCoachMarkdown({
+    required String mode,
+    required String feature,
+    required List<String> requiredArtifacts,
+    required List<String> steps,
+    required List<String> validationChecks,
+    required List<String> insights,
+    required String nextCommand,
+  }) {
+    final b = StringBuffer();
+    b.writeln("# Omega AI Coach ($mode)");
+    b.writeln("");
+    b.writeln(
+      "- ${_tr(en: "Feature", es: "Feature", pt: "Feature", fr: "Feature", it: "Feature", de: "Feature")}: `$feature`",
+    );
+    b.writeln("");
+    b.writeln(
+      "## ${_tr(en: "Guided steps", es: "Pasos guiados", pt: "Passos guiados", fr: "Etapes guidees", it: "Passi guidati", de: "Gefuehrte Schritte")}",
+    );
+    for (var i = 0; i < steps.length; i++) {
+      b.writeln("${i + 1}. ${steps[i]}");
+    }
+    b.writeln("");
+    b.writeln(
+      "## ${_tr(en: "Required Omega artifacts", es: "Artefactos Omega requeridos")}",
+    );
+    for (final item in requiredArtifacts) {
+      b.writeln("- $item");
+    }
+    b.writeln("");
+    b.writeln("## ${_tr(en: "Validation checks", es: "Checks de validacion")}");
+    for (final item in validationChecks) {
+      b.writeln("- `$item`");
+    }
+    if (insights.isNotEmpty) {
+      b.writeln("");
+      b.writeln("## ${_tr(en: "AI insights", es: "Insights de IA")}");
+      for (final item in insights) {
+        b.writeln("- $item");
+      }
+    }
+    b.writeln("");
+    b.writeln(
+      "## ${_tr(en: "Suggested next command", es: "Siguiente comando sugerido", pt: "Proximo comando sugerido", fr: "Prochaine commande suggeree", it: "Prossimo comando suggerito", de: "Empfohlener naechster Befehl")}",
+    );
+    b.writeln("`$nextCommand`");
+    return b.toString();
+  }
+
+  static String _formatCoachAuditMarkdown({
+    required String mode,
+    required String feature,
+    required int score,
+    required String summary,
+    required List<String> gaps,
+    required List<String> findings,
+    required List<String> insights,
+  }) {
+    final b = StringBuffer();
+    b.writeln("# Omega AI Coach Audit ($mode)");
+    b.writeln("");
+    b.writeln("- Feature: `$feature`");
+    b.writeln("- Score: `$score/100`");
+    b.writeln("- Summary: $summary");
+    b.writeln("");
+
+    b.writeln("## Findings");
+    if (findings.isEmpty) {
+      b.writeln("- ${_tr(en: "No findings yet.", es: "Sin hallazgos aun.")}");
+    } else {
+      for (final item in findings) {
+        b.writeln("- $item");
+      }
+    }
+    b.writeln("");
+
+    b.writeln("## Gaps");
+    if (gaps.isEmpty) {
+      b.writeln(
+        "- ${_tr(en: "No gaps detected.", es: "No se detectaron brechas.")}",
+      );
+    } else {
+      for (final item in gaps) {
+        b.writeln("- $item");
+      }
+    }
+
+    if (insights.isNotEmpty) {
+      b.writeln("");
+      b.writeln("## AI Insights");
+      for (final item in insights) {
+        b.writeln("- $item");
+      }
+    }
+
+    return b.toString();
+  }
+
+  static String _tr({
+    required String en,
+    String? es,
+    String? pt,
+    String? fr,
+    String? it,
+    String? de,
+  }) {
+    switch (_preferredLangCode()) {
+      case "es":
+        return es ?? en;
+      case "pt":
+        return pt ?? en;
+      case "fr":
+        return fr ?? en;
+      case "it":
+        return it ?? en;
+      case "de":
+        return de ?? en;
+      default:
+        return en;
+    }
+  }
+
+  static String _preferredLangCode() {
+    final env = Platform.environment;
+    final fromEnv = (env["OMEGA_AI_LANG"] ?? env["OMEGA_AI_LANGUAGE"] ?? "")
+        .trim()
+        .toLowerCase();
+    if (fromEnv.isNotEmpty) {
+      return fromEnv.split(RegExp(r"[-_]")).first;
+    }
+    final locale = Platform.localeName.toLowerCase().replaceAll("_", "-");
+    return locale.split("-").first;
+  }
+
+  static String _preferredAiLanguage() {
+    final code = _preferredLangCode();
+    switch (code) {
+      case "es":
+        return "Spanish";
+      case "pt":
+        return "Portuguese";
+      case "fr":
+        return "French";
+      case "it":
+        return "Italian";
+      case "de":
+        return "German";
+      default:
+        return "English";
+    }
+  }
+
+  static Future<T> _runWithProgress<T>(
+    String label,
+    Future<T> Function() action,
+  ) async {
+    if (!stdout.hasTerminal) {
+      return action();
+    }
+
+    var step = 0;
+    late final Timer timer;
+    stdout.write("$label.");
+    timer = Timer.periodic(const Duration(milliseconds: 350), (_) {
+      step = (step + 1) % 4;
+      final dots = "." * (step + 1);
+      stdout.write("\r$label$dots   ");
+    });
+
+    try {
+      final result = await action();
+      stdout.write("\r${" " * (label.length + 8)}\r");
+      stdout.writeln(
+        _tr(
+          en: "$label done.",
+          es: "$label listo.",
+          pt: "$label concluido.",
+          fr: "$label termine.",
+          it: "$label completato.",
+          de: "$label abgeschlossen.",
+        ),
+      );
+      return result;
+    } finally {
+      timer.cancel();
+    }
   }
 }

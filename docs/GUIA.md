@@ -569,6 +569,21 @@ Future<void> replayOfflineIntents(
 
 La implementación concreta de la cola (SharedPreferences, Hive, SQLite, etc.) queda a elección de la app host; solo debe implementar `OmegaOfflineQueue`.
 
+---
+
+### CLI y Asistencia con IA
+
+**Qué hace:** Omega incluye una herramienta de línea de comandos (CLI) para automatizar la creación de proyectos, generar módulos (ecosistemas) y recibir asistencia de IA para diagnosticar errores o auditar la arquitectura de tus features.
+
+**Comandos principales:**
+- `omega init` — Inicializa Omega en tu proyecto Flutter.
+- `omega g ecosystem <Name>` — Genera agente, flow, behavior y página.
+- `omega ai explain <trace.json>` — Diagnostica una sesión grabada usando IA.
+- `omega ai coach audit "<feature>"` — Audita las brechas de arquitectura en una funcionalidad real.
+- `omega ai coach module "<Name>"` — Genera un módulo completo con arquitectura avanzada (asistido por IA).
+
+Consulta el **[README principal](../README.md)** y la **documentación web** (`dart run omega doc`) para ver todos los comandos, flags de IA y variables de entorno soportadas.
+
 ## Enlaces
 
 - [ARQUITECTURA.md](ARQUITECTURA.md) — Detalle técnico de cada componente.

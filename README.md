@@ -241,6 +241,67 @@ Health check passed.
 
 ---
 
+#### ai
+
+**Why:** Analyze recorded traces faster with an AI-assisted diagnostic flow, while keeping a zero-cost offline mode as default/fallback.
+
+**Instruction (main forms):**
+
+- `dart run omega_architecture:omega ai doctor` — checks AI setup (`OMEGA_AI_ENABLED`, provider, model, base URL, API key).
+- `dart run omega_architecture:omega ai env` — prints supported environment variables and examples.
+- `dart run omega_architecture:omega ai explain <file.json>` — heuristic diagnosis from trace; by default writes a styled temp report and opens it.
+- `dart run omega_architecture:omega ai explain <file.json> --json` — same diagnosis in machine-readable JSON.
+- `dart run omega_architecture:omega ai explain <file.json> --provider-api` — tries provider API (currently OpenAI) and falls back to offline if config/network fails.
+- `dart run omega_architecture:omega ai explain <file.json> --stdout` — print output directly in console (skip temp file).
+- `dart run omega_architecture:omega ai coach start "<feature>"` — guided implementation plan (steps + required artifacts + validation checks); temp file by default.
+- `dart run omega_architecture:omega ai coach audit "<feature>"` — audits current project for feature gaps (files, setup wiring, contracts, tests) and returns score/findings/gaps.
+- `dart run omega_architecture:omega ai coach module "<Name>"` — generates a complete ecosystem with AI guidance. Use `--template advanced` for a sophisticated boilerplate with `OmegaWorkflowFlow`, `OmegaStatefulAgent`, and tests.
+
+**Concept:** `ai explain` reads the same trace format used by `omega trace` (`events` list + optional `initialSnapshot`). In offline mode it reports top events, namespaces and heuristic checks (errors/failures/repetition). With `--provider-api`, it uses environment configuration and returns provider output when available; fallback is automatic to keep the command resilient. While waiting for provider responses, the CLI shows a progress status in terminal.
+
+`ai coach start` helps you design features in Omega with architecture-first guidance. `ai coach audit` evaluates a real project state for a feature and highlights concrete gaps to close. `ai coach module` goes beyond simple scaffolding by using templates optimized for the latest Omega patterns.
+
+**Future capabilities (WIP):**
+- `ai coach fix-gaps` — Automatically create missing files and wiring detected by audit.
+- `ai coach generate-tests` — Generate real test cases by analyzing flow and agent logic.
+- `ai suggest-contracts` — Analyze logic and propose declarative contract definitions.
+- `ai compare-traces` — Explain behavioral differences between two recorded sessions.
+- `ai review-architecture` — Senior-level architectural report (couplings, naming, complexity).
+
+**Language behavior:** provider and offline outputs are localized by system locale (`Platform.localeName`) and can be overridden with `OMEGA_AI_LANG` / `OMEGA_AI_LANGUAGE`.
+
+**Environment variables (AI):**
+
+- `OMEGA_AI_ENABLED` (`true|false`, default `false`)
+- `OMEGA_AI_PROVIDER` (`openai | anthropic | gemini | ollama | none`)
+- `OMEGA_AI_API_KEY` (optional for `ollama`)
+- `OMEGA_AI_MODEL`
+- `OMEGA_AI_BASE_URL` (optional custom endpoint)
+- `OMEGA_AI_LANG` / `OMEGA_AI_LANGUAGE` (optional language override)
+
+**Example (provider):**
+```
+dart run omega_architecture:omega ai explain trace.json --provider-api
+Omega AI Explain (provider-api)
+  Trace: C:\...\trace.json
+  Events: 42
+  ...
+```
+
+**Example (offline JSON):**
+```
+dart run omega_architecture:omega ai explain trace.json --json
+{"trace":"C:\\...\\trace.json","events":42,"mode":"offline",...}
+```
+
+**Example (coach audit):**
+```
+dart run omega_architecture:omega ai coach audit "auth"
+# writes .dart_tool/omega_ai_temp/omega_ai_coach_audit_<timestamp>.md
+```
+
+---
+
 ### How `g ecosystem` uses omega_setup
 
 1. The CLI resolves your **project root** (directory that contains `pubspec.yaml`).
