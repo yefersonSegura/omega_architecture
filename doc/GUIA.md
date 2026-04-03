@@ -576,7 +576,8 @@ La implementación concreta de la cola (SharedPreferences, Hive, SQLite, etc.) q
 **Qué hace:** Omega incluye una herramienta de línea de comandos (CLI) para automatizar la creación de proyectos, generar módulos (ecosistemas) y recibir asistencia de IA para diagnosticar errores o auditar la arquitectura de tus features.
 
 **Comandos principales:**
-- `omega init` — Inicializa Omega en tu proyecto Flutter.
+- `omega create app <Name>` — Orquestador que crea un nuevo proyecto Flutter, añade Omega, inicializa la arquitectura y opcionalmente genera la lógica de negocio real con IA (`--kickstart`).
+- `omega init` — Inicializa Omega en tu proyecto Flutter existente.
 - `omega g ecosystem <Name>` — Genera agente, flow, behavior y página.
 - `omega ai explain <trace.json>` — Diagnostica una sesión grabada usando IA.
 - `omega ai coach audit "<feature>"` — Audita las brechas de arquitectura en una funcionalidad real.

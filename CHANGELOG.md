@@ -1,3 +1,12 @@
+## 0.0.25 (Orchestration & App Creation)
+
+- **omega create app:** New top-level CLI command to bootstrap a full Flutter project with Omega pre-configured.
+- **AI Kickstart:** Generates real business logic (agents, flows, UI) based on descriptions.
+- **Widget Test Fix:** The generator now correctly overwrites `test/widget_test.dart` with a compatible smoke test, avoiding `MyApp` errors.
+- **AI Auth Fix:** Corrected `$apiKey` escaping in provider calls.
+- **OmegaNavigator compatibility:** Added `onGenerateRoute` support.
+- **Exported Bootstrap:** `OmegaRuntime` and `OmegaConfig` are now exported from the main entry point.
+
 ## 0.0.24
 - The official Omega documentation was added.
 

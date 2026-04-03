@@ -202,7 +202,7 @@ Trace: C:\...\trace.json
 
 ---
 
-#### doctor
+#### doctor [path]
 
 **Why:** One command to see if your Omega setup is valid, how many agents/flows you have, and optional hints (e.g. flows/agents without a contract), so you can fix issues before they cause problems at runtime.
 
@@ -222,6 +222,27 @@ Omega Doctor
 
 Health check passed.
 ```
+
+---
+
+#### create app <Name>
+
+**Why:** Bootstrap a professional Flutter project with Omega in seconds, including a clean startup sequence and optionally AI-generated business logic tailored to your idea.
+
+**Instruction:** `omega create app my_new_app [--kickstart "app description"] [--provider-api]`
+
+**Concept:** Orchestrates `flutter create`, adds the `omega_architecture` dependency, runs `omega init`, and replaces the default `main.dart` with a clean Omega-ready entry point (`OmegaRuntime.bootstrap` + `OmegaScope`). If `--kickstart` is provided, the CLI uses AI to analyze your description and generate all necessary ecosystem modules (agents, flows, behavior, UI) with custom logic. This command must be run **outside** existing Flutter projects (it is a project creator).
+
+**Example:**
+```bash
+# Basic setup
+omega create app my_store
+
+# Advanced AI kickstart (requires OMEGA_AI_API_KEY)
+omega create app my_store --kickstart "an e-commerce with cart and stripe" --provider-api
+```
+
+---
 
 **Example (errors):**
 ```

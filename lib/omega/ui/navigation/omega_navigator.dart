@@ -92,4 +92,22 @@ class OmegaNavigator {
       navigatorKey.currentState?.pushReplacement(route);
     }
   }
+
+  /// Implementation for [MaterialApp.onGenerateRoute].
+  /// This allows using standard Navigator API (Navigator.pushNamed) with Omega routes.
+  Route<dynamic>? onGenerateRoute(RouteSettings settings) {
+    final name = settings.name;
+    if (name == null) return null;
+
+    final entry = _routes[name];
+    if (entry == null) {
+      debugPrint("OmegaNavigator ERROR: Route '$name' not found in onGenerateRoute.");
+      return null;
+    }
+
+    return MaterialPageRoute<void>(
+      builder: entry.route.builder,
+      settings: settings,
+    );
+  }
 }

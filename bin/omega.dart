@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-const String _version = "0.0.1";
+const String _version = "0.0.25";
 const String _docUrl = "http://yefersonsegura.com/proyects/omega/";
 
 void _openInBrowser(String urlOrPath) {
@@ -60,6 +60,10 @@ Future<void> main(List<String> args) async {
     case "g":
     case "generate":
     case "create":
+      if (args.length > 1 && args[1] == "app") {
+        await OmegaCreateAppCommand.run(args.length > 2 ? args.sublist(2) : []);
+        return;
+      }
       OmegaGenerateCommand.run(args.length > 1 ? args.sublist(1) : []);
       break;
 
@@ -95,6 +99,9 @@ void printHelp() {
   stdout.writeln("Commands:");
   stdout.writeln(
     "  doc                  Open the web documentation (official site in browser)",
+  );
+  stdout.writeln(
+    "  create app <Name>    Create a new Flutter project with Omega pre-configured",
   );
   stdout.writeln(
     "  inspector            Open the local Omega Inspector HTML (desktop/mobile VM Service)",
@@ -134,6 +141,9 @@ void printHelp() {
     "  omega inspector           # open local inspector.html in browser",
   );
   stdout.writeln("  omega init");
+  stdout.writeln(
+    "  omega create app my_new_app --kickstart \"login, profile and settings\"",
+  );
   stdout.writeln("  omega init --force");
   stdout.writeln(
     "  omega g ecosystem Auth    # auth_agent, auth_flow, auth_behavior, auth_page",
@@ -166,6 +176,253 @@ void printHelp() {
     "  g ecosystem / agent / flow: run from the folder where you want the files.",
   );
   stdout.writeln("");
+}
+
+class OmegaCreateAppCommand {
+  static Future<void> run(List<String> args) async {
+    if (args.isEmpty || args[0] == "-h" || args[0] == "--help") {
+      stdout.writeln(
+        'Usage: omega create app <name> [--kickstart "description"] [--provider-api]',
+      );
+      return;
+    }
+
+    final appName = args[0];
+    final kickstart = OmegaAiCommand._optionValue(args, "--kickstart");
+    final useProviderApi = args.contains("--provider-api");
+
+    stdout.writeln(
+      "🚀 ${_tr(en: "Creating new Omega app: $appName", es: "Creando nueva Omega app: $appName")}...",
+    );
+
+    // 1. Flutter Create
+    final createRes = await runWithProgress<ProcessResult>(
+      _tr(en: "Running flutter create", es: "Ejecutando flutter create"),
+      () => Process.run("flutter", ["create", appName], runInShell: true),
+    );
+
+    if (createRes.exitCode != 0) {
+      _err(
+        "${_tr(en: "Failed to create Flutter project", es: "Fallo al crear el proyecto de Flutter")}: ${createRes.stderr}",
+      );
+      return;
+    }
+
+    final projectRoot = Directory(
+      "${Directory.current.path}${Platform.pathSeparator}$appName",
+    ).absolute.path;
+
+    // 2. Add omega_architecture
+    await runWithProgress<ProcessResult>(
+      _tr(
+        en: "Adding omega_architecture dependency",
+        es: "Agregando dependencia omega_architecture",
+      ),
+      () => Process.run(
+        "dart",
+        ["pub", "add", "omega_architecture"],
+        workingDirectory: projectRoot,
+        runInShell: true,
+      ),
+    );
+
+    // 3. Omega Init
+    final originalCwd = Directory.current.path;
+    Directory.current = projectRoot;
+    try {
+      stdout.writeln(
+        "🛠️ ${_tr(en: "Initializing Omega architecture", es: "Inicializando arquitectura Omega")}...",
+      );
+      OmegaInitCommand.run([]);
+
+      // 4. Setup modules with AI if requested
+      String? firstModule;
+      if (kickstart != null) {
+        stdout.writeln(
+          "🤖 ${_tr(en: "Kickstarting with AI: $kickstart", es: "Iniciando con IA: $kickstart")}...",
+        );
+
+        final modules = await runWithProgress<List<String>>(
+          _tr(
+            en: "Analyzing architecture needs",
+            es: "Analizando necesidades de arquitectura",
+          ),
+          () async {
+            if (useProviderApi) {
+              final aiModules = await _providerSuggestModules(kickstart);
+              if (aiModules != null) return aiModules;
+            }
+            return ["Home"]; // Fallback
+          },
+        );
+
+        if (modules.isNotEmpty) {
+          firstModule = modules.first;
+        }
+
+        for (final module in modules) {
+          stdout.writeln(
+            "🏗️ ${_tr(en: "Generating module: $module", es: "Generando modulo: $module")}...",
+          );
+          await OmegaAiCommand._coachModule(
+            feature: module,
+            template: "advanced",
+            asJson: false,
+            useProviderApi: useProviderApi,
+            toTempFile: false,
+          );
+        }
+      }
+
+      // 5. Setup clean main.dart
+      _setupCleanMain(projectRoot, appName, initialModule: firstModule);
+
+      // 6. Setup clean widget_test.dart
+      _setupCleanTest(projectRoot, appName);
+    } finally {
+      Directory.current = originalCwd;
+    }
+
+    stdout.writeln("\n✨ ${_tr(en: "App ready!", es: "App lista!")}");
+    stdout.writeln("  cd $appName");
+    stdout.writeln("  flutter run");
+  }
+
+  static void _setupCleanMain(
+    String root,
+    String appName, {
+    String? initialModule,
+  }) {
+    final mainFile = File(
+      "$root${Platform.pathSeparator}lib${Platform.pathSeparator}main.dart",
+    );
+    final initialFlowId = initialModule != null ? "'$initialModule'" : "null";
+    mainFile.writeAsStringSync('''
+import 'package:flutter/material.dart';
+import 'package:omega_architecture/omega_architecture.dart';
+import 'package:omega_architecture/omega/bootstrap/omega_runtime.dart';
+import 'omega/omega_setup.dart';
+
+void main() {
+  final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
+  runApp(
+    OmegaScope(
+      channel: runtime.channel,
+      flowManager: runtime.flowManager,
+      initialFlowId: $initialFlowId,
+      child: OmegaApp(navigator: runtime.navigator),
+    ),
+  );
+}
+
+class OmegaApp extends StatelessWidget {
+  final OmegaNavigator navigator;
+  const OmegaApp({super.key, required this.navigator});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: '$appName',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+      ),
+      navigatorKey: navigator.navigatorKey,
+      onGenerateRoute: navigator.onGenerateRoute,
+    );
+  }
+}
+''');
+    _formatFile(mainFile.path);
+  }
+
+  static void _setupCleanTest(String root, String appName) {
+    final testDir = Directory("$root${Platform.pathSeparator}test");
+    if (!testDir.existsSync()) {
+      testDir.createSync(recursive: true);
+    }
+    final testFile =
+        File("${testDir.path}${Platform.pathSeparator}widget_test.dart");
+
+    testFile.writeAsStringSync('''
+import 'package:flutter_test/flutter_test.dart';
+import 'package:omega_architecture/omega_architecture.dart';
+import 'package:omega_architecture/omega/bootstrap/omega_runtime.dart';
+import 'package:$appName/main.dart';
+import 'package:$appName/omega/omega_setup.dart';
+
+void main() {
+  testWidgets('Omega smoke test', (WidgetTester tester) async {
+    // This is a minimal smoke test for a project generated by Omega.
+    // It boots the runtime and verifies the app can be pumped.
+    final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
+    
+    await tester.pumpWidget(
+      OmegaScope(
+        channel: runtime.channel,
+        flowManager: runtime.flowManager,
+        child: OmegaApp(navigator: runtime.navigator),
+      ),
+    );
+
+    expect(find.byType(OmegaApp), findsOneWidget);
+  });
+}
+''');
+    _formatFile(testFile.path);
+  }
+
+  static Future<List<String>?> _providerSuggestModules(
+    String description,
+  ) async {
+    final env = Platform.environment;
+    if (env["OMEGA_AI_ENABLED"] != "true") return null;
+    final provider = env["OMEGA_AI_PROVIDER"];
+    if (provider != "openai") return null;
+    final apiKey = env["OMEGA_AI_API_KEY"];
+    if (apiKey == null || apiKey.isEmpty) return null;
+
+    final model = env["OMEGA_AI_MODEL"] ?? "gpt-4o-mini";
+    final baseUrl = env["OMEGA_AI_BASE_URL"] ?? "https://api.openai.com/v1";
+    final endpoint =
+        "${baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions";
+
+    final requestBody = {
+      "model": model,
+      "temperature": 0.3,
+      "messages": [
+        {
+          "role": "system",
+          "content":
+              "You are Omega architecture planner. Return ONLY a comma-separated list of 2-4 core module names (PascalCase) needed for the app description. No extra text.",
+        },
+        {"role": "user", "content": "Description: $description"},
+      ],
+    };
+
+    HttpClient? client;
+    try {
+      client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+      final request = await client.postUrl(Uri.parse(endpoint));
+      request.headers.set(HttpHeaders.authorizationHeader, "Bearer $apiKey");
+      request.headers.set(HttpHeaders.contentTypeHeader, "application/json");
+      request.write(jsonEncode(requestBody));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode != 200) return null;
+      final decoded = jsonDecode(body);
+      final content = decoded["choices"][0]["message"]["content"].toString();
+      return content
+          .split(",")
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    } catch (_) {
+      return null;
+    } finally {
+      client?.close(force: true);
+    }
+  }
 }
 
 class OmegaInitCommand {
@@ -1744,6 +2001,7 @@ class OmegaAiCommand {
     required String appRoot,
     required String modulePath,
     required String moduleName,
+    Map<String, String>? customCode,
   }) {
     final lower = moduleName.toLowerCase();
     final agentPath = "$modulePath${Platform.pathSeparator}${lower}_agent.dart";
@@ -1757,6 +2015,70 @@ class OmegaAiCommand {
     final testPath =
         "$appRoot${Platform.pathSeparator}test${Platform.pathSeparator}${lower}_module_test.dart";
 
+    if (customCode != null) {
+      if (customCode.containsKey("events")) {
+        File(eventsPath).writeAsStringSync(customCode["events"]!);
+      }
+      if (customCode.containsKey("behavior")) {
+        File(behaviorPath).writeAsStringSync(customCode["behavior"]!);
+      }
+      if (customCode.containsKey("agent")) {
+        File(agentPath).writeAsStringSync(customCode["agent"]!);
+      }
+      if (customCode.containsKey("flow")) {
+        File(flowPath).writeAsStringSync(customCode["flow"]!);
+      }
+      if (customCode.containsKey("page")) {
+        File(pagePath).writeAsStringSync(customCode["page"]!);
+      }
+    } else {
+      // Default advanced template (already exists below)
+      _writeDefaultAdvancedTemplate(
+        moduleName: moduleName,
+        lower: lower,
+        eventsPath: eventsPath,
+        behaviorPath: behaviorPath,
+        agentPath: agentPath,
+        flowPath: flowPath,
+        pagePath: pagePath,
+      );
+    }
+
+    final testDir = Directory("$appRoot${Platform.pathSeparator}test");
+    if (!testDir.existsSync()) {
+      testDir.createSync(recursive: true);
+    }
+    File(testPath).writeAsStringSync('''
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  test('${moduleName} module scaffold compiles', () {
+    expect(true, isTrue);
+  });
+}
+''');
+
+    for (final p in [
+      eventsPath,
+      behaviorPath,
+      agentPath,
+      flowPath,
+      pagePath,
+      testPath,
+    ]) {
+      _formatFile(p);
+    }
+  }
+
+  static void _writeDefaultAdvancedTemplate({
+    required String moduleName,
+    required String lower,
+    required String eventsPath,
+    required String behaviorPath,
+    required String agentPath,
+    required String flowPath,
+    required String pagePath,
+  }) {
     File(eventsPath).writeAsStringSync('''
 import 'package:omega_architecture/omega_architecture.dart';
 
@@ -1949,30 +2271,78 @@ class ${moduleName}Page extends StatelessWidget {
   }
 }
 ''');
+  }
 
-    final testDir = Directory("$appRoot${Platform.pathSeparator}test");
-    if (!testDir.existsSync()) {
-      testDir.createSync(recursive: true);
-    }
-    File(testPath).writeAsStringSync('''
-import 'package:flutter_test/flutter_test.dart';
+  static Future<Map<String, String>?> _providerGenerateModuleCode(
+    String description,
+    String moduleName,
+  ) async {
+    final env = Platform.environment;
+    if (env["OMEGA_AI_ENABLED"] != "true") return null;
+    final provider = env["OMEGA_AI_PROVIDER"];
+    if (provider != "openai") return null;
+    final apiKey = env["OMEGA_AI_API_KEY"];
+    if (apiKey == null || apiKey.isEmpty) return null;
 
-void main() {
-  test('${moduleName} module scaffold compiles', () {
-    expect(true, isTrue);
-  });
-}
-''');
+    final model = env["OMEGA_AI_MODEL"] ?? "gpt-4o-mini";
+    final baseUrl = env["OMEGA_AI_BASE_URL"] ?? "https://api.openai.com/v1";
+    final endpoint =
+        "${baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions";
 
-    for (final p in [
-      eventsPath,
-      behaviorPath,
-      agentPath,
-      flowPath,
-      pagePath,
-      testPath,
-    ]) {
-      _formatFile(p);
+    final lower = moduleName.toLowerCase();
+    final prompt =
+        """
+Generate Dart code for an Omega Architecture module named '$moduleName' ($lower).
+The app description is: '$description'.
+
+Return a JSON object with these keys, containing the full code for each file:
+- 'events': enum ${moduleName}Intent (start, etc), enum ${moduleName}Event, and class ${moduleName}ViewState (with copyWith and 'static const idle').
+- 'behavior': class ${moduleName}Behavior extends OmegaAgentBehaviorEngine with rules for events.
+- 'agent': class ${moduleName}Agent extends OmegaStatefulAgent<${moduleName}ViewState>. 
+- 'flow': class ${moduleName}Flow extends OmegaWorkflowFlow handling business logic.
+- 'page': class ${moduleName}Page (StatelessWidget) using StreamBuilder on flow.expressions and OmegaScope.
+
+CRITICAL RULES:
+1. NEVER use internal paths like 'package:omega_architecture/omega/core/...'.
+2. ALWAYS use ONLY 'import 'package:omega_architecture/omega_architecture.dart';'.
+3. Page file MUST import events via: "import '../${lower}_events.dart';"
+4. Agent and Behavior files MUST import events via: "import '${lower}_events.dart';"
+5. The ViewState class must be inside the 'events' file.
+6. Use ONLY the following JSON structure: { "events": "...", "behavior": "...", "agent": "...", "flow": "...", "page": "..." }
+7. NO extra markdown or conversational text. Return ONLY valid JSON.
+""";
+
+    HttpClient? client;
+    try {
+      client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
+      final request = await client.postUrl(Uri.parse(endpoint));
+      request.headers.set(HttpHeaders.authorizationHeader, "Bearer $apiKey");
+      request.headers.set(HttpHeaders.contentTypeHeader, "application/json");
+      request.write(
+        jsonEncode({
+          "model": model,
+          "temperature": 0.3,
+          "messages": [
+            {"role": "system", "content": "You are a code generator."},
+            {"role": "user", "content": prompt},
+          ],
+          "response_format": {"type": "json_object"},
+        }),
+      );
+
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode != 200) return null;
+
+      final decoded = jsonDecode(body);
+      final content = decoded["choices"][0]["message"]["content"].toString();
+      final moduleCode = jsonDecode(content);
+
+      return Map<String, String>.from(moduleCode);
+    } catch (_) {
+      return null;
+    } finally {
+      client?.close(force: true);
     }
   }
 
@@ -2162,14 +2532,27 @@ void main() {
     final insights = <String>[];
     var mode = "offline";
 
+    Map<String, String>? aiGeneratedCode;
+
     if (useProviderApi) {
-      final providerSteps = await _runWithProgress<List<String>?>(
+      final providerSteps = await runWithProgress<List<String>?>(
         _tr(en: "Consulting AI provider", es: "Consultando proveedor IA"),
         () => _providerCoachPlan(feature),
       );
       if (providerSteps != null && providerSteps.isNotEmpty) {
         insights.addAll(providerSteps);
         mode = "provider-api";
+      }
+
+      final generated = await runWithProgress<Map<String, String>?>(
+        _tr(
+          en: "Generating custom logic with AI",
+          es: "Generando lógica personalizada con IA",
+        ),
+        () => _providerGenerateModuleCode(feature, moduleName),
+      );
+      if (generated != null) {
+        aiGeneratedCode = generated;
       }
     }
 
@@ -2199,7 +2582,7 @@ void main() {
     var created = false;
     final originalCwd = Directory.current.path;
     if (hasSetup) {
-      await _runWithProgress<void>(
+      await runWithProgress<void>(
         _tr(
           en: "Generating ecosystem module",
           es: "Generando modulo de ecosistema",
@@ -2215,6 +2598,7 @@ void main() {
           appRoot: appRoot,
           modulePath: modulePath,
           moduleName: moduleName,
+          customCode: aiGeneratedCode,
         );
       }
     } else {
@@ -2847,93 +3231,97 @@ void main() {
     return b.toString();
   }
 
-  static String _tr({
-    required String en,
-    String? es,
-    String? pt,
-    String? fr,
-    String? it,
-    String? de,
-  }) {
-    switch (_preferredLangCode()) {
-      case "es":
-        return es ?? en;
-      case "pt":
-        return pt ?? en;
-      case "fr":
-        return fr ?? en;
-      case "it":
-        return it ?? en;
-      case "de":
-        return de ?? en;
-      default:
-        return en;
-    }
-  }
-
-  static String _preferredLangCode() {
-    final env = Platform.environment;
-    final fromEnv = (env["OMEGA_AI_LANG"] ?? env["OMEGA_AI_LANGUAGE"] ?? "")
-        .trim()
-        .toLowerCase();
-    if (fromEnv.isNotEmpty) {
-      return fromEnv.split(RegExp(r"[-_]")).first;
-    }
-    final locale = Platform.localeName.toLowerCase().replaceAll("_", "-");
-    return locale.split("-").first;
-  }
-
-  static String _preferredAiLanguage() {
-    final code = _preferredLangCode();
-    switch (code) {
-      case "es":
-        return "Spanish";
-      case "pt":
-        return "Portuguese";
-      case "fr":
-        return "French";
-      case "it":
-        return "Italian";
-      case "de":
-        return "German";
-      default:
-        return "English";
-    }
-  }
-
   static Future<T> _runWithProgress<T>(
     String label,
     Future<T> Function() action,
   ) async {
-    if (!stdout.hasTerminal) {
-      return action();
-    }
+    return runWithProgress<T>(label, action);
+  }
+}
 
-    var step = 0;
-    late final Timer timer;
-    stdout.write("$label.");
-    timer = Timer.periodic(const Duration(milliseconds: 350), (_) {
-      step = (step + 1) % 4;
-      final dots = "." * (step + 1);
-      stdout.write("\r$label$dots   ");
-    });
+String _tr({
+  required String en,
+  String? es,
+  String? pt,
+  String? fr,
+  String? it,
+  String? de,
+}) {
+  switch (_preferredLangCode()) {
+    case "es":
+      return es ?? en;
+    case "pt":
+      return pt ?? en;
+    case "fr":
+      return fr ?? en;
+    case "it":
+      return it ?? en;
+    case "de":
+      return de ?? en;
+    default:
+      return en;
+  }
+}
 
-    try {
-      final result = await action();
-      stdout.write("\r${" " * (label.length + 8)}\r");
-      stdout.writeln(
-        _tr(
-          en: "$label done.",
-          es: "$label listo.",
-          pt: "$label concluido.",
-          fr: "$label termine.",
-          it: "$label completato.",
-          de: "$label abgeschlossen.",
-        ),
-      );
-      return result;
-    } finally {
-      timer.cancel();
-    }
+String _preferredLangCode() {
+  final env = Platform.environment;
+  final fromEnv = (env["OMEGA_AI_LANG"] ?? env["OMEGA_AI_LANGUAGE"] ?? "")
+      .trim()
+      .toLowerCase();
+  if (fromEnv.isNotEmpty) {
+    return fromEnv.split(RegExp(r"[-_]")).first;
+  }
+  final locale = Platform.localeName.toLowerCase().replaceAll("_", "-");
+  return locale.split("-").first;
+}
+
+String _preferredAiLanguage() {
+  final code = _preferredLangCode();
+  switch (code) {
+    case "es":
+      return "Spanish";
+    case "pt":
+      return "Portuguese";
+    case "fr":
+      return "French";
+    case "it":
+      return "Italian";
+    case "de":
+      return "German";
+    default:
+      return "English";
+  }
+}
+
+Future<T> runWithProgress<T>(String label, Future<T> Function() action) async {
+  if (!stdout.hasTerminal) {
+    return action();
+  }
+
+  var step = 0;
+  late final Timer timer;
+  stdout.write("$label.");
+  timer = Timer.periodic(const Duration(milliseconds: 350), (_) {
+    step = (step + 1) % 4;
+    final dots = "." * (step + 1);
+    stdout.write("\r$label$dots   ");
+  });
+
+  try {
+    final result = await action();
+    stdout.write("\r${" " * (label.length + 8)}\r");
+    stdout.writeln(
+      _tr(
+        en: "$label done.",
+        es: "$label listo.",
+        pt: "$label concluido.",
+        fr: "$label termine.",
+        it: "$label completato.",
+        de: "$label abgeschlossen.",
+      ),
+    );
+    return result;
+  } finally {
+    timer.cancel();
   }
 }

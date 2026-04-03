@@ -228,6 +228,21 @@
                     </p>
                     <div class="card glass animate">
                         <details>
+                            <summary><strong>0.0.25 — Orquestación y Creación de Apps</strong></summary>
+                            <p style="margin-top: 12px;">
+                                Introduce <code>omega create app</code>, un orquestador que automatiza todo el setup de un proyecto Omega desde cero, incluyendo asistencia inteligente de IA.
+                            </p>
+                            <ul>
+                                <li><strong>App Creator:</strong> <code>omega create app &lt;Name&gt;</code> coordina <code>flutter create</code>, dependencias y <code>omega init</code> en un solo paso.</li>
+                                <li><strong>Kickstart con IA:</strong> El flag <code>--kickstart</code> permite que la IA escriba la lógica de negocio real (agentes, flows y UI) basada en tu descripción, no solo plantillas genéricas.</li>
+                                <li><strong>Navegación estándar:</strong> <code>OmegaNavigator</code> ahora soporta <code>onGenerateRoute</code>, permitiendo usar <code>Navigator.pushNamed</code> con rutas Omega.</li>
+                                <li><strong>Tests de humo automáticos:</strong> El generador limpia los tests por defecto de Flutter para asegurar que el proyecto nuevo compile y pase tests desde el minuto uno.</li>
+                            </ul>
+                            <p style="margin-top: 8px; font-weight: 600;">Ejemplo:</p>
+                            <pre class="glass" style="margin-top: 8px; padding: 12px; font-size: 13px;"><code># Crea una app de criptomonedas con lógica real generada por IA
+omega create app omega_crypto --kickstart "real-time crypto dashboard" --provider-api</code></pre>
+                        </details>
+                        <details>
                             <summary><strong>0.0.23 — Evolución AI y Generación Avanzada</strong></summary>
                             <p style="margin-top: 12px;">
                                 Potencia el flujo de desarrollo con comandos asistidos por IA para diagnosticar, auditar y generar módulos completos siguiendo las mejores prácticas de Omega.
@@ -1297,6 +1312,7 @@ if (loaded != null) {
                         <button type="button" class="cli-tab-btn" data-tab="cli-gflow" role="tab">g flow</button>
                         <button type="button" class="cli-tab-btn" data-tab="cli-validate" role="tab">validate</button>
                         <button type="button" class="cli-tab-btn" data-tab="cli-trace" role="tab">trace</button>
+                        <button type="button" class="cli-tab-btn" data-tab="cli-create-app" role="tab">create app</button>
                         <button type="button" class="cli-tab-btn" data-tab="cli-doctor" role="tab">doctor</button>
                         <button type="button" class="cli-tab-btn" data-tab="cli-ai" role="tab">ai</button>
                     </div>
@@ -1449,6 +1465,17 @@ Optional (contracts):
   Tip: add a contract getter for clearer semantics and debug warnings.
 
 Health check passed.</code></pre>
+                        </div>
+                        <!-- create app -->
+                        <div id="cli-create-app" class="cli-tab-panel" role="tabpanel">
+                            <h4>Para qué</h4>
+                            <p>Arrancar un proyecto profesional de Flutter con Omega en segundos, con todo el cableado inicial y opcionalmente lógica de negocio generada por IA.</p>
+                            <h4>Instrucción</h4>
+                            <pre class="glass"><code>omega create app &lt;Nombre&gt; [--kickstart "descripción"] [--provider-api]</code></pre>
+                            <h4>Concepto</h4>
+                            <p>Orquesta <code>flutter create</code>, añade <code>omega_architecture</code>, corre <code>omega init</code> y genera un <code>main.dart</code> limpio con el bootstrap de Omega. Si usas <code>--kickstart</code>, la IA analiza tu idea y genera módulos personalizados (agentes, flows y UI) específicos para tu app. Debe ejecutarse <strong>fuera</strong> de proyectos existentes.</p>
+                            <h4>Ejemplo (IA)</h4>
+                            <pre class="glass"><code>omega create app my_store --kickstart "e-commerce with cart and payments" --provider-api</code></pre>
                         </div>
                         <!-- ai -->
                         <div id="cli-ai" class="cli-tab-panel" role="tabpanel">

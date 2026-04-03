@@ -67,3 +67,7 @@ export 'omega/ui/flutter/omega_inspector.dart';
 export 'omega/ui/flutter/omega_inspector_launcher.dart';
 export 'omega/ui/flutter/omega_inspector_receiver.dart';
 export 'omega/ui/flutter/omega_inspector_server.dart';
+
+// BOOTSTRAP
+export 'omega/bootstrap/omega_runtime.dart';
+export 'omega/bootstrap/omega_config.dart';

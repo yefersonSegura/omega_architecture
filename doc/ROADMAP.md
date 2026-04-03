@@ -51,6 +51,7 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 - [x] **Diagnóstico de trazas:** `omega ai explain <trace.json>` para heurísticas offline o diagnóstico por proveedor (OpenAI) con reporte Markdown en editor.
 - [x] **Coaching de features:** `omega ai coach start` (plan arquitectónico) y `omega ai coach audit` (análisis de brechas en proyecto real: wiring, contratos, tests).
 - [x] **Generación avanzada asistida:** `omega ai coach module` con plantillas optimizadas (`OmegaWorkflowFlow`, `OmegaStatefulAgent`, `OmegaTypedEvent`, contracts).
+- [x] **Orquestador de creación (App Creator):** `omega create app` que coordina Flutter, dependencias y arquitectura desde cero, con kickstart de IA para generar la lógica de negocio inicial basada en una descripción libre.
 - [ ] **Autorreparación (fix-gaps):** Crear automáticamente archivos y cableado detectado en el audit.
 - [ ] **Generador de tests:** Crear casos de prueba reales (`flutter_test`) analizando la lógica de flows/agentes generados.
 - [ ] **Sugerencias de contratos:** Proponer definiciones de contratos declarativos analizando el código existente.
