@@ -358,7 +358,13 @@ if (ev != null) {
                             <h3>1. Global Activation</h3>
                             <p>Install the Omega CLI on your system to use it from any folder:</p>
                             <pre class="glass" style="margin-top: 12px; padding: 16px; font-size: 14px;"><code>dart pub global activate omega_architecture</code></pre>
-                            <p style="font-size: 12px; margin-top: 8px; color: var(--text-dim);">Note: Ensure <a href="#cli-create-app" style="color: var(--accent);">Dart's PATH is configured</a> if the command is not recognized.</p>
+                            <div style="font-size: 12px; margin-top: 8px; color: var(--text-dim);">
+                                <p><strong>PATH Setup (if command is not recognized):</strong></p>
+                                <ul style="margin-left: 16px; margin-top: 4px;">
+                                    <li><strong>Windows:</strong> Add <code>%LOCALAPPDATA%\Pub\Cache\bin</code> to your user Path variable.</li>
+                                    <li><strong>macOS/iOS/Linux:</strong> Add <code>export PATH="$PATH":"$HOME/.pub-cache/bin"</code> to your <code>~/.zshrc</code> or <code>~/.bashrc</code>.</li>
+                                </ul>
+                            </div>
                         </div>
                         <div class="card glass">
                             <div class="icon" style="font-size: 24px; margin-bottom: 12px;">🚀</div>
@@ -391,7 +397,7 @@ if (ev != null) {
                             <h3>1. Add the dependency</h3>
                             <p>In your app’s <code>pubspec.yaml</code>:</p>
                             <pre class="glass" style="margin-top: 12px; padding: 16px; font-size: 14px;"><code>dependencies:
-  omega_architecture: ^0.0.26</code></pre>
+  omega_architecture: ^0.0.27</code></pre>
                         </div>
                         <div class="card glass">
                             <h3>2. Initialize in your app</h3>
@@ -1237,7 +1243,7 @@ if (loaded != null) {
                     </p>
 
                     <h3 class="animate" style="font-size: 20px; margin-top: 24px;">Tech stack</h3>
-                    <p class="animate">Flutter (mobile + web), <code>omega_architecture</code> ^0.0.26,
+                    <p class="animate">Flutter (mobile + web), <code>omega_architecture</code> ^0.0.27,
                         <code>shared_preferences</code> (mobile/desktop), <code>web</code> (localStorage on web for
                         session, theme and snapshots).
                     </p>
@@ -1417,7 +1423,7 @@ if (loaded != null) {
                     <p class="subtitle animate" style="margin-bottom: 12px;">Add to your <code>pubspec.yaml</code>
                         (from pub.dev):</p>
                     <pre class="glass animate"><code>dependencies:
-  omega_architecture: ^0.0.26</code></pre>
+  omega_architecture: ^0.0.27</code></pre>
                     <div class="highlight-box animate" style="margin-top: 24px;">
                         <p><strong>Complete example in the package:</strong> The <code>example/</code> folder contains an
                             app with a login flow: login screen that emits intents with

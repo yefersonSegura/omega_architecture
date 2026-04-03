@@ -586,7 +586,24 @@ dart pub global activate --source git https://github.com/yefersonSegura/omega_ar
 dart pub global activate --source path .
 ```
 
-> **Nota sobre el PATH:** Si al ejecutar `omega` el terminal dice "command not found", asegúrate de que el directorio `bin` de la caché de Dart/Pub esté en tu variable de entorno PATH. (Ej. en Windows: `%LOCALAPPDATA%\Pub\Cache\bin`).
+#### Configuración del PATH
+Para que el sistema reconozca el comando `omega` desde cualquier directorio, debes añadir la carpeta de binarios globales de Dart a tu sistema.
+
+**Windows:**
+1. Presiona la tecla **Windows** y escribe: `variables de entorno`.
+2. Selecciona **"Editar las variables de entorno del sistema"**.
+3. Haz clic en el botón **"Variables de entorno..."**.
+4. En **"Variables de usuario"**, busca **`Path`** y haz clic en **"Editar"**.
+5. Haz clic en **"Nuevo"** y pega: `%LOCALAPPDATA%\Pub\Cache\bin`
+6. Acepta todo y **REINICIA EL TERMINAL**.
+
+**macOS / iOS / Linux:**
+1. Abre tu archivo de configuración de shell (ej: `~/.zshrc`, `~/.bashrc`).
+2. Añade esta línea al final:
+   ```bash
+   export PATH="$PATH":"$HOME/.pub-cache/bin"
+   ```
+3. Guarda el archivo y ejecuta `source ~/.zshrc` (o tu archivo correspondiente) o reinicia el terminal.
 
 #### 2. Creación de una App (Sin IA)
 Crea una estructura limpia con Omega ya configurado en `main.dart` y `omega_setup.dart`.

@@ -1,3 +1,10 @@
+## 0.0.27 (Autonomous Self-Healing)
+
+- **Self-Healing Project Creation:** `omega create app` now automatically runs `dart analyze` after generation.
+    - If compilation errors are found, the CLI uses AI to diagnose and **auto-fix** the code.
+    - Ensures the generated project is 100% functional and error-free without manual intervention.
+- **Improved AI Logic:** More precise prompts for AI-generated modules to minimize syntax errors.
+
 ## 0.0.26 (CLI Robustness & UX)
 
 - **`omega create app` improvements:**

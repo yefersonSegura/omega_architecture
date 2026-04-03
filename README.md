@@ -23,6 +23,24 @@ dart pub global activate omega_architecture
 dart pub global activate --source git https://github.com/yefersonSegura/omega_architecture.git
 ```
 
+#### Configuring the PATH
+To use the `omega` command from any directory, you must add the Dart SDK's global binaries folder to your system's PATH.
+
+**Windows:**
+1. Open **Start**, search for **"Environment Variables"** and select **"Edit the system environment variables"**.
+2. Click **"Environment Variables..."**.
+3. Under **"User variables"**, find **`Path`** and click **"Edit"**.
+4. Click **"New"** and add: `%LOCALAPPDATA%\Pub\Cache\bin`
+5. Click **OK** on all windows and **restart your terminal**.
+
+**macOS / Linux:**
+1. Open your shell configuration file (e.g., `~/.zshrc`, `~/.bashrc`, or `~/.bash_profile`).
+2. Add the following line at the end:
+   ```bash
+   export PATH="$PATH":"$HOME/.pub-cache/bin"
+   ```
+3. Save the file and run `source ~/.zshrc` (or your specific file) or restart the terminal.
+
 ### 2. Create your first App
 Once activated, you can use the `omega` command from anywhere:
 
@@ -122,7 +140,7 @@ Add the dependency to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  omega_architecture: ^0.0.26
+  omega_architecture: ^0.0.27
 ```
 
 ## Omega CLI
