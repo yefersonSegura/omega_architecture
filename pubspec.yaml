@@ -1,9 +1,9 @@
 name: omega_architecture
 description: "A reactive, agent-based architecture framework for Flutter applications."
-version: 0.0.23
+version: 0.0.24
 repository: https://github.com/yefersonSegura/omega_architecture
 homepage: https://github.com/yefersonSegura/omega_architecture
-# Documentation: API reference (HTTPS, no penalización). Web completa: http://yefersonsegura.com/proyects/omega/
+Documentation: https://yefersonsegura.com/projects/omega/index-en.html
 documentation: https://pub.dev/documentation/omega_architecture/latest
 issue_tracker: https://github.com/yefersonSegura/omega_architecture/issues
 

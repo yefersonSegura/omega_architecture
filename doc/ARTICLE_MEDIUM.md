@@ -1,43 +1,41 @@
-**Omega Architecture: The Nervous System for Your Flutter Apps**
+**Omega Architecture: The AI-Powered Nervous System for Your Flutter Apps**
 **By Yeferson Segura**
 
-If you have felt that BLoC or Riverpod tie you to the UI, that navigation and business logic get mixed up, or that in large projects it is hard to follow "who does what," this article is for you. Meet **Omega Architecture**: a reactive, agent-based framework for Flutter that puts logic where it belongs — outside the widget tree — and gives you traceability and scalability from day one.
+If you have felt that BLoC or Riverpod tie you to the UI, that navigation and business logic get mixed up, or that scaling large teams leads to "architecture drift," this article is for you. Meet **Omega Architecture**: a reactive, agent-based framework for Flutter that now integrates **Artificial Intelligence** directly into your development workflow.
 
 ---
 
 **The Problem Omega Solves**
 
-In complex apps the same thing often happens: **business logic** gets tangled with Streams, Providers, or the **BuildContext** itself. Changing a screen means touching several files. **Testing** without spinning up the whole UI is difficult. And when the team grows, nobody is quite sure where each **business rule** lives.
+In complex apps, business logic often gets tangled with the widget tree. Changing a screen means touching several files, and testing without spinning up the whole UI is a challenge. **Omega** shifts the paradigm: the UI is a mirror of the system state, not the place where logic "lives." 
 
-**Omega** shifts the paradigm: the UI is no longer the center. Instead, you have **autonomous agents** that react to events, **flows** that orchestrate state and navigation, and a **global channel** that communicates everything in a semantic way. The interface becomes a mirror of what happens in the system, not the place where logic "lives."
+With the release of **version 0.0.23 (AI Evolution)**, we are taking this a step further by adding an AI-assisted CLI that acts as your personal Senior Architect.
 
 ---
 
-**The Pillars of Omega**
+**The Core Pillars**
 
-**1. Reactive Agents**
+1. **Reactive & Stateful Agents**: Units of logic that react to events. `OmegaStatefulAgent` now allows agents to hold reactive view state, making UI updates seamless without breaking the core event model.
+2. **Event Bus (OmegaChannel)**: The nervous system. Everything moves through a central channel with full traceability.
+3. **Workflow Flows**: `OmegaWorkflowFlow` adds step-based orchestration (defineStep, next, failStep) for complex processes like checkouts or onboarding.
+4. **Semantic & Typed Intents**: High-level requests (e.g., "login") that decouple the UI from implementation.
 
-An **OmegaAgent** is a unit of logic with its own identity: it has an **ID**, subscribes to the event bus (**OmegaChannel**), and uses a **behavior engine** that decides how to react to each event or intent. Logic is not in the widget; it is in the **agent**, and you can **test it without Flutter**.
+---
 
-**2. Event Bus (OmegaChannel)**
+**The AI Revolution: Omega CLI**
 
-Everything goes through **OmegaChannel**: **events** with name and payload, **navigation intents**, agent responses. It is the **nervous system** of the app. Any part can **emit and listen**, with **full traceability**: you know who emitted what and who reacted.
+The standout feature of the new version is the **AI Evolution**. The CLI (`omega ai`) is no longer just a file generator; it’s a diagnostic and auditing tool:
 
-**3. Business Flows (OmegaFlow)**
-
-An **OmegaFlow** represents a business flow (**login, checkout, onboarding**). It has **states** (idle, running, paused, and so on) and **lifecycle hooks** (onStart, onPause, etc.). It orchestrates navigation and UI through **expressions** and **intents**, without depending on BuildContext. You can have **several flows active at once** or switch from one to another with **switchTo**.
-
-**4. Semantic Intents (OmegaIntent)**
-
-Instead of calling **Navigator.push** from a widget, you emit an **intent** with a name and data. The **flow** and the **navigator** react. The UI only says "I want to go to login"; the **how and when** are handled by the architecture.
+*   **`omega ai coach module`**: Generates full ecosystems (Flows, Agents, Typed Events, Contracts, and Tests) using AI-optimized templates. It creates a robust, advanced boilerplate in seconds.
+*   **`omega ai coach audit`**: Scans your real project, detects gaps in wiring (setup), missing contracts, or missing tests for a specific feature. It gives you an architecture health score and concrete steps to close the gaps.
+*   **`omega ai explain`**: Analyzes recorded event traces. The AI explains what happened in the business logic, helping you debug complex race conditions or logic errors.
+*   **Editor Integration**: AI reports are automatically generated as temporary Markdown files and opened in your editor for a superior reading experience.
 
 ---
 
 **Architecture at a Glance**
 
-The diagram below shows how Omega fits together: the **UI** (with **OmegaScope** and **OmegaBuilder**) connects to the **OmegaChannel**, the central event bus. **Agents** (each with a **behavior engine**) and **flows** subscribe to the channel and react to events and intents. The **OmegaFlowManager** coordinates which flows are running and routes intents to them. The **OmegaNavigator** handles screen changes based on those intents, without the UI holding a BuildContext. The **CLI** (omega init, omega g ecosystem) generates the structure in your app.
-
-[Insert image here: Omega architecture diagram. You can use the diagram from the project repository (presentation/diagram.png) or from the official site: http://yefersonsegura.com/proyects/omega/]
+The UI connects to the **OmegaChannel**. **Agents** and **flows** subscribe and react. The **FlowManager** routes intents, and the **Navigator** handles screen changes. Everything is wired in a single `omega_setup.dart` file that you own and the CLI helps maintain.
 
 ---
 
@@ -45,75 +43,56 @@ The diagram below shows how Omega fits together: the **UI** (with **OmegaScope**
 
 | Aspect | Omega | BLoC / Riverpod |
 |--------|--------|------------------|
-| Where logic lives | Agents independent of the widget tree | Blocs/Providers tied to UI or context |
-| Navigation | Decoupled (intents to FlowManager to Navigator) | Typically with BuildContext |
-| Traceability | Events and intents with names on a single channel | Usually manual (logs, debug) |
-| Logic testing | No emulators: agents and flows in isolation | Often requires mounting widgets or providers |
-| Scalability | Modular by ecosystems (agent, flow, behavior, UI) | Depends on how you organize Blocs/Providers |
-
-Omega does not compete on popularity with BLoC or Riverpod; it **differentiates** with a fixed model: **agents**, **behavior engine**, **channel**, **flows**, and **intents**. It is an option when you prioritize **clear architecture**, **larger teams**, or **apps with high complexity**.
+| **AI Assistance** | Integrated Audit/Coach/Generation | Manual or generic LLM |
+| **Logic Location** | Independent Agents/Flows | Tied to Widget Tree/Context |
+| **Navigation** | Decoupled via Intents | Typically via BuildContext |
+| **Traceability** | Centralized Event Bus | Fragmented per Store/Bloc |
+| **Boilerplate** | AI-Generated & Optimized | Mostly Manual |
 
 ---
 
 **Get Started in 5 Minutes**
 
 **1. Add the Dependency**
+```yaml
+dependencies:
+  omega_architecture: ^0.0.23
+```
 
-In your app **pubspec.yaml**:
+**2. Initialize Omega**
+```bash
+dart run omega_architecture:omega init
+```
 
-    dependencies:
-      omega_architecture: ^0.0.5
+**3. Generate an Advanced Module with AI**
+```bash
+dart run omega_architecture:omega ai coach module "Payment" --template advanced
+```
 
-**2. Create the Setup in Your App**
-
-From your **project root** (where pubspec.yaml is):
-
-    dart run omega_architecture:omega init
-
-This creates **lib/omega/omega_setup.dart** in your app, with an empty **OmegaConfig** (agents, flows, routes). **You own that file**.
-
-**3. Generate Your First Ecosystem**
-
-Open the terminal in the **folder where you want the feature** (for example lib/features) and run:
-
-    dart run omega_architecture:omega g ecosystem Auth
-
-The **agent**, **flow**, **behavior**, and **page** are created in that folder, and the CLI **registers** the agent and flow in **omega_setup.dart** automatically. You add the **routes** in the config.
-
-**4. Bootstrap the Runtime in Your main.dart**
-
-    void main() {
-      final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
-      runApp(
-        OmegaScope(
-          channel: runtime.channel,
-          flowManager: runtime.flowManager,
-          child: MyApp(navigator: runtime.navigator),
-        ),
-      );
-    }
-
-Your **MaterialApp** uses the runtime **navigatorKey**, and on the **first frame** (for example from a _RootHandler) you emit the **initial navigation intent** or **activate the right flow**.
+**4. Audit your Architecture**
+```bash
+dart run omega_architecture:omega ai coach audit "auth"
+```
 
 ---
 
 **Why It Is Worth It**
 
-- **Less coupling:** The UI does not know about routes or navigation context. Flows emit intents; the navigator reacts.
-- **Semantic traceability:** Events and intents have names and payloads. You can follow "who asked for what" without relying on print statements.
-- **Single place for configuration:** omega_setup.dart holds agents, flows, and routes. One look and you understand how the app is wired.
-- **Low upfront cost:** omega init and omega g ecosystem generate the structure. You focus on business rules and UX.
+*   **Zero-Friction Scaffolding**: AI handles the "wiring" so you focus on the logic.
+*   **Plug-and-Play UI**: Generated pages connect dynamically to the FlowManager via `OmegaScope`.
+*   **Localization Support**: AI reports and CLI messages respect your system language.
+*   **Scalability**: Designed for teams that need strict architectural patterns without the manual overhead.
 
 ---
 
 **Resources**
 
-- **Official website (documentation, diagram, whitepaper):** http://yefersonsegura.com/proyects/omega/
-- **Package on pub.dev:** omega_architecture (https://pub.dev/packages/omega_architecture)
-- **Source and docs:** GitHub — omega_architecture (https://github.com/yefersonSegura/omega_architecture)
+*   **Official Website**: [yefersonsegura.com/proyects/omega/](http://yefersonsegura.com/proyects/omega/)
+*   **Pub.dev**: [omega_architecture](https://pub.dev/packages/omega_architecture)
+*   **GitHub**: [yefersonSegura/omega_architecture](https://github.com/yefersonSegura/omega_architecture)
 
-Omega is built for **high-complexity applications** and **teams** that want an architecture that **scales** without getting lost in scattered Providers or Blocs. If that matches your goal, **give it a try** and share your experience.
+Omega is built for **high-complexity applications** and developers who want an architecture that **scales and audits itself**. Give it a try and join the AI-powered Flutter evolution!
 
 ---
 
-If you found this article useful, share it or leave a comment. You can follow me on GitHub (https://github.com/yefersonSegura/omega_architecture) or Instagram (https://www.instagram.com/yefer_z/) for more on Flutter and architecture.
+If you found this useful, follow me on GitHub or Instagram (@yefer_z) for more on Flutter and AI-driven architecture.

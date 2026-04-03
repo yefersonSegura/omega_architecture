@@ -1,3 +1,6 @@
+## 0.0.24
+- The official Omega documentation was added.
+
 ## 0.0.23 (AI Evolution)
 
 - **omega ai coach module:** New AI-guided command to generate complete ecosystems with advanced boilerplate. Use `--template advanced` to generate `OmegaWorkflowFlow`, `OmegaStatefulAgent`, typed events, declarative contracts, and initial test files.
