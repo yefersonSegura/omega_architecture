@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-const String _version = "0.0.27";
+const String _version = "0.0.31";
 const String _docUrl = "http://yefersonsegura.com/proyects/omega/";
 
 void _openInBrowser(String urlOrPath) {
@@ -266,6 +266,7 @@ class OmegaCreateAppCommand {
           );
           await OmegaAiCommand._coachModule(
             feature: module,
+            productContext: kickstart,
             template: "advanced",
             asJson: false,
             useProviderApi: useProviderApi,
@@ -336,7 +337,58 @@ class OmegaApp extends StatelessWidget {
         useMaterial3: true,
       ),
       navigatorKey: navigator.navigatorKey,
+      // Same pattern as package example/lib/main.dart: use [home] so Flutter does not
+      // request route "/" (Omega routes are ids like "login", "Home", not "/").
       onGenerateRoute: navigator.onGenerateRoute,
+      home: const _OmegaAppRoot(),
+    );
+  }
+}
+
+/// Boots the initial flow and opens the first screen via [navigationIntentEvent],
+/// matching [example/lib/main.dart] (_RootHandler).
+class _OmegaAppRoot extends StatefulWidget {
+  const _OmegaAppRoot();
+
+  @override
+  State<_OmegaAppRoot> createState() => _OmegaAppRootState();
+}
+
+class _OmegaAppRootState extends State<_OmegaAppRoot> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final scope = OmegaScope.of(context);
+      final flowId = scope.initialFlowId;
+      if (flowId != null) {
+        scope.flowManager.switchTo(flowId);
+        scope.channel.emit(
+          OmegaEvent(
+            id: 'omega:initial-nav',
+            name: navigationIntentEvent,
+            payload: OmegaIntent(
+              id: 'omega:initial-nav-intent',
+              name: 'navigate.\$flowId',
+            ),
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasBootTarget = OmegaScope.of(context).initialFlowId != null;
+    return Scaffold(
+      body: Center(
+        child: hasBootTarget
+            ? const CircularProgressIndicator()
+            : const Text(
+                'Omega is running. Add flows and routes in lib/omega/omega_setup.dart.',
+              ),
+      ),
     );
   }
 }
@@ -625,6 +677,9 @@ OMEGA REFERENCE (must match this API; same patterns as package example/lib/omega
 - Agents/flows usually take OmegaEventBus (global OmegaChannel or channel.namespace('domain'))
 - INTENTS/EVENTS: enums MUST implement OmegaIntentName and OmegaEventName (NOT OmegaIntent nor OmegaEvent). Use const constructors and final String name, e.g. enum AppIntent implements OmegaIntentName { login('x.login'); const AppIntent(this.name); @override final String name; }
 - OmegaIntent.fromName(FIRST_ARG) requires an OmegaIntentName enum VALUE (e.g. MyIntent.start), NEVER a String literal and NEVER MyIntent.start.name. Same idea: OmegaEvent.fromName(MyEvent.foo) not a raw string.
+- OmegaWorkflowFlow emits workflow.step on step changes; failStep emits workflow.error—declare both in OmegaFlowContract.emittedExpressionTypes alongside idle/loading/success/error/workflow.done as needed.
+- Flows on a shared channel receive all events: include every event name your onEvent reads OR that the same module emits on that bus (e.g. *.requested) in listenedEventNames.
+- Agents on a shared global channel: use OmegaAgentContract(listenedEventNames: {}) to avoid false "not in contract" warnings for other modules' events; prefer channel.namespace('moduleId') in createOmegaConfig for isolation.
 
 Example format:
 {
@@ -2229,8 +2284,11 @@ class OmegaAiCommand {
     }
 
     if (action == "module") {
+      final moduleNameFlag = _optionValue(rest, "--module") ?? _optionValue(rest, "-m");
       await _coachModule(
         feature: feature,
+        updateModule: moduleNameFlag,
+        productContext: null,
         template: template,
         asJson: asJson,
         useProviderApi: useProviderApi,
@@ -2358,57 +2416,6 @@ class OmegaAiCommand {
     ];
   }
 
-  /// Default page scaffold (same as advanced template) for AI fallback.
-  static String _omegaDefaultAdvancedPageDart({
-    required String moduleName,
-    required String lower,
-  }) {
-    return '''
-import 'package:flutter/material.dart';
-import 'package:omega_architecture/omega_architecture.dart';
-import '../${lower}_events.dart';
-
-class ${moduleName}Page extends StatelessWidget {
-  const ${moduleName}Page({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final scope = OmegaScope.of(context);
-    final flow = scope.flowManager.getFlow('$moduleName');
-    if (flow == null) {
-      return const Scaffold(
-        body: Center(child: Text('Flow not registered in omega_setup.dart')),
-      );
-    }
-    return Scaffold(
-      appBar: AppBar(title: const Text('$moduleName')),
-      body: Center(
-        child: StreamBuilder<OmegaFlowExpression>(
-          stream: flow.expressions,
-          builder: (context, snapshot) {
-            final expr = snapshot.data;
-            if (expr?.type == 'loading') {
-              return const CircularProgressIndicator();
-            }
-            if (expr?.type == 'error') {
-              final msg = expr?.payloadAs<String>() ?? 'Unknown error';
-              return Text(msg);
-            }
-            return ElevatedButton(
-              onPressed: () => scope.flowManager.handleIntent(
-                OmegaIntent.fromName(${moduleName}Intent.start),
-              ),
-              child: const Text('Start'),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-''';
-  }
-
   /// Rejects common AI mistakes: wrong *Name types, missing const enums, wrong imports.
   static bool _omegaAiEventsPassSanity(String code, String moduleName) {
     final t = code.trim();
@@ -2467,53 +2474,38 @@ class ${moduleName}Page extends StatelessWidget {
         "$appRoot${Platform.pathSeparator}test${Platform.pathSeparator}${lower}_module_test.dart";
 
     if (customCode != null) {
-      Map<String, String>? toWrite = Map<String, String>.from(customCode);
+      Map<String, String> toWrite = Map<String, String>.from(customCode);
       if (!_omegaAiEventsPassSanity(toWrite["events"] ?? "", moduleName)) {
         stdout.writeln(
           "⚠️ ${_tr(
-            en: "AI events file failed validation (use OmegaIntentName / OmegaEventName + const enums). Using default scaffold.",
-            es: "Archivo de eventos IA inválido (usa OmegaIntentName / OmegaEventName y enums const). Usando plantilla por defecto.",
+            en: "AI events file has potential issues. Will attempt to fix via self-healing...",
+            es: "Archivo de eventos IA con posibles problemas. Se intentará arreglar con auto-sanación...",
           )}",
-        );
-        toWrite = null;
-      } else if (!_omegaAiPagePassSanity(toWrite["page"] ?? "", moduleName)) {
-        stdout.writeln(
-          "⚠️ ${_tr(
-            en: "AI page: OmegaIntent.fromName must receive ${moduleName}Intent.* (not String or .name). Using default page.",
-            es: "Página IA: OmegaIntent.fromName debe recibir ${moduleName}Intent.* (no String ni .name). Usando página por defecto.",
-          )}",
-        );
-        toWrite["page"] = _omegaDefaultAdvancedPageDart(
-          moduleName: moduleName,
-          lower: lower,
         );
       }
-      if (toWrite == null) {
-        _writeDefaultAdvancedTemplate(
-          moduleName: moduleName,
-          lower: lower,
-          eventsPath: eventsPath,
-          behaviorPath: behaviorPath,
-          agentPath: agentPath,
-          flowPath: flowPath,
-          pagePath: pagePath,
+      if (!_omegaAiPagePassSanity(toWrite["page"] ?? "", moduleName)) {
+        stdout.writeln(
+          "⚠️ ${_tr(
+            en: "AI page has potential issues. Will attempt to fix via self-healing...",
+            es: "Página IA con posibles problemas. Se intentará arreglar con auto-sanación...",
+          )}",
         );
-      } else {
-        if (toWrite.containsKey("events")) {
-          File(eventsPath).writeAsStringSync(toWrite["events"]!);
-        }
-        if (toWrite.containsKey("behavior")) {
-          File(behaviorPath).writeAsStringSync(toWrite["behavior"]!);
-        }
-        if (toWrite.containsKey("agent")) {
-          File(agentPath).writeAsStringSync(toWrite["agent"]!);
-        }
-        if (toWrite.containsKey("flow")) {
-          File(flowPath).writeAsStringSync(toWrite["flow"]!);
-        }
-        if (toWrite.containsKey("page")) {
-          File(pagePath).writeAsStringSync(toWrite["page"]!);
-        }
+      }
+
+      if (toWrite.containsKey("events")) {
+        File(eventsPath).writeAsStringSync(toWrite["events"]!);
+      }
+      if (toWrite.containsKey("behavior")) {
+        File(behaviorPath).writeAsStringSync(toWrite["behavior"]!);
+      }
+      if (toWrite.containsKey("agent")) {
+        File(agentPath).writeAsStringSync(toWrite["agent"]!);
+      }
+      if (toWrite.containsKey("flow")) {
+        File(flowPath).writeAsStringSync(toWrite["flow"]!);
+      }
+      if (toWrite.containsKey("page")) {
+        File(pagePath).writeAsStringSync(toWrite["page"]!);
       }
     } else {
       // Default advanced template (already exists below)
@@ -2647,7 +2639,9 @@ class ${moduleName}Agent extends OmegaStatefulAgent<${moduleName}ViewState> {
 
   @override
   OmegaAgentContract? get contract => OmegaAgentContract(
-    listenedEventNames: {${moduleName}Event.requested.name},
+    // Shared OmegaChannel delivers every module's events to every agent; an empty
+    // listenedEventNames set disables false debug warnings. Behavior still filters by name.
+    listenedEventNames: {},
   );
 
   @override
@@ -2678,8 +2672,20 @@ class ${moduleName}Flow extends OmegaWorkflowFlow {
   @override
   OmegaFlowContract? get contract => OmegaFlowContract(
     acceptedIntentNames: {${moduleName}Intent.start.name, ${moduleName}Intent.retry.name},
-    listenedEventNames: {${moduleName}Event.succeeded.name, ${moduleName}Event.failed.name},
-    emittedExpressionTypes: {'idle', 'loading', 'success', 'error', 'workflow.done'},
+    listenedEventNames: {
+      ${moduleName}Event.requested.name,
+      ${moduleName}Event.succeeded.name,
+      ${moduleName}Event.failed.name,
+    },
+    emittedExpressionTypes: {
+      'idle',
+      'loading',
+      'success',
+      'error',
+      'workflow.done',
+      'workflow.step',
+      'workflow.error',
+    },
   );
 
   @override
@@ -2763,8 +2769,9 @@ class ${moduleName}Page extends StatelessWidget {
 
   static Future<Map<String, String>?> _providerGenerateModuleCode(
     String description,
-    String moduleName,
-  ) async {
+    String moduleName, {
+    String? productContext,
+  }) async {
     final env = Platform.environment;
     if (env["OMEGA_AI_ENABLED"] != "true") return null;
     final provider = env["OMEGA_AI_PROVIDER"];
@@ -2778,15 +2785,24 @@ class ${moduleName}Page extends StatelessWidget {
         "${baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions";
 
     final lower = moduleName.toLowerCase();
+    final contextBlock = (productContext != null &&
+            productContext.trim().isNotEmpty)
+        ? """
+OVERALL PRODUCT / APP CONTEXT (use for screen purpose, layout, labels, tone, and domain widgets; keep Omega APIs correct):
+${productContext.trim()}
+
+"""
+        : "";
     final prompt =
         """
-Generate Dart code for an Omega Architecture module named '$moduleName' ($lower).
-The app description is: '$description'.
-
+Generate COMPLETE and FUNCTIONAL Dart code for an Omega Architecture module named '$moduleName' ($lower).
+PRIMARY FOCUS: '$description'.
+$contextBlock
 REFERENCE (official package patterns; mirror example/lib/omega/omega_setup.dart, example/lib/omega/app_semantics.dart for enums):
 - Flow id: ${moduleName}Flow must use super(id: '$moduleName', channel: channel) so flowManager.getFlow('$moduleName') in ${moduleName}Page resolves. If this module is the app entry flow, OmegaConfig.initialFlowId in omega_setup.dart must be that same string (example: AuthFlow uses id "authFlow" and OmegaConfig.initialFlowId: "authFlow").
 - Pages: scope.flowManager.getFlow('$moduleName'); StreamBuilder<OmegaFlowExpression>(stream: flow.expressions, ...).
 - omega_setup.dart (not in this JSON): add ${moduleName}Flow and ${moduleName}Agent to OmegaConfig; route example OmegaRoute(id: '$moduleName', builder: (context) => const ${moduleName}Page()). For typed routes use OmegaRoute.typed<T>(id: '...', builder: (context, payload) => ...).
+- Contracts (debug warnings): OmegaWorkflowFlow always emits workflow.step (and failStep emits workflow.error)—include those in emittedExpressionTypes. Flow listenedEventNames must include *.requested if that event is published on the same bus. On a shared global channel, agents should use OmegaAgentContract(listenedEventNames: {}) OR wire agents/flows with channel.namespace('$lower') for isolation.
 
 CRITICAL RULES:
 1. ALWAYS use ONLY 'import 'package:omega_architecture/omega_architecture.dart';' plus 'import 'package:flutter/material.dart';' in page.
@@ -2795,6 +2811,15 @@ CRITICAL RULES:
 4. Return a JSON object with EXACTLY these keys: "events", "behavior", "agent", "flow", "page".
 5. ENUMS: implement OmegaIntentName / OmegaEventName only (abstract name contracts). NEVER write implements OmegaIntent or implements OmegaEvent on an enum.
 6. UI: OmegaIntent.fromName(${moduleName}Intent.start) — pass the enum constant, NOT a String, NOT ${moduleName}Intent.start.name.
+
+UI DESIGN (apply to the 'page' value only; DO NOT USE PLACEHOLDERS):
+- PROHIBITED: Do not return a screen with just one button or a single text.
+- MANDATORY: Build a real, high-quality Material 3 interface. Use Padding, SingleChildScrollView, Column, Row, Card, TextField, ListTile, FilledButton, etc.
+- If it's a Login: Include fields for email/password, a logo placeholder (Icon), and a primary action button.
+- If it's a Dashboard/Tracking: Include Cards with statistics, ListTiles for items, and appropriate Icons.
+- If it's a Settings: Use a list of switches and tiles.
+- Use the language of the description (e.g. if the user describes in Spanish, use Spanish labels).
+- Ensure StreamBuilder handles 'loading' (with CircularProgressIndicator), 'error' (with red text or icon), and 'success' (with the main content).
 
 FILE TEMPLATES AND RULES:
 
@@ -2817,6 +2842,7 @@ FILE TEMPLATES AND RULES:
   - import '${lower}_events.dart' and '${lower}_behavior.dart';
   - class ${moduleName}Agent extends OmegaStatefulAgent<${moduleName}ViewState> {
       ${moduleName}Agent(OmegaEventBus channel) : super(id: '$moduleName', channel: channel, behavior: ${moduleName}Behavior(), initialState: ${moduleName}ViewState.idle);
+      @override OmegaAgentContract? get contract => OmegaAgentContract(listenedEventNames: {});
       @override void onMessage(OmegaAgentMessage msg) {}
       @override void onAction(String action, dynamic payload) { /* minimal safe implementation */ }
     }
@@ -2830,8 +2856,8 @@ FILE TEMPLATES AND RULES:
       }
       @override OmegaFlowContract? get contract => OmegaFlowContract(
         acceptedIntentNames: {${moduleName}Intent.start.name, ${moduleName}Intent.retry.name},
-        listenedEventNames: {${moduleName}Event.succeeded.name, ${moduleName}Event.failed.name},
-        emittedExpressionTypes: {'idle', 'loading', 'success', 'error', 'workflow.done'},
+        listenedEventNames: {${moduleName}Event.requested.name, ${moduleName}Event.succeeded.name, ${moduleName}Event.failed.name},
+        emittedExpressionTypes: {'idle', 'loading', 'success', 'error', 'workflow.done', 'workflow.step', 'workflow.error'},
       );
       @override void onStart() { emitExpression('idle'); }
       @override void onIntent(OmegaFlowContext ctx) { /* on start: channel.emitTyped(const ${moduleName}RequestedEvent(...)); startAt('start'); */ }
@@ -2884,7 +2910,7 @@ Return ONLY valid JSON. No markdown. No conversational text.
             {
               "role": "system",
               "content":
-                  "You generate Dart for the Omega Architecture Flutter package. Enums must implement OmegaIntentName and OmegaEventName (never OmegaIntent/OmegaEvent). Use const enum constructors with final String name. OmegaIntent.fromName takes an enum value, never a String. Match flow ids, OmegaRoute, and OmegaRuntime.bootstrap((c) => createOmegaConfig(c)).",
+                  "You are a Senior Flutter Developer. You generate production-ready code using Omega Architecture. Your goal is to provide rich, well-designed UIs (Material 3) based on product descriptions. NEVER return simple placeholders or single-button screens. Use proper enums (OmegaIntentName/OmegaEventName), const constructors, and consistent PascalCase naming.",
             },
             {"role": "user", "content": prompt},
           ],
@@ -2932,7 +2958,15 @@ Return ONLY valid JSON. No markdown. No conversational text.
     final libDir = Directory("$root/lib");
     final testDir = Directory("$root/test");
     final setupFile = File("$root/lib/omega/omega_setup.dart");
-    final slug = feature.toLowerCase().replaceAll(RegExp(r"[^a-z0-9]+"), "_");
+    
+    // Robust detection: use the same PascalCase logic as generation
+    final pascalBase = toPascalCase(
+      feature
+          .replaceAll(RegExp(r"[^a-zA-Z0-9_ ]"), " ")
+          .replaceAll(RegExp(r"\s+"), " ")
+          .trim(),
+    );
+    final slug = pascalBase.toLowerCase();
 
     final flowPath = _findFeatureFile(libDir, "${slug}_flow.dart");
     final agentPath = _findFeatureFile(libDir, "${slug}_agent.dart");
@@ -2945,12 +2979,16 @@ Return ONLY valid JSON. No markdown. No conversational text.
       RegExp("${RegExp.escape(slug)}.*\\.dart\$"),
     );
 
-    final setupContent = setupFile.existsSync()
-        ? setupFile.readAsStringSync()
-        : "";
-    final pascalBase = toPascalCase(slug);
-    final hasFlowRegistration = setupContent.contains("${pascalBase}Flow(");
-    final hasAgentRegistration = setupContent.contains("${pascalBase}Agent(");
+    final setupContent = setupFile.existsSync() ? setupFile.readAsStringSync() : "";
+
+    final hasFlowRegistration =
+        setupContent.contains(RegExp("${RegExp.escape(pascalBase)}Flow\\s*\\(")) ||
+            setupContent.toLowerCase().contains("${slug}flow(");
+    final hasAgentRegistration =
+        setupContent.contains(RegExp("${RegExp.escape(pascalBase)}Agent\\s*\\(")) ||
+            setupContent.toLowerCase().contains("${slug}agent(");
+    final hasRouteRegistration = setupContent.contains("id: '$pascalBase'") ||
+        setupContent.contains("id: \"$pascalBase\"");
 
     final gaps = <String>[];
     final findings = <String>[];
@@ -2980,6 +3018,9 @@ Return ONLY valid JSON. No markdown. No conversational text.
       }
       if (!hasAgentRegistration) {
         gaps.add("Agent is not registered in omega_setup.dart");
+      }
+      if (!hasRouteRegistration) {
+        gaps.add("Route is not registered in omega_setup.dart");
       }
     }
 
@@ -3078,17 +3119,39 @@ Return ONLY valid JSON. No markdown. No conversational text.
 
   static Future<void> _coachModule({
     required String feature,
+
+    /// Optional specific module name to update (e.g. "Login").
+    /// If null, it tries to detect it from "Module: description" or generates a new name.
+    String? updateModule,
+
+    /// Full app description (e.g. `omega create app --kickstart "..."`) so each module's UI matches the product.
+    String? productContext,
     required String template,
     required bool asJson,
     required bool useProviderApi,
     required bool toTempFile,
   }) async {
-    final moduleName = toPascalCase(
-      feature
-          .replaceAll(RegExp(r"[^a-zA-Z0-9_ ]"), " ")
-          .replaceAll(RegExp(r"\s+"), " ")
-          .trim(),
-    );
+    String moduleName;
+    String cleanFeature = feature;
+
+    if (updateModule != null && updateModule.isNotEmpty) {
+      moduleName = toPascalCase(updateModule);
+    } else {
+      // Check if feature starts with "ModuleName: ..."
+      final match = RegExp(r"^([a-zA-Z0-9_]+)\s*:\s*(.*)$").firstMatch(feature);
+      if (match != null) {
+        moduleName = toPascalCase(match.group(1)!);
+        cleanFeature = match.group(2)!;
+      } else {
+        moduleName = toPascalCase(
+          feature
+              .replaceAll(RegExp(r"[^a-zA-Z0-9_ ]"), " ")
+              .replaceAll(RegExp(r"\s+"), " ")
+              .trim(),
+        );
+      }
+    }
+
     final requiredArtifacts = _coachRequiredArtifacts(moduleName);
     final checks = _coachValidationChecks();
     final insights = <String>[];
@@ -3099,7 +3162,7 @@ Return ONLY valid JSON. No markdown. No conversational text.
     if (useProviderApi) {
       final providerSteps = await runWithProgress<List<String>?>(
         _tr(en: "Consulting AI provider", es: "Consultando proveedor IA"),
-        () => _providerCoachPlan(feature),
+        () => _providerCoachPlan(cleanFeature),
       );
       if (providerSteps != null && providerSteps.isNotEmpty) {
         insights.addAll(providerSteps);
@@ -3111,7 +3174,11 @@ Return ONLY valid JSON. No markdown. No conversational text.
           en: "Generating custom logic with AI",
           es: "Generando lógica personalizada con IA",
         ),
-        () => _providerGenerateModuleCode(feature, moduleName),
+        () => _providerGenerateModuleCode(
+          cleanFeature,
+          moduleName,
+          productContext: productContext,
+        ),
       );
       if (generated != null) {
         aiGeneratedCode = generated;
@@ -3162,6 +3229,10 @@ Return ONLY valid JSON. No markdown. No conversational text.
           moduleName: moduleName,
           customCode: aiGeneratedCode,
         );
+      }
+
+      if (useProviderApi) {
+        await OmegaCreateAppCommand._selfHealProject(appRoot, true);
       }
     } else {
       insights.add(

@@ -1,3 +1,30 @@
+## 0.0.31 (Module design & evolution)
+
+- **`omega ai coach module` improvements:**
+    - **Update existing modules:** You can now use `--module <Name>` or `"Name: description"` to update an existing module instead of creating a new one.
+    - **Immediate Self-Healing:** The CLI now runs a self-healing pass right after generating a module with AI, ensuring the "designed" code actually compiles.
+    - **Lenient validation:** Sanity checks no longer discard the entire AI output on minor flaws, relying on the healing pass to fix them.
+- **`omega ai coach audit` improvements:**
+    - **Robust registration detection:** Improved detection of flows, agents, and routes in `omega_setup.dart`, supporting PascalCase/lowercase variations and namespaces.
+    - **Route audit:** Added a check to verify if the module route is registered in `omega_setup.dart`.
+
+## 0.0.30 (CLI contracts & AI UX)
+
+- **Advanced module template:** `OmegaFlowContract` for `OmegaWorkflowFlow` now includes `workflow.step` and `workflow.error`, and lists `*.requested` in `listenedEventNames` when those events use the shared bus. `OmegaAgentContract` uses empty `listenedEventNames` on the global channel to avoid spurious debug warnings across modules (with code comment).
+- **AI generation:** Kickstart text is passed as `productContext` per module; prompts ask for real Material UI from the description; contract/namespace guidance for providers and self-heal.
+
+## 0.0.29 (Generated app navigation)
+
+- **`omega create app` `main.dart`:** Uses `home: _OmegaAppRoot` together with `onGenerateRoute`, matching `example/lib/main.dart` (no implicit route `"/"`). On first frame, activates `initialFlowId` and emits `navigationIntentEvent` with `navigate.<flowId>` so `OmegaNavigator` opens the registered screen.
+
+## 0.0.28 (CLI AI reliability)
+
+- **Self-healing:** Re-runs `dart analyze` after AI fixes (up to `OMEGA_AI_HEAL_MAX_PASSES`, default 3); merges analyzer stdout+stderr; only treats `ERROR|` machine lines as blocking; prints remaining errors if healing fails.
+- **Generated apps:** `main.dart` and `widget_test.dart` use `OmegaRuntime.bootstrap((OmegaChannel c) => createOmegaConfig(c))` for correct inference.
+- **AI module generation:** Prompts reference `OmegaIntentName` / `OmegaEventName`, `app_semantics.dart` enum style, and correct `OmegaIntent.fromName(enumValue)` usage.
+- **Validation fallback:** If AI-written `*_events.dart` or page code fails sanity checks, the CLI falls back to the default advanced scaffold (or default page only) so `dart analyze` is less likely to break on bad AI output.
+- **Default advanced template:** Intent/event enums use `const` constructors and `final String name`, matching the example app.
+
 ## 0.0.27 (Autonomous Self-Healing)
 
 - **Self-Healing Project Creation:** `omega create app` now automatically runs `dart analyze` after generation.
