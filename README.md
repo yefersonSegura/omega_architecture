@@ -10,6 +10,75 @@ A reactive, agent-based architecture framework for Flutter applications.
 
 **What Omega does:** Business logic lives in **agents** and **flows** that communicate through a central **event channel**. The UI only emits **intents** (e.g. "login", "navigate to home") and reacts to **events** and **expressions**; it does not call domain methods or hold navigation state. A **FlowManager** routes intents to the active flow(s); a **navigator** turns navigation intents into screens. So you get a clear separation: UI → intents/events → flows and agents → expressions/navigation → UI. For a **guided tour with examples** of each component, see **[doc/GUIA.md](doc/GUIA.md)**.
 
+## Quick Start
+
+### 1. Global Activation
+Open your terminal and run:
+
+```bash
+# From pub.dev (once published)
+dart pub global activate omega_architecture
+
+# Or from Git (current)
+dart pub global activate --source git https://github.com/yefersonSegura/omega_architecture.git
+```
+
+### 2. Create your first App
+Once activated, you can use the `omega` command from anywhere:
+
+```bash
+# Basic setup
+omega create app my_awesome_app
+
+# Advanced AI-powered setup (requires OMEGA_AI_API_KEY)
+omega create app my_ai_app --kickstart "a delivery app with real-time tracking" --provider-api
+```
+
+---
+
+## Creating a New App
+
+Omega allows you to bootstrap a full Flutter project with the architecture pre-configured in one step.
+
+### 1. Preparation (AI Mode only)
+If you want to use the **AI Kickstart** to generate your app's business logic, you need to set up your OpenAI API key:
+
+**Windows (PowerShell):**
+```powershell
+setx OMEGA_AI_ENABLED "true"
+setx OMEGA_AI_PROVIDER "openai"
+setx OMEGA_AI_API_KEY "sk-..."
+```
+
+**macOS / Linux:**
+```bash
+export OMEGA_AI_ENABLED="true"
+export OMEGA_AI_PROVIDER="openai"
+export OMEGA_AI_API_KEY="sk-..."
+```
+
+### 2. Execution
+
+#### Standard Mode (No AI logic)
+Creates a clean Flutter project with `omega_architecture` installed and a clean bootstrap.
+```bash
+omega create app my_project
+```
+
+#### AI Kickstart Mode
+The AI will analyze your description and generate real agents, flows, behaviors, and UI pages tailored to your idea.
+```bash
+omega create app my_project --kickstart "a dashboard for crypto with price alerts" --provider-api
+```
+
+### 3. Verification
+```bash
+cd my_project
+flutter run
+```
+
+---
+
 ## Features
 
 - **Reactive Agents** — Autonomous entities that react to system events and direct messages.
@@ -53,7 +122,7 @@ Add the dependency to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  omega_architecture: ^0.0.16
+  omega_architecture: ^0.0.26
 ```
 
 ## Omega CLI

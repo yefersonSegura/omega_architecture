@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-const String _version = "0.0.25";
+const String _version = "0.0.26";
 const String _docUrl = "http://yefersonsegura.com/proyects/omega/";
 
 void _openInBrowser(String urlOrPath) {
@@ -293,9 +293,13 @@ class OmegaCreateAppCommand {
     String appName, {
     String? initialModule,
   }) {
-    final mainFile = File(
-      "$root${Platform.pathSeparator}lib${Platform.pathSeparator}main.dart",
-    );
+    // Usamos el directorio actual para mayor robustez en la ruta
+    final libDir = Directory("${Directory.current.path}${Platform.pathSeparator}lib");
+    if (!libDir.existsSync()) libDir.createSync(recursive: true);
+    final mainFile = File("${libDir.path}${Platform.pathSeparator}main.dart");
+
+    if (mainFile.existsSync()) mainFile.deleteSync();
+
     final initialFlowId = initialModule != null ? "'$initialModule'" : "null";
     mainFile.writeAsStringSync('''
 import 'package:flutter/material.dart';
@@ -337,12 +341,19 @@ class OmegaApp extends StatelessWidget {
   }
 
   static void _setupCleanTest(String root, String appName) {
-    final testDir = Directory("$root${Platform.pathSeparator}test");
+    // Usamos el directorio actual si estamos ya dentro del proyecto, 
+    // o el root proporcionado. Aseguramos que la ruta sea robusta.
+    final testDir = Directory("${Directory.current.path}${Platform.pathSeparator}test");
     if (!testDir.existsSync()) {
       testDir.createSync(recursive: true);
     }
     final testFile =
         File("${testDir.path}${Platform.pathSeparator}widget_test.dart");
+
+    // Forzamos la sobreescritura completa
+    if (testFile.existsSync()) {
+      testFile.deleteSync();
+    }
 
     testFile.writeAsStringSync('''
 import 'package:flutter_test/flutter_test.dart';
@@ -862,7 +873,22 @@ void registerInOmegaSetup(
 
   final newImports = <String>[];
   if (registerAgent) newImports.add(agentImport);
-  if (registerFlow) newImports.add(flowImport);
+  if (registerFlow) {
+    newImports.add(flowImport);
+    // Añadimos el import de la página para la ruta
+    if (pathNorm.toLowerCase().startsWith(libNorm.toLowerCase())) {
+      var relative = pathNorm
+          .substring(libNorm.length)
+          .replaceAll(Platform.pathSeparator, "/")
+          .replaceFirst(RegExp(r"^[/\\]"), "");
+      if (relative.endsWith("/")) {
+        relative = relative.substring(0, relative.length - 1);
+      }
+      newImports.add(
+        "import 'package:$pkg/$relative/ui/${nameLower}_page.dart';",
+      );
+    }
+  }
   if (newImports.isNotEmpty) {
     content = '${newImports.join("\n")}\n$content';
   }
@@ -885,6 +911,24 @@ void registerInOmegaSetup(
         "<OmegaFlow>[",
         "<OmegaFlow>[\n      ${pascal}Flow(channel),",
       );
+    }
+
+    // Registrar ruta por defecto para el nuevo módulo
+    if (!content.contains("OmegaRoute(id: '$pascal'")) {
+      final routeEntry =
+          "      OmegaRoute(id: '$pascal', builder: (context) => const ${pascal}Page()),";
+      if (content.contains("routes: <OmegaRoute>[")) {
+        content = content.replaceFirst(
+          "routes: <OmegaRoute>[",
+          "routes: <OmegaRoute>[\n$routeEntry",
+        );
+      } else {
+        // Si no existe la lista de rutas, la creamos (esto no debería pasar con omega init estándar pero por seguridad)
+        content = content.replaceFirst(
+          "OmegaConfig(",
+          "OmegaConfig(\n    routes: <OmegaRoute>[\n$routeEntry\n    ],",
+        );
+      }
     }
   }
 

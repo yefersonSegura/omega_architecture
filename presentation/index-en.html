@@ -80,6 +80,7 @@
             <h3 data-i18n="sidebar_intro_title">1. Introduction</h3>
             <a href="#vision"><i class="fa fa-home"></i> <span data-i18n="sidebar_home">Home</span></a>
             <a href="#whats-new"><i class="fa fa-bolt"></i> <span>What’s new</span></a>
+            <a href="#quick-start"><i class="fa fa-bolt"></i> <span>Quick Start</span></a>
             <a href="#get-started"><i class="fa fa-rocket"></i> <span data-i18n="sidebar_get_started">Get
                     started</span></a>
             <a href="#data-flow"><i class="fa fa-exchange"></i> <span data-i18n="sidebar_data_flow">Data
@@ -228,6 +229,21 @@
                     </p>
                     <div class="card glass animate">
                         <details>
+                            <summary><strong>0.0.26 — CLI Robustness & UX</strong></summary>
+                            <p style="margin-top: 12px;">
+                                Enhances developer experience with a smarter CLI that automates route wiring and initial setup without errors.
+                            </p>
+                            <ul>
+                                <li><strong>Automatic Route Registration:</strong> When generating a module (ecosystem), the CLI now automatically registers the route and adds the UI import in <code>omega_setup.dart</code>.</li>
+                                <li><strong>Fixed Smoke Tests:</strong> <code>test/widget_test.dart</code> generation is now fully compatible with Omega, removing residual <code>MyApp</code> dependencies.</li>
+                                <li><strong>Quick Start:</strong> New section in the documentation for activating and creating apps in seconds, including AI environment variable configuration.</li>
+                                <li><strong>Windows Robustness:</strong> Improved path resolution and forced overwriting to ensure a clean initial setup.</li>
+                            </ul>
+                            <p style="margin-top: 8px; font-weight: 600;">Key command:</p>
+                            <pre class="glass" style="margin-top: 8px; padding: 12px; font-size: 13px;"><code># Activate the updated CLI locally
+dart pub global activate --source path .</code></pre>
+                        </details>
+                        <details>
                             <summary><strong>0.0.25 — Orchestration & App Creation</strong></summary>
                             <p style="margin-top: 12px;">
                                 Introducing <code>omega create app</code>, an orchestrator that automates the full setup of an Omega project from scratch, including intelligent AI assistance.
@@ -330,6 +346,40 @@ if (ev != null) {
                     </div>
                 </section>
 
+                <!-- Quick Start -->
+                <section id="quick-start" class="slide">
+                    <span class="section-tag">Quick Start</span>
+                    <h2 class="animate">Quick <span class="gradient-text">Start</span></h2>
+                    <p class="subtitle animate" style="margin-bottom: 24px;">Activate Omega globally and create your first project in seconds.</p>
+                    
+                    <div class="problem-grid animate">
+                        <div class="card glass">
+                            <div class="icon" style="font-size: 24px; margin-bottom: 12px;">🌍</div>
+                            <h3>1. Global Activation</h3>
+                            <p>Install the Omega CLI on your system to use it from any folder:</p>
+                            <pre class="glass" style="margin-top: 12px; padding: 16px; font-size: 14px;"><code>dart pub global activate omega_architecture</code></pre>
+                            <p style="font-size: 12px; margin-top: 8px; color: var(--text-dim);">Note: Ensure <a href="#cli-create-app" style="color: var(--accent);">Dart's PATH is configured</a> if the command is not recognized.</p>
+                        </div>
+                        <div class="card glass">
+                            <div class="icon" style="font-size: 24px; margin-bottom: 12px;">🚀</div>
+                            <h3>2. Create your App</h3>
+                            <p>Use the <code>create app</code> command to generate a pre-configured project:</p>
+                            <pre class="glass" style="margin-top: 12px; padding: 16px; font-size: 14px;"><code>omega create app my_app</code></pre>
+                            <p style="font-size: 12px; margin-top: 8px; color: var(--text-dim);">This creates the project, adds dependencies, and initializes Omega.</p>
+                        </div>
+                    </div>
+
+                    <div class="highlight-box animate" style="margin-top: 24px; border-left: 4px solid var(--accent);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 24px;">🤖</span>
+                            <div>
+                                <p><strong>Want to go faster?</strong> Use the AI kickstart to generate initial business logic:</p>
+                                <code style="display: block; margin-top: 8px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px;">omega create app my_app --kickstart "an e-commerce" --provider-api</code>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Get started -->
                 <section id="get-started" class="slide">
                     <span class="section-tag">Get started</span>
@@ -341,7 +391,7 @@ if (ev != null) {
                             <h3>1. Add the dependency</h3>
                             <p>In your app’s <code>pubspec.yaml</code>:</p>
                             <pre class="glass" style="margin-top: 12px; padding: 16px; font-size: 14px;"><code>dependencies:
-  omega_architecture: ^0.0.11</code></pre>
+  omega_architecture: ^0.0.26</code></pre>
                         </div>
                         <div class="card glass">
                             <h3>2. Initialize in your app</h3>
@@ -1187,7 +1237,7 @@ if (loaded != null) {
                     </p>
 
                     <h3 class="animate" style="font-size: 20px; margin-top: 24px;">Tech stack</h3>
-                    <p class="animate">Flutter (mobile + web), <code>omega_architecture</code> ^0.0.13,
+                    <p class="animate">Flutter (mobile + web), <code>omega_architecture</code> ^0.0.26,
                         <code>shared_preferences</code> (mobile/desktop), <code>web</code> (localStorage on web for
                         session, theme and snapshots).
                     </p>
@@ -1367,7 +1417,7 @@ if (loaded != null) {
                     <p class="subtitle animate" style="margin-bottom: 12px;">Add to your <code>pubspec.yaml</code>
                         (from pub.dev):</p>
                     <pre class="glass animate"><code>dependencies:
-  omega_architecture: ^0.0.11</code></pre>
+  omega_architecture: ^0.0.26</code></pre>
                     <div class="highlight-box animate" style="margin-top: 24px;">
                         <p><strong>Complete example in the package:</strong> The <code>example/</code> folder contains an
                             app with a login flow: login screen that emits intents with
@@ -1538,14 +1588,22 @@ Optional (contracts):
 Health check passed.</code></pre>
                         </div>
                         <!-- create app -->
+                        <!-- create app -->
                         <div id="cli-create-app" class="cli-tab-panel" role="tabpanel">
                             <h4>Why</h4>
-                            <p>Bootstrap a professional Flutter project with Omega in seconds, with all the initial wiring and optionally business logic generated by IA.</p>
+                            <p>Bootstrap a professional Flutter project with Omega in seconds, with all the initial wiring and optionally business logic generated by AI.</p>
                             <h4>Instruction</h4>
                             <pre class="glass"><code>omega create app &lt;Name&gt; [--kickstart "description"] [--provider-api]</code></pre>
+                            <h4>Steps for Success</h4>
+                            <ol style="font-size: 14px; line-height: 1.6; margin-left: 20px;">
+                                <li><strong>Activate command:</strong> Run <code>dart pub global activate omega_architecture</code> first.</li>
+                                <li><strong>Configure PATH:</strong> If <code>omega</code> is not recognized, add Dart's <code>bin</code> folder to your environment variables.</li>
+                                <li><strong>Without AI:</strong> Run the simple command for a clean architecture setup.</li>
+                                <li><strong>With AI:</strong> Set your <code>OMEGA_AI_API_KEY</code> first. The AI will write real business modules based on your description.</li>
+                            </ol>
                             <h4>Concept</h4>
-                            <p>Orchestrates <code>flutter create</code>, adds <code>omega_architecture</code>, runs <code>omega init</code>, and generates a clean <code>main.dart</code> with Omega's bootstrap. If you use <code>--kickstart</code>, the IA analyzes your idea and generates custom modules (agents, flows, and UI) specific to your app. Must be executed <strong>outside</strong> existing projects.</p>
-                            <h4>Example (IA)</h4>
+                            <p>Orchestrates <code>flutter create</code>, adds <code>omega_architecture</code>, runs <code>omega init</code>, and generates a clean <code>main.dart</code> with Omega's bootstrap. If you use <code>--kickstart</code>, the AI analyzes your idea and generates custom modules (agents, flows, and UI) specific to your app. Must be executed <strong>outside</strong> existing projects.</p>
+                            <h4>Example (AI)</h4>
                             <pre class="glass"><code>omega create app my_store --kickstart "e-commerce with cart and payments" --provider-api</code></pre>
                         </div>
                         <div id="cli-ai" class="cli-tab-panel" role="tabpanel">
@@ -2778,6 +2836,8 @@ if (s != null) flowManager.restoreFromSnapshot(OmegaAppSnapshot.fromJson(jsonDec
             var sectionTitlesByLang = {
                 es: {
                     'vision': 'Inicio',
+                    'whats-new': 'Nuevas mejoras',
+                    'quick-start': 'Guía rápida',
                     'get-started': 'Get started',
                     'data-flow': 'Flujo de datos',
                     'glossary': 'Glosario',
@@ -2816,6 +2876,8 @@ if (s != null) flowManager.restoreFromSnapshot(OmegaAppSnapshot.fromJson(jsonDec
                 },
                 en: {
                     'vision': 'Home',
+                    'whats-new': 'What’s new',
+                    'quick-start': 'Quick Start',
                     'get-started': 'Get started',
                     'data-flow': 'Data flow',
                     'glossary': 'Glossary',

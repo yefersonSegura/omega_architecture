@@ -1,3 +1,14 @@
+## 0.0.26 (CLI Robustness & UX)
+
+- **`omega create app` improvements:**
+    - **Widget Test Fix:** The generator now correctly overwrites `test/widget_test.dart` with a compatible smoke test using `OmegaApp` and `OmegaRuntime`.
+    - **Automatic Route Registration:** New modules generated via `g ecosystem` (including AI kickstart) now automatically register their primary route and UI import in `omega_setup.dart`.
+    - **Windows Robustness:** Improved path resolution and added forced file overwriting for a cleaner initial setup.
+- **Documentation & AI configuration:**
+    - **Quick Start:** Added a dedicated section to `README.md` and web docs for instant onboarding.
+    - **AI Configuration Guide:** Detailed instructions for setting up `OMEGA_AI_API_KEY` and other environment variables in `doc/GUIA.md` and `README.md`.
+    - **Web Docs Enhancement:** Added "Steps for Success" to the CLI command panels.
+
 ## 0.0.25 (Orchestration & App Creation)
 
 - **omega create app:** New top-level CLI command to bootstrap a full Flutter project with Omega pre-configured.

@@ -571,19 +571,49 @@ La implementación concreta de la cola (SharedPreferences, Hive, SQLite, etc.) q
 
 ---
 
-### CLI y Asistencia con IA
+### CLI y Creación de Proyectos (con y sin IA)
 
-**Qué hace:** Omega incluye una herramienta de línea de comandos (CLI) para automatizar la creación de proyectos, generar módulos (ecosistemas) y recibir asistencia de IA para diagnosticar errores o auditar la arquitectura de tus features.
+**Qué hace:** Omega incluye una potente CLI que no solo genera archivos, sino que orquesta la creación completa de proyectos Flutter pre-configurados.
 
-**Comandos principales:**
-- `omega create app <Name>` — Orquestador que crea un nuevo proyecto Flutter, añade Omega, inicializa la arquitectura y opcionalmente genera la lógica de negocio real con IA (`--kickstart`).
-- `omega init` — Inicializa Omega en tu proyecto Flutter existente.
-- `omega g ecosystem <Name>` — Genera agente, flow, behavior y página.
-- `omega ai explain <trace.json>` — Diagnostica una sesión grabada usando IA.
-- `omega ai coach audit "<feature>"` — Audita las brechas de arquitectura en una funcionalidad real.
-- `omega ai coach module "<Name>"` — Genera un módulo completo con arquitectura avanzada (asistido por IA).
+#### 1. Instalación y Activación Global
+Para usar el comando `omega` desde cualquier lugar (fuera de un proyecto), debes activarlo globalmente:
 
-Consulta el **[README principal](../README.md)** y la **documentación web** (`dart run omega doc`) para ver todos los comandos, flags de IA y variables de entorno soportadas.
+```bash
+# Opción A: Desde Git (recomendado hasta que se publique en pub.dev)
+dart pub global activate --source git https://github.com/yefersonSegura/omega_architecture.git
+
+# Opción B: Desde el repositorio local (si estás desarrollando Omega)
+dart pub global activate --source path .
+```
+
+> **Nota sobre el PATH:** Si al ejecutar `omega` el terminal dice "command not found", asegúrate de que el directorio `bin` de la caché de Dart/Pub esté en tu variable de entorno PATH. (Ej. en Windows: `%LOCALAPPDATA%\Pub\Cache\bin`).
+
+#### 2. Creación de una App (Sin IA)
+Crea una estructura limpia con Omega ya configurado en `main.dart` y `omega_setup.dart`.
+```bash
+omega create app mi_gran_idea
+```
+
+#### 3. Creación de una App (Con IA Kickstart)
+La IA analizará tu descripción y generará los agentes, flows y UI necesarios para que no empieces de cero. Requiere configuración previa:
+
+**Configuración de Variables de Entorno:**
+- `OMEGA_AI_ENABLED="true"`
+- `OMEGA_AI_PROVIDER="openai"`
+- `OMEGA_AI_API_KEY="tu-clave-sk-..."`
+
+**Ejecución:**
+```bash
+omega create app cripto_dash --kickstart "un dashboard de criptomonedas con graficos y alertas" --provider-api
+```
+
+#### 4. Comandos de Asistencia en Proyectos Existentes
+- `omega init` — Prepara un proyecto Flutter existente para usar Omega.
+- `omega g ecosystem <Name>` — Crea agente, flow, behavior y UI y los registra automáticamente.
+- `omega ai coach audit "auth"` — Analiza tu implementación de "auth" y detecta brechas (faltan contratos, tests, etc).
+- `omega ai explain trace.json` — Explica qué pasó en una sesión grabada (ideal para depurar errores complejos).
+
+Consulta el **[README principal](../README.md)** para ver la lista completa de flags y variables de entorno soportadas.
 
 ## Enlaces
 

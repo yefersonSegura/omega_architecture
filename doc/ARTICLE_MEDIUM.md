@@ -56,7 +56,7 @@ The UI connects to the **OmegaChannel**. **Agents** and **flows** subscribe and 
 **1. Add the Dependency**
 ```yaml
 dependencies:
-  omega_architecture: ^0.0.23
+  omega_architecture: ^0.0.26
 ```
 
 **2. Initialize Omega**
