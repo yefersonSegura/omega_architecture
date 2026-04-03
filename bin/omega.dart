@@ -617,12 +617,14 @@ RULES:
 3. Return a JSON object where keys are the relative file paths and values are the FULL FIXED CONTENT of the file.
 4. ONLY return valid JSON. No conversational text.
 
-OMEGA REFERENCE (must match this API; same patterns as package example/lib/omega/omega_setup.dart):
+OMEGA REFERENCE (must match this API; same patterns as package example/lib/omega/omega_setup.dart and example/lib/omega/app_semantics.dart):
 - Top-level: OmegaConfig createOmegaConfig(OmegaChannel channel) { return OmegaConfig(agents: <OmegaAgent>[...], flows: <OmegaFlow>[...], routes: <OmegaRoute>[...], initialFlowId: 'flowId'); }
 - Bootstrap in main: OmegaRuntime.bootstrap((OmegaChannel c) => createOmegaConfig(c));  // do NOT pass createOmegaConfig as a raw tearoff if it confuses inference
 - Routes: OmegaRoute(id: 'screenId', builder: (context) => SomePage()) or OmegaRoute.typed<Payload>(id: 'home', builder: (context, payload) => HomePage(data: payload))
 - Flow id in class: pass the SAME string to super(id: 'MyFlow', ...) as used in flowManager.getFlow('MyFlow') and optional initialFlowId in OmegaConfig
 - Agents/flows usually take OmegaEventBus (global OmegaChannel or channel.namespace('domain'))
+- INTENTS/EVENTS: enums MUST implement OmegaIntentName and OmegaEventName (NOT OmegaIntent nor OmegaEvent). Use const constructors and final String name, e.g. enum AppIntent implements OmegaIntentName { login('x.login'); const AppIntent(this.name); @override final String name; }
+- OmegaIntent.fromName(FIRST_ARG) requires an OmegaIntentName enum VALUE (e.g. MyIntent.start), NEVER a String literal and NEVER MyIntent.start.name. Same idea: OmegaEvent.fromName(MyEvent.foo) not a raw string.
 
 Example format:
 {
@@ -2356,6 +2358,96 @@ class OmegaAiCommand {
     ];
   }
 
+  /// Default page scaffold (same as advanced template) for AI fallback.
+  static String _omegaDefaultAdvancedPageDart({
+    required String moduleName,
+    required String lower,
+  }) {
+    return '''
+import 'package:flutter/material.dart';
+import 'package:omega_architecture/omega_architecture.dart';
+import '../${lower}_events.dart';
+
+class ${moduleName}Page extends StatelessWidget {
+  const ${moduleName}Page({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = OmegaScope.of(context);
+    final flow = scope.flowManager.getFlow('$moduleName');
+    if (flow == null) {
+      return const Scaffold(
+        body: Center(child: Text('Flow not registered in omega_setup.dart')),
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('$moduleName')),
+      body: Center(
+        child: StreamBuilder<OmegaFlowExpression>(
+          stream: flow.expressions,
+          builder: (context, snapshot) {
+            final expr = snapshot.data;
+            if (expr?.type == 'loading') {
+              return const CircularProgressIndicator();
+            }
+            if (expr?.type == 'error') {
+              final msg = expr?.payloadAs<String>() ?? 'Unknown error';
+              return Text(msg);
+            }
+            return ElevatedButton(
+              onPressed: () => scope.flowManager.handleIntent(
+                OmegaIntent.fromName(${moduleName}Intent.start),
+              ),
+              child: const Text('Start'),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+''';
+  }
+
+  /// Rejects common AI mistakes: wrong *Name types, missing const enums, wrong imports.
+  static bool _omegaAiEventsPassSanity(String code, String moduleName) {
+    final t = code.trim();
+    if (t.isEmpty) return false;
+    if (!t.contains("package:omega_architecture/omega_architecture.dart")) {
+      return false;
+    }
+    if (!t.contains("implements OmegaIntentName")) return false;
+    if (!t.contains("implements OmegaEventName")) return false;
+    if (RegExp(r"implements\s+OmegaIntent\b").hasMatch(t)) return false;
+    if (RegExp(r"implements\s+OmegaEvent\b").hasMatch(t)) return false;
+    if (!t.contains("${moduleName}Intent")) return false;
+    if (!t.contains("${moduleName}Event")) return false;
+    if (!t.contains("final String name")) return false;
+    if (!t.contains("const ${moduleName}Intent(")) return false;
+    if (!t.contains("const ${moduleName}Event(")) return false;
+    return true;
+  }
+
+  /// [OmegaIntent.fromName] requires an [OmegaIntentName] value, never a String or `.name`.
+  static bool _omegaAiPagePassSanity(String code, String moduleName) {
+    final t = code.trim();
+    if (t.isEmpty) return false;
+    if (!t.contains("package:omega_architecture/omega_architecture.dart")) {
+      return false;
+    }
+    if (t.contains("OmegaIntent.fromName")) {
+      if (t.contains("OmegaIntent.fromName('") ||
+          t.contains('OmegaIntent.fromName("')) {
+        return false;
+      }
+      if (RegExp(r"OmegaIntent\.fromName\s*\([^)]*\.name\s*\)").hasMatch(t)) {
+        return false;
+      }
+      if (!t.contains("${moduleName}Intent.")) return false;
+    }
+    return true;
+  }
+
   static void _applyAdvancedModuleTemplate({
     required String appRoot,
     required String modulePath,
@@ -2375,20 +2467,53 @@ class OmegaAiCommand {
         "$appRoot${Platform.pathSeparator}test${Platform.pathSeparator}${lower}_module_test.dart";
 
     if (customCode != null) {
-      if (customCode.containsKey("events")) {
-        File(eventsPath).writeAsStringSync(customCode["events"]!);
+      Map<String, String>? toWrite = Map<String, String>.from(customCode);
+      if (!_omegaAiEventsPassSanity(toWrite["events"] ?? "", moduleName)) {
+        stdout.writeln(
+          "⚠️ ${_tr(
+            en: "AI events file failed validation (use OmegaIntentName / OmegaEventName + const enums). Using default scaffold.",
+            es: "Archivo de eventos IA inválido (usa OmegaIntentName / OmegaEventName y enums const). Usando plantilla por defecto.",
+          )}",
+        );
+        toWrite = null;
+      } else if (!_omegaAiPagePassSanity(toWrite["page"] ?? "", moduleName)) {
+        stdout.writeln(
+          "⚠️ ${_tr(
+            en: "AI page: OmegaIntent.fromName must receive ${moduleName}Intent.* (not String or .name). Using default page.",
+            es: "Página IA: OmegaIntent.fromName debe recibir ${moduleName}Intent.* (no String ni .name). Usando página por defecto.",
+          )}",
+        );
+        toWrite["page"] = _omegaDefaultAdvancedPageDart(
+          moduleName: moduleName,
+          lower: lower,
+        );
       }
-      if (customCode.containsKey("behavior")) {
-        File(behaviorPath).writeAsStringSync(customCode["behavior"]!);
-      }
-      if (customCode.containsKey("agent")) {
-        File(agentPath).writeAsStringSync(customCode["agent"]!);
-      }
-      if (customCode.containsKey("flow")) {
-        File(flowPath).writeAsStringSync(customCode["flow"]!);
-      }
-      if (customCode.containsKey("page")) {
-        File(pagePath).writeAsStringSync(customCode["page"]!);
+      if (toWrite == null) {
+        _writeDefaultAdvancedTemplate(
+          moduleName: moduleName,
+          lower: lower,
+          eventsPath: eventsPath,
+          behaviorPath: behaviorPath,
+          agentPath: agentPath,
+          flowPath: flowPath,
+          pagePath: pagePath,
+        );
+      } else {
+        if (toWrite.containsKey("events")) {
+          File(eventsPath).writeAsStringSync(toWrite["events"]!);
+        }
+        if (toWrite.containsKey("behavior")) {
+          File(behaviorPath).writeAsStringSync(toWrite["behavior"]!);
+        }
+        if (toWrite.containsKey("agent")) {
+          File(agentPath).writeAsStringSync(toWrite["agent"]!);
+        }
+        if (toWrite.containsKey("flow")) {
+          File(flowPath).writeAsStringSync(toWrite["flow"]!);
+        }
+        if (toWrite.containsKey("page")) {
+          File(pagePath).writeAsStringSync(toWrite["page"]!);
+        }
       }
     } else {
       // Default advanced template (already exists below)
@@ -2442,20 +2567,24 @@ void main() {
 import 'package:omega_architecture/omega_architecture.dart';
 
 enum ${moduleName}Intent implements OmegaIntentName {
-  start,
-  retry;
+  start('$lower.start'),
+  retry('$lower.retry');
+
+  const ${moduleName}Intent(this.name);
 
   @override
-  String get name => '$lower.\${toString().split('.').last}';
+  final String name;
 }
 
 enum ${moduleName}Event implements OmegaEventName {
-  requested,
-  succeeded,
-  failed;
+  requested('$lower.requested'),
+  succeeded('$lower.succeeded'),
+  failed('$lower.failed');
+
+  const ${moduleName}Event(this.name);
 
   @override
-  String get name => '$lower.\${toString().split('.').last}';
+  final String name;
 }
 
 class ${moduleName}RequestedEvent implements OmegaTypedEvent {
@@ -2654,7 +2783,7 @@ class ${moduleName}Page extends StatelessWidget {
 Generate Dart code for an Omega Architecture module named '$moduleName' ($lower).
 The app description is: '$description'.
 
-REFERENCE (official package patterns; mirror example/lib/omega/omega_setup.dart and example flows):
+REFERENCE (official package patterns; mirror example/lib/omega/omega_setup.dart, example/lib/omega/app_semantics.dart for enums):
 - Flow id: ${moduleName}Flow must use super(id: '$moduleName', channel: channel) so flowManager.getFlow('$moduleName') in ${moduleName}Page resolves. If this module is the app entry flow, OmegaConfig.initialFlowId in omega_setup.dart must be that same string (example: AuthFlow uses id "authFlow" and OmegaConfig.initialFlowId: "authFlow").
 - Pages: scope.flowManager.getFlow('$moduleName'); StreamBuilder<OmegaFlowExpression>(stream: flow.expressions, ...).
 - omega_setup.dart (not in this JSON): add ${moduleName}Flow and ${moduleName}Agent to OmegaConfig; route example OmegaRoute(id: '$moduleName', builder: (context) => const ${moduleName}Page()). For typed routes use OmegaRoute.typed<T>(id: '...', builder: (context, payload) => ...).
@@ -2664,12 +2793,14 @@ CRITICAL RULES:
 2. NEVER use internal paths like 'package:omega_architecture/omega/core/...'.
 3. Class names use '$moduleName' (PascalCase). File-level imports for sibling files: '${lower}_events.dart' or '../${lower}_events.dart' from ui/.
 4. Return a JSON object with EXACTLY these keys: "events", "behavior", "agent", "flow", "page".
+5. ENUMS: implement OmegaIntentName / OmegaEventName only (abstract name contracts). NEVER write implements OmegaIntent or implements OmegaEvent on an enum.
+6. UI: OmegaIntent.fromName(${moduleName}Intent.start) — pass the enum constant, NOT a String, NOT ${moduleName}Intent.start.name.
 
 FILE TEMPLATES AND RULES:
 
-- 'events':
-  - enum ${moduleName}Intent implements OmegaIntentName { start, retry; @override String get name => '$lower.\${toString().split('.').last}'; }
-  - enum ${moduleName}Event implements OmegaEventName { requested, succeeded, failed; @override String get name => '$lower.\${toString().split('.').last}'; }
+- 'events' (copy this pattern exactly for intent/event enums):
+  - enum ${moduleName}Intent implements OmegaIntentName { start('$lower.start'), retry('$lower.retry'); const ${moduleName}Intent(this.name); @override final String name; }
+  - enum ${moduleName}Event implements OmegaEventName { requested('$lower.requested'), succeeded('$lower.succeeded'), failed('$lower.failed'); const ${moduleName}Event(this.name); @override final String name; }
   - class ${moduleName}RequestedEvent implements OmegaTypedEvent { const ${moduleName}RequestedEvent({required this.input}); final String input; @override String get name => ${moduleName}Event.requested.name; }
   - class ${moduleName}ViewState {
       final bool isLoading; final String? error;
@@ -2753,7 +2884,7 @@ Return ONLY valid JSON. No markdown. No conversational text.
             {
               "role": "system",
               "content":
-                  "You generate Dart for the Omega Architecture Flutter package. Follow the user's Omega rules exactly: correct flow id strings, OmegaRoute registration pattern, and OmegaRuntime.bootstrap((c) => createOmegaConfig(c)) in host apps.",
+                  "You generate Dart for the Omega Architecture Flutter package. Enums must implement OmegaIntentName and OmegaEventName (never OmegaIntent/OmegaEvent). Use const enum constructors with final String name. OmegaIntent.fromName takes an enum value, never a String. Match flow ids, OmegaRoute, and OmegaRuntime.bootstrap((c) => createOmegaConfig(c)).",
             },
             {"role": "user", "content": prompt},
           ],
