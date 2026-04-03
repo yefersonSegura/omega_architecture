@@ -3,7 +3,7 @@ description: "A reactive, agent-based architecture framework for Flutter applica
 version: 0.0.24
 repository: https://github.com/yefersonSegura/omega_architecture
 homepage: https://github.com/yefersonSegura/omega_architecture
-# Documentation: https://yefersonsegura.com/projects/omega/index-en.html
+website: https://yefersonsegura.com/projects/omega/index-en.html
 documentation: https://pub.dev/documentation/omega_architecture/latest
 issue_tracker: https://github.com/yefersonSegura/omega_architecture/issues
 
