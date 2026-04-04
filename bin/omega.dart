@@ -68,7 +68,7 @@ class _OmegaAiRemote {
           .trim();
 
   static String _geminiModel() =>
-      (Platform.environment["OMEGA_AI_MODEL"] ?? "gemini-2.0-flash").trim();
+      (Platform.environment["OMEGA_AI_MODEL"] ?? "gemini-2.5-flash").trim();
   static String _geminiApiVersion() =>
       (Platform.environment["OMEGA_AI_GEMINI_API_VERSION"] ?? "v1beta").trim();
 
@@ -546,7 +546,7 @@ class OmegaCreateAppCommand {
           stdout.writeln(
             "🏗️ ${_tr(en: "Generating module: $module", es: "Generando modulo: $module")}...",
           );
-          await OmegaAiCommand._coachModule(
+          final coachOk = await OmegaAiCommand._coachModule(
             feature: module,
             productContext: kickstart,
             template: "advanced",
@@ -554,6 +554,17 @@ class OmegaCreateAppCommand {
             useProviderApi: useProviderApi,
             toTempFile: false,
           );
+          if (!coachOk) {
+            _err(
+              _tr(
+                en:
+                    "Kickstart stopped: AI module generation failed. Fix your provider/key/model or run without --provider-api.",
+                es:
+                    "Kickstart detenido: falló la generación del módulo por IA. Corrige proveedor/clave/modelo o ejecuta sin --provider-api.",
+              ),
+            );
+            return;
+          }
         }
       }
 
@@ -2769,7 +2780,7 @@ STRING LITERALS (encoding):
     stdout.writeln('  setx OMEGA_AI_ENABLED "true"');
     stdout.writeln('  setx OMEGA_AI_PROVIDER "gemini"');
     stdout.writeln('  setx OMEGA_AI_GEMINI_API_KEY "AIza..."');
-    stdout.writeln('  setx OMEGA_AI_MODEL "gemini-2.0-flash"');
+    stdout.writeln('  setx OMEGA_AI_MODEL "gemini-2.5-flash"');
     stdout.writeln("");
   }
 
@@ -4446,7 +4457,9 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     );
   }
 
-  static Future<void> _coachModule({
+  /// Returns `false` when [useProviderApi] was set but the AI returned no usable module JSON
+  /// (console generation stops; new modules are not scaffolded).
+  static Future<bool> _coachModule({
     required String feature,
 
     /// Optional specific module name to update (e.g. "Login").
@@ -4525,7 +4538,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
             es: "El comando redesign requiere --provider-api.",
           ),
         );
-        return;
+        return false;
       }
       if (!moduleExists) {
         _err(
@@ -4536,7 +4549,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
                 "No existe la carpeta del módulo: créalo antes con 'omega ai coach module ...' o 'omega g ecosystem $moduleName'.",
           ),
         );
-        return;
+        return false;
       }
     }
 
@@ -4582,6 +4595,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
           currentFiles: currentFiles.isNotEmpty ? currentFiles : null,
           pageOnly: uiOnly,
         ),
+        treatNullAsFailure: true,
       );
       if (generated != null) {
         aiGeneratedCode = generated;
@@ -4599,15 +4613,68 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
               es: "La generación por IA falló. Manteniendo archivos existentes para el módulo '$moduleName'.",
             ),
           );
+          stdout.writeln("");
+          stdout.writeln(
+            "⏹️ ${_tr(
+              en: "Console generation stopped — AI response was missing or invalid; module left unchanged.",
+              es: "Generación en consola detenida — la respuesta de la IA faltaba o era inválida; el módulo no se modificó.",
+            )}",
+          );
+          if (asJson) {
+            _emitAiOutput(
+              content: jsonEncode({
+                "success": false,
+                "error": "ai_generation_failed",
+                "coach": uiOnly ? "redesign" : "module",
+                "mode": mode,
+                "feature": feature,
+                "moduleName": moduleName,
+                "modulePath": _absPath(modulePath),
+                "uiOnly": uiOnly,
+              }),
+              toTempFile: toTempFile,
+              kind: "coach_module",
+              extension: "json",
+            );
+          }
           Directory.current = originalCwd;
-          return;
+          return false;
         } else {
           _err(
             _tr(
-              en: "AI generation failed. Falling back to default template for new module '$moduleName'.",
-              es: "La generación por IA falló. Usando plantilla predeterminada para el nuevo módulo '$moduleName'.",
+              en:
+                  "AI generation failed — cannot create a new module without valid AI output.",
+              es:
+                  "La generación por IA falló — no se puede crear un módulo nuevo sin una salida válida de la IA.",
             ),
           );
+          stdout.writeln("");
+          stdout.writeln(
+            "⏹️ ${_tr(
+              en: "Generation aborted. No ecosystem files were written for this module.",
+              es: "Generación cancelada. No se escribieron archivos del ecosistema para este módulo.",
+            )}",
+          );
+          if (asJson) {
+            _emitAiOutput(
+              content: jsonEncode({
+                "success": false,
+                "error": "ai_generation_failed",
+                "coach": uiOnly ? "redesign" : "module",
+                "mode": mode,
+                "feature": feature,
+                "moduleName": moduleName,
+                "modulePath": _absPath(modulePath),
+                "uiOnly": uiOnly,
+                "newModule": true,
+              }),
+              toTempFile: toTempFile,
+              kind: "coach_module",
+              extension: "json",
+            );
+          }
+          Directory.current = originalCwd;
+          return false;
         }
       }
 
@@ -4667,6 +4734,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     if (asJson) {
       _emitAiOutput(
         content: jsonEncode({
+          "success": true,
           "coach": uiOnly ? "redesign" : "module",
           "mode": mode,
           "feature": feature,
@@ -4684,7 +4752,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
         kind: "coach_module",
         extension: "json",
       );
-      return;
+      return true;
     }
 
     final out = StringBuffer()
@@ -4741,6 +4809,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
       kind: "coach_module",
       extension: "md",
     );
+    return true;
   }
 
   static String? _findFeatureFile(Directory dir, String fileName) {
@@ -5115,9 +5184,14 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
 
   static Future<T> _runWithProgress<T>(
     String label,
-    Future<T> Function() action,
-  ) async {
-    return runWithProgress<T>(label, action);
+    Future<T> Function() action, {
+    bool treatNullAsFailure = false,
+  }) async {
+    return runWithProgress<T>(
+      label,
+      action,
+      treatNullAsFailure: treatNullAsFailure,
+    );
   }
 }
 
@@ -5175,7 +5249,13 @@ String _preferredAiLanguage() {
   }
 }
 
-Future<T> runWithProgress<T>(String label, Future<T> Function() action) async {
+Future<T> runWithProgress<T>(
+  String label,
+  Future<T> Function() action, {
+  /// When true and [action] returns `null`, print a failure line instead of "done."
+  /// (Use for AI steps where null means the provider returned nothing usable.)
+  bool treatNullAsFailure = false,
+}) async {
   if (!stdout.hasTerminal) {
     return action();
   }
@@ -5192,16 +5272,31 @@ Future<T> runWithProgress<T>(String label, Future<T> Function() action) async {
   try {
     final result = await action();
     stdout.write("\r${" " * (label.length + 8)}\r");
-    stdout.writeln(
-      _tr(
-        en: "$label done.",
-        es: "$label listo.",
-        pt: "$label concluido.",
-        fr: "$label termine.",
-        it: "$label completato.",
-        de: "$label abgeschlossen.",
-      ),
-    );
+    final dynamic nullableResult = result;
+    final isNullFailure = treatNullAsFailure && nullableResult == null;
+    if (isNullFailure) {
+      stdout.writeln(
+        _tr(
+          en: "$label — failed (no usable AI response).",
+          es: "$label — falló (sin respuesta usable de la IA).",
+          pt: "$label — falhou (sem resposta utilizavel da IA).",
+          fr: "$label — echec (pas de reponse IA utilisable).",
+          it: "$label — fallito (nessuna risposta IA utilizzabile).",
+          de: "$label — fehlgeschlagen (keine brauchbare KI-Antwort).",
+        ),
+      );
+    } else {
+      stdout.writeln(
+        _tr(
+          en: "$label done.",
+          es: "$label listo.",
+          pt: "$label concluido.",
+          fr: "$label termine.",
+          it: "$label completato.",
+          de: "$label abgeschlossen.",
+        ),
+      );
+    }
     return result;
   } finally {
     timer.cancel();
