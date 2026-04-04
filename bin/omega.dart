@@ -755,6 +755,7 @@ ${OmegaAiCommand._omegaAiRolesFlowAgentBehavior}
 - Flows: extend OmegaFlow or OmegaWorkflowFlow; super(id:, channel:). OmegaWorkflowFlow.failStep(code, {String? message}) — second argument must be named message:, not positional.
 - Behavior: extend OmegaAgentBehaviorEngine; use one or more addRule(OmegaAgentBehaviorRule(...)) OR override evaluate(OmegaAgentBehaviorContext ctx)
 - Enums: implements OmegaIntentName / OmegaEventName with const Enum(this.name); @override final String name;
+- NEVER instantiate OmegaEventName(...) or OmegaIntentName(...) — they are abstract. Only enum values (e.g. AppEvent.navigationIntent, AppIntent.navigateRegister) may be passed to OmegaEvent.fromName / OmegaIntent.fromName.
 - OmegaIntent.fromName(MyIntent.start) — enum value only, not String, not .name
 - OmegaScope (from OmegaScope.of(context)): ONLY .channel, .flowManager, .initialFlowId. There is NO agentManager and NO getAgent on scope. Fix by using scope.flowManager.getFlow(flowId) + StreamBuilder<OmegaFlowExpression>, or pass the agent into the Page widget and use OmegaAgentBuilder (see example/lib/omega/omega_setup.dart + example/lib/auth/ui/auth_page.dart).
 - Two ways the UI talks to the runtime (do not confuse them):
@@ -2214,6 +2215,7 @@ OMEGA CHANNEL EVENTS (Stream<OmegaEvent>, flow onEvent ctx.event, agent listener
 OMEGAEVENT / OMEGAINTENT — required id:
 - OmegaEvent( and OmegaIntent( direct constructors require BOTH id: and name: (see package). channel.emit(OmegaEvent(name: 'x')) without id fails analysis.
 - Preferred: OmegaEvent.fromName(MyEventEnum.foo, payload: ...) and OmegaIntent.fromName(MyIntentEnum.bar, payload: ...) — factories generate id unless you pass id: explicitly.
+- FORBIDDEN (analyzer: abstract class can't be instantiated): OmegaEventName('navigation.intent') or OmegaIntentName('navigate.register') — [OmegaEventName] and [OmegaIntentName] are abstract contracts only. You MUST pass a concrete enum value that implements them, e.g. OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateLogin)) after defining `enum AppEvent implements OmegaEventName { navigationIntent('navigation.intent'), ... }` and `enum AppIntent implements OmegaIntentName { navigateLogin('navigate.login'), navigateRegister('navigate.register'), ... }`.
 - Inside an OmegaAgent subclass, prefer emit(someEvent.name, payload: ...) (inherited helper builds OmegaEvent with id) instead of hand-building OmegaEvent( without id.
 ''';
 
@@ -2878,6 +2880,7 @@ STRING LITERALS (encoding):
     if (!t.contains("package:omega_architecture/omega_architecture.dart")) {
       return false;
     }
+    if (!_omegaAiAbstractNameConstructorPassSanity(t)) return false;
     if (t.contains("OmegaIntent.fromName")) {
       if (t.contains("OmegaIntent.fromName('") ||
           t.contains('OmegaIntent.fromName("')) {
@@ -2949,6 +2952,13 @@ STRING LITERALS (encoding):
     if (RegExp(r"failStep\s*\(\s*[^,)]+\s*,\s*(?!message\s*:)").hasMatch(t)) {
       return false;
     }
+    return true;
+  }
+
+  /// [OmegaEventName] / [OmegaIntentName] are abstract — models sometimes emit invalid `OmegaEventName('x')`.
+  static bool _omegaAiAbstractNameConstructorPassSanity(String code) {
+    if (RegExp(r"\bOmegaEventName\s*\(").hasMatch(code)) return false;
+    if (RegExp(r"\bOmegaIntentName\s*\(").hasMatch(code)) return false;
     return true;
   }
 
@@ -3035,6 +3045,17 @@ STRING LITERALS (encoding):
         "page",
       ]) {
         final chunk = toWrite[key];
+        if (chunk != null &&
+            chunk.trim().isNotEmpty &&
+            !_omegaAiAbstractNameConstructorPassSanity(chunk)) {
+          stdout.writeln(
+            "⚠️ ${_tr(
+              en: "AI file \"$key\" uses OmegaEventName(...) or OmegaIntentName(...) — abstract types cannot be constructed; use enum values (e.g. AppEvent.*, AppIntent.*). Will attempt self-healing...",
+              es: "El archivo IA \"$key\" usa OmegaEventName(...) u OmegaIntentName(...) — tipos abstractos; usa valores de enum (ej. AppEvent.*, AppIntent.*). Se intentará auto-sanación...",
+            )}",
+          );
+          break;
+        }
         if (chunk != null &&
             chunk.trim().isNotEmpty &&
             !_omegaAiSourceEncodingPassSanity(chunk)) {
@@ -3725,7 +3746,7 @@ CRITICAL RULES:
    - "reasoning": 1-5 short lines in natural language (Spanish if the user wrote in Spanish). Brief analysis of layout, fields, states, and Omega wiring. No markdown fences.
    - "events", "behavior", "agent", "flow", "page": full Dart file contents as strings (same as before).
    - "response" (optional): if the user asked for a single "template" or "código de pantalla", you MAY put the same full Dart as "page" here too so tools can read one field; if omitted, "page" alone is enough.
-5. ENUMS: implement OmegaIntentName / OmegaEventName only (abstract name contracts). NEVER write implements OmegaIntent or implements OmegaEvent on an enum.
+5. ENUMS: implement OmegaIntentName / OmegaEventName only (abstract name contracts). NEVER write implements OmegaIntent or implements OmegaEvent on an enum. NEVER call OmegaEventName('...') or OmegaIntentName('...') — those types cannot be instantiated; use `enum MyIntent implements OmegaIntentName { navigateRegister('navigate.register'); ... }` then OmegaIntent.fromName(MyIntent.navigateRegister).
 6. UI: OmegaIntent.fromName(${moduleName}Intent.start) — pass the enum constant, NOT a String, NOT ${moduleName}Intent.start.name.
 7. If the page uses OmegaAgentBuilder with `required ${moduleName}Agent agent`, put in "reasoning" one line: user must set omega_setup route to ${moduleName}Page(agent: $camelAgentVar) and declare `final $camelAgentVar = ${moduleName}Agent(channel);` (or `channel: channel` if ctor is named-only) in agents — same pattern as example omega_setup + auth page.
 8. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
