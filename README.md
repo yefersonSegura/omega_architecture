@@ -110,9 +110,10 @@ flutter run
 - **Typed routes** — Use `OmegaRoute.typed<T>` so the route builder receives the intent payload as `T?`; or `routeArguments<T>(context)` when you don't use typed. See the [example](example/lib/omega/omega_setup.dart) (home route with `LoginSuccessPayload`).
 - **Declarative contracts** — Optional [OmegaFlowContract] and [OmegaAgentContract] declare which events a flow listens to, which intents it accepts, and which expression types it emits (and for agents: events and intents). In **debug** mode Omega warns in the console when something is received or emitted that is not in the contract. **Example:** The [example](example/) app implements contracts in [AuthFlow](example/lib/auth/auth_flow.dart) and [AuthAgent](example/lib/auth/auth_agent.dart); run `cd example && flutter run` to see them in action. See [doc/CONTRACTS.md](doc/CONTRACTS.md).
 - **Time-travel** — [OmegaTimeTravelRecorder] records channel events and an initial snapshot; [OmegaRecordedSession] holds them. Replay a session (or replay up to an event index) to restore state and re-emit events for debugging or demos. See [doc/TIME_TRAVEL.md](doc/TIME_TRAVEL.md).
-- **CLI** — Scaffold setup and generate ecosystems (agent, flow, behavior, page) from the command line.
+- **CLI** — Scaffold setup, validation, traces, AI-assisted coach, and more. **Developer reference (Spanish):** [doc/COMANDOS_CLI.md](doc/COMANDOS_CLI.md).
 
 **Documentation:**  
+- **[doc/COMANDOS_CLI.md](doc/COMANDOS_CLI.md)** — CLI command reference for developers (how to run, quick table, `ai coach`, traces, inspector).  
 - **[doc/GUIA.md](doc/GUIA.md)** — What each Omega component does, with **code examples** (channel, event, intent, agent, flow, manager, scope, navigator, routes, persistence, inspector). Start here to see how everything fits together.  
 - **Documentation** — [API reference](https://pub.dev/documentation/omega_architecture/latest) (pub.dev). Full web doc (architecture, comparison, CLI, inspector): `yefersonsegura.com/proyects/omega/`. Local copy: [presentation/index.html](presentation/index.html). Run `dart run omega_architecture:omega doc` to open the doc in the browser.  
 - **[doc/ARQUITECTURA.md](doc/ARQUITECTURA.md)** — Technical reference for each component.  
@@ -145,7 +146,7 @@ dependencies:
 
 ## Omega CLI
 
-The CLI helps you bootstrap Omega in your app and generate new ecosystems.
+The CLI helps you bootstrap Omega in your app and generate new ecosystems. **Concise reference for developers (Spanish):** [doc/COMANDOS_CLI.md](doc/COMANDOS_CLI.md).
 
 ### How to run
 
@@ -178,6 +179,18 @@ Each command is listed below with **why** (purpose), **instruction**, **concept*
 **Concept:** Opens the official Omega web documentation in the browser. Does not create or modify files.
 
 **Example (success):** `Opening documentation: http://yefersonsegura.com/proyects/omega/`
+
+---
+
+#### inspector
+
+**Why:** Debug a running Flutter app (desktop/mobile) through the Dart VM Service using the same Omega Inspector UI as the hosted page, without hunting the URL manually.
+
+**Instruction:** `dart run omega_architecture:omega inspector`
+
+**Concept:** Opens the local Omega Inspector HTML in the browser. You paste or connect to your app’s VM Service URL (debug mode). See [doc/INSPECTOR.md](doc/INSPECTOR.md) and the Inspector subsection later in this README for web/embed details.
+
+**Example:** Run your app with `flutter run`, then run `omega inspector` and connect to the VM link printed in the console.
 
 ---
 
@@ -363,11 +376,12 @@ Health check passed.
 - `dart run omega_architecture:omega ai explain <file.json> --stdout` — print output directly in console (skip temp file).
 - `dart run omega_architecture:omega ai coach start "<feature>"` — guided implementation plan (steps + required artifacts + validation checks); temp file by default.
 - `dart run omega_architecture:omega ai coach audit "<feature>"` — audits current project for feature gaps (files, setup wiring, contracts, tests) and returns score/findings/gaps.
-- `dart run omega_architecture:omega ai coach module "<Name>"` — generates a complete ecosystem with AI guidance. Use `--template advanced` for a sophisticated boilerplate with `OmegaWorkflowFlow`, `OmegaStatefulAgent`, and tests.
+- `dart run omega_architecture:omega ai coach module "<feature or Name: description>"` — generates or evolves a full module with AI. Flags: `--template basic|advanced`, `--provider-api`, `--json`, `--stdout`, optional `--module` / `-m` to pin the module name.
+- `dart run omega_architecture:omega ai coach redesign "<Module: UI change>"` — **UI only:** regenerates `ui/*_page.dart`; leaves events, agent, flow, and behavior unchanged. Same optional flags as `module` where applicable (`--template`, `--provider-api`, etc.).
 
 **Concept:** `ai explain` reads the same trace format used by `omega trace` (`events` list + optional `initialSnapshot`). In offline mode it reports top events, namespaces and heuristic checks (errors/failures/repetition). With `--provider-api`, it uses environment configuration and returns provider output when available; fallback is automatic to keep the command resilient. While waiting for provider responses, the CLI shows a progress status in terminal.
 
-`ai coach start` helps you design features in Omega with architecture-first guidance. `ai coach audit` evaluates a real project state for a feature and highlights concrete gaps to close. `ai coach module` goes beyond simple scaffolding by using templates optimized for the latest Omega patterns.
+`ai coach start` helps you design features in Omega with architecture-first guidance. `ai coach audit` evaluates a real project state for a feature and highlights concrete gaps to close. `ai coach module` goes beyond simple scaffolding by using templates optimized for the latest Omega patterns. `ai coach redesign` is the safe path to refresh only the page widget when the rest of the module is already correct.
 
 **Future capabilities (WIP):**
 - `ai coach fix-gaps` — Automatically create missing files and wiring detected by audit.

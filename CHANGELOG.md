@@ -7,6 +7,8 @@
 - **Audit Tool Fixes**: Enhanced registration detection for agents, flows, and routes in `omega_setup.dart`.
 - **VS Code Extension Integration**: Added `omega_studio` for one-click AI-powered module redesigns.
 - **Self-Healing Enhancements**: More robust parsing of analyzer output for iterative AI fixes.
+- **Docs:** Added [doc/COMANDOS_CLI.md](doc/COMANDOS_CLI.md) (Spanish CLI reference for developers). [README.md](README.md) and [doc/GUIA.md](doc/GUIA.md) link to it; README **Omega CLI** section now includes `inspector` and `ai coach redesign` / coach flags.
+- **Web docs:** [presentation/index.html](presentation/index.html) and [presentation/index-en.html](presentation/index-en.html) — CLI section adds `inspector` tab, link to `COMANDOS_CLI.md` / README, expanded `ai coach` (module flags, `redesign`); feature card and “Other documentation” list updated.
 
 ## 0.0.31 (Module design & evolution)
 

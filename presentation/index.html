@@ -630,12 +630,12 @@ if (ev != null) {
                             <li><strong>Inspector:</strong> panel de debug (OmegaInspector) con últimos eventos y
                                 snapshot de flows. En web: OmegaInspectorLauncher abre ventana aparte;
                                 OmegaInspectorReceiver muestra los datos por BroadcastChannel.</li>
-                            <li><strong>CLI:</strong> <code>omega doc</code> (abre esta documentación),
-                                <code>omega init</code> (crea omega_setup.dart),
-                                <code>omega g ecosystem &lt;Nombre&gt;</code>,
-                                <code>omega g agent &lt;Nombre&gt;</code>, <code>omega g flow &lt;Nombre&gt;</code>,
-                                <code>omega validate</code>. Genera archivos en el directorio actual y actualiza
-                                omega_setup.</li>
+                            <li><strong>CLI:</strong> <code>omega doc</code>, <code>omega inspector</code> (Inspector local + VM Service),
+                                <code>omega init</code>, <code>omega g ecosystem|agent|flow</code>,
+                                <code>omega validate</code>, <code>omega trace</code>, <code>omega doctor</code>,
+                                <code>omega create app</code>, <code>omega ai …</code>. Lista detallada:
+                                <a href="#cli">sección CLI</a> y
+                                <a href="https://github.com/yefersonSegura/omega_architecture/blob/main/doc/COMANDOS_CLI.md" target="_blank" rel="noopener noreferrer"><code>doc/COMANDOS_CLI.md</code></a>.</li>
                         </ul>
                     </div>
                 </section>
@@ -1360,8 +1360,12 @@ if (loaded != null) {
                     <span class="section-tag">Documentación</span>
                     <h2 class="animate">Omega <span class="gradient-text">CLI</span></h2>
                     <p class="subtitle animate" style="margin-bottom: 16px;">El CLI se ejecuta en <strong>tu app</strong> (la que usa omega_architecture). Desde un proyecto que dependa de <code>omega_architecture</code>: <code>dart run omega_architecture:omega &lt;comando&gt; [opciones]</code></p>
+                    <div class="highlight-box animate" style="margin-bottom: 20px;">
+                        <p style="margin: 0; font-size: 14px;"><strong>Referencia completa para desarrolladores</strong> (tabla resumen, flags, <code>ai coach</code>, trazas, inspector): archivo <a href="https://github.com/yefersonSegura/omega_architecture/blob/main/doc/COMANDOS_CLI.md" target="_blank" rel="noopener noreferrer"><code>doc/COMANDOS_CLI.md</code></a> en el repositorio. En inglés con más ejemplos de salida: <a href="https://github.com/yefersonSegura/omega_architecture/blob/main/README.md#omega-cli" target="_blank" rel="noopener noreferrer">README → Omega CLI</a>.</p>
+                    </div>
                     <div class="cli-tab-bar animate" role="tablist">
                         <button type="button" class="cli-tab-btn active" data-tab="cli-doc" role="tab">doc</button>
+                        <button type="button" class="cli-tab-btn" data-tab="cli-inspector" role="tab">inspector</button>
                         <button type="button" class="cli-tab-btn" data-tab="cli-init" role="tab">init</button>
                         <button type="button" class="cli-tab-btn" data-tab="cli-geco" role="tab">g ecosystem</button>
                         <button type="button" class="cli-tab-btn" data-tab="cli-gagent" role="tab">g agent</button>
@@ -1383,6 +1387,18 @@ if (loaded != null) {
                             <p>Abre la documentación web oficial de Omega en el navegador (en línea). No crea archivos ni modifica el proyecto.</p>
                             <h4>Ejemplo (éxito)</h4>
                             <pre class="glass"><code>Opening documentation: http://yefersonsegura.com/proyects/omega/</code></pre>
+                        </div>
+                        <div id="cli-inspector" class="cli-tab-panel" role="tabpanel">
+                            <h4>Para qué</h4>
+                            <p>Conectar el <strong>Inspector Omega</strong> a una app Flutter en ejecución mediante el <strong>Dart VM Service</strong> (builds de debug) sin buscar a mano la URL del inspector alojado.</p>
+                            <h4>Instrucción</h4>
+                            <pre class="glass"><code>dart run omega_architecture:omega inspector</code></pre>
+                            <h4>Concepto</h4>
+                            <p>Abre el HTML del Inspector local en el navegador. Pega o conéctate al enlace VM Service que imprime <code>flutter run</code>. Mismo panel que el inspector en línea: flows, eventos, JSON. Para incrustar en la app (FAB, receptor web), ver <strong>INSPECTOR.md</strong> en el repo y la sección Inspector de esta página.</p>
+                            <h4>Ejemplo</h4>
+                            <pre class="glass"><code>flutter run
+# En otra terminal:
+dart run omega_architecture:omega inspector</code></pre>
                         </div>
                         <!-- init -->
                         <div id="cli-init" class="cli-tab-panel" role="tabpanel">
@@ -1553,11 +1569,12 @@ dart run omega_architecture:omega ai explain &lt;file.json&gt; --provider-api
 dart run omega_architecture:omega ai explain &lt;file.json&gt; --stdout
 dart run omega_architecture:omega ai coach start "&lt;feature&gt;"
 dart run omega_architecture:omega ai coach audit "&lt;feature&gt;"
-dart run omega_architecture:omega ai coach module "&lt;Name&gt;" --template advanced</code></pre>
+dart run omega_architecture:omega ai coach module "&lt;feature o Nombre: descripción&gt;" [--template basic|advanced] [--provider-api] [--json] [--stdout] [--module|-m &lt;Nombre&gt;]
+dart run omega_architecture:omega ai coach redesign "&lt;Módulo: cambio UI&gt;" [--template basic|advanced] [--provider-api] ...</code></pre>
                             <h4>Concepto</h4>
                             <p><code>ai explain</code> usa el mismo formato de traza que <code>omega trace</code> (lista de <code>events</code> + <code>initialSnapshot</code> opcional). Sin flags usa heurísticas locales (top eventos, namespaces, patrones de error/repetición). Con <code>--provider-api</code> intenta proveedor (OpenAI hoy) y si falla vuelve automáticamente a offline.</p>
                             <p><strong>Salida por defecto:</strong> <code>ai explain</code> y <code>ai coach</code> guardan reporte temporal en <code>.dart_tool/omega_ai_temp</code> y lo abren en el editor; usa <code>--stdout</code> para imprimir en consola.</p>
-                            <p><code>ai coach start</code> genera guía de implementación (pasos, artefactos requeridos y checks). <code>ai coach audit</code> audita una feature real y devuelve score, hallazgos y brechas (wiring, contratos, tests, etc.). <code>ai coach module</code> genera un ecosistema completo usando plantillas optimizadas (WorkflowFlow, StatefulAgent, etc.).</p>
+                            <p><code>ai coach start</code> genera guía de implementación (pasos, artefactos requeridos y checks). <code>ai coach audit</code> audita una feature real y devuelve score, hallazgos y brechas (wiring, contratos, tests, etc.). <code>ai coach module</code> genera o evoluciona un módulo completo (WorkflowFlow, StatefulAgent, contratos, etc.). <code>ai coach redesign</code> regenera <strong>solo</strong> <code>ui/*_page.dart</code>; no modifica events, agent, flow ni behavior — úsalo cuando el resto del módulo ya esté bien.</p>
                             <h4>Próximas capacidades (WIP)</h4>
                             <ul style="font-size: 14px; margin-top: 8px; color: var(--text-dim);">
                                 <li><code>ai coach fix-gaps</code> — Crea automáticamente archivos y cableado detectado en el audit.</li>
@@ -1605,6 +1622,7 @@ OMEGA_AI_LANG=es|en|pt|...</code></pre>
                     <h2 class="animate">Otras <span class="gradient-text">documentaciones</span></h2>
                     <p class="subtitle animate" style="margin-bottom: 16px;">En el repositorio (<code>doc/</code>) hay guías y referencias adicionales:</p>
                     <ul class="animate" style="line-height: 1.8;">
+                        <li><strong><a href="https://github.com/yefersonSegura/omega_architecture/blob/main/doc/COMANDOS_CLI.md" target="_blank" rel="noopener noreferrer">COMANDOS_CLI.md</a></strong> — Referencia completa del CLI para desarrolladores (español): cómo ejecutar, tabla resumen, <code>ai coach</code>, trazas, inspector, nota sobre Omega Studio opcional.</li>
                         <li><strong>CONTRACTS.md</strong> — Contratos declarativos (OmegaFlowContract, OmegaAgentContract), ejemplos y uso del getter <code>contract</code> para semántica y avisos en debug.</li>
                         <li><strong>TIME_TRAVEL.md</strong> — Grabar y reproducir sesiones con OmegaTimeTravelRecorder y OmegaRecordedSession; replay para depuración.</li>
                         <li><strong>GUIA.md</strong> — Guía de uso: canal, agentes, flows, navegación, persistencia, Inspector, offline-first, time-travel.</li>

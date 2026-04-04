@@ -630,10 +630,11 @@ omega create app cripto_dash --kickstart "un dashboard de criptomonedas con graf
 - `omega ai coach audit "auth"` — Analiza tu implementación de "auth" y detecta brechas (faltan contratos, tests, etc).
 - `omega ai explain trace.json` — Explica qué pasó en una sesión grabada (ideal para depurar errores complejos).
 
-Consulta el **[README principal](../README.md)** para ver la lista completa de flags y variables de entorno soportadas.
+**Referencia completa del CLI (tabla, `ai coach`, trazas, inspector):** [COMANDOS_CLI.md](COMANDOS_CLI.md). En inglés con más ejemplos de salida: [README principal](../README.md) (sección *Omega CLI*).
 
 ## Enlaces
 
+- [COMANDOS_CLI.md](COMANDOS_CLI.md) — Todos los comandos `omega` para desarrolladores.
 - [ARQUITECTURA.md](ARQUITECTURA.md) — Detalle técnico de cada componente.
 - [CONTRACTS.md](CONTRACTS.md) — Contratos declarativos (flows y agentes); el **example** es la referencia.
 - [TESTING.md](TESTING.md) — Cómo testear agentes y flows sin Flutter.
