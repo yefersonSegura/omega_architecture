@@ -16,6 +16,11 @@ import 'package:omega_architecture/omega_architecture.dart';
 ///
 /// Use this when you want an agent to also behave as a small observable
 /// store for a specific part of the UI.
+///
+/// **Lists in [viewState]:** to find an optional element, use [List.indexWhere]
+/// and a null-safe index check (or a short loop). Avoid
+/// `firstWhere(..., orElse: () => null as T?)` — it relies on an invalid cast and
+/// is unnecessary when a nullable result is intended.
 abstract class OmegaStatefulAgent<TState> extends OmegaAgent {
   OmegaStatefulAgent({
     required super.id,

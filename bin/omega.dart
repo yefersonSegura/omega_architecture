@@ -733,10 +733,12 @@ AFFECTED FILE CONTENTS:
 ${filesContent.toString()}
 $healContextBlock
 CRITICAL — IMPORTS (this fixes Undefined class OmegaAgent, OmegaEventBus, OmegaFlow, OmegaIntentName, etc.):
+- LANGUAGE: output valid Dart (Flutter) only — never Kotlin, Swift, TypeScript, or pseudocode in file bodies.
 - Any Dart file under lib/ that uses Omega types MUST start with:
   import 'package:omega_architecture/omega_architecture.dart';
 - Screens also need: import 'package:flutter/material.dart';
 - Sibling module files: import 'name_events.dart' or import '../name_events.dart' from ui/
+- If ui/*_page.dart declares a field or parameter of type MyModuleAgent (e.g. OrderManagementAgent), it MUST import that class: import '../my_module_agent.dart'; (same folder depth as events — mirror example/lib/auth/ui/auth_page.dart which imports ../auth_agent.dart).
 - NEVER use: package:omega_architecture/omega/... internal paths.
 - If a file has ZERO omega import but uses Omega*, add the package import as the first import.
 
@@ -757,7 +759,7 @@ OMEGA API (must compile against package exports):
 - Intents from UI: scope.flowManager.handleIntent(OmegaIntent.fromName(...)). Do NOT call flow.onIntent from screens; OmegaFlow.onIntent is overridden inside the flow class only. Do NOT use OmegaFlowContext.intent (does not exist).
 - Channel: listeners see OmegaEvent only. Typed event classes live in payload — use event.payloadAs<MyTypedEvent>(), not `if (event is MyTypedEvent)`.
 - Behavior: OmegaAgentBehaviorEngine — any number of addRule(...) calls (or evaluate); each rule maps context → OmegaAgentReaction(actionId, payload). Agent implements onAction with a branch per actionId. Never handleEvent/Stream/yield in behavior. OmegaAgentMessage only in onMessage; use msg.action (no .type). See example/lib/auth/auth_behavior.dart + auth_agent.dart.
-- OmegaStatefulAgent: UI state is viewState + setViewState — use viewState.copyWith(...) inside setViewState, not state.copyWith (state is Map<String, dynamic>).
+- OmegaStatefulAgent: UI state is viewState + setViewState — use viewState.copyWith(...) inside setViewState, not state.copyWith (state is Map<String, dynamic>). In onAction, to find an optional item in a List inside viewState: use `final i = list.indexWhere((e) => e.id == id); final found = i < 0 ? null : list[i];` — NEVER `firstWhere(..., orElse: () => null as T?)` (invalid cast, hides mistakes, confuses the analyzer).
 - OmegaEvent / OmegaIntent: use .fromName(...) so id is set; if using constructors directly, both id and name are required.
 - OmegaWorkflowFlow: failStep(code, {String? message}) — never a second positional; use message: for text from ctx.event payload.
 - OmegaAgentBuilder: builder is (BuildContext, TState) only; do not add a third agent argument. Pass the agent into the Page and use widget.agent; never construct MyAgent(channel) or MyAgent(channel: channel) inside build — that creates a new agent every frame.
@@ -2221,13 +2223,16 @@ OMEGA AGENT + BEHAVIOR — read the real API before coding (same package):
 - Canonical examples: example/lib/auth/auth_behavior.dart (rules) + example/lib/auth/auth_agent.dart (onAction, setViewState, emit). Generated code must follow that split — not a single fixed "requested → loadMock" pattern; that was only an illustration.
 
 OmegaAgentBehaviorEngine (*_behavior.dart*) — architecture, not a recipe count:
-- Valid shape: (1) constructor calling addRule(...) one or MANY times — each rule is one condition → one OmegaAgentReaction(actionId, payload: ...). First matching rule wins (registration order matters). (2) OR override evaluate(OmegaAgentBehaviorContext ctx) and return the first matching reaction yourself.
-- Conditions are whatever the module needs: ctx.event?.name == MyEvent.x.name, ctx.intent?.name == MyIntent.y.name, boolean combinations (|| / &&), payload checks via ctx.event?.payloadAs<MyTypedEvent>(), etc. Different features ⇒ different rules and different actionIds.
+- Valid shape: (1) constructor calling addRule(OmegaAgentBehaviorRule(...)) one or MANY times — each rule is one condition → one OmegaAgentReaction(actionId, payload: ...). First matching rule wins (registration order matters). (2) OR override evaluate(OmegaAgentBehaviorContext ctx) and return the first matching reaction yourself.
+- API detail: addRule has exactly ONE positional argument — the rule object. WRONG (does not compile): addRule(condition: (ctx) => ..., reaction: (ctx) => ...). RIGHT: addRule(OmegaAgentBehaviorRule(condition: (ctx) => ..., reaction: (ctx) => OmegaAgentReaction('actionId', payload: ...)));
+- Conditions are whatever the module needs: ctx.event?.name == MyEvent.x.name, ctx.intent?.name == MyIntent.y.name, boolean combinations (|| / &&), ctx.intent?.payload is String (or other runtime checks), typed payloads via ctx.event?.payloadAs<MyTypedEvent>() / ctx.intent?.payloadAs<...>() when applicable. Different features ⇒ different rules and different actionIds.
+- Multi-rule style (order/admin modules): one rule for "start or retry or refresh" intents → same reaction (e.g. load list); another rule for a specific intent with payload guard (&& ctx.intent?.payload is String) → reaction with payload passed to onAction; another rule when ctx.event?.name matches a domain event → reaction whose payload is built from ctx.event?.payloadAs<MyShippedEvent>()?.field.
 - Reactions stay small: string action id + optional payload for the agent. No business/async in the behavior file.
 
 OmegaStatefulAgent (*_agent.dart*):
 - Base [OmegaAgent] exposes Map<String, dynamic> state — loose key/value bag for behavior rules if needed; it is NOT your typed UI model and has no copyWith for that.
 - Typed screen state lives in viewState (TState) + setViewState(next). When TState has copyWith, use: setViewState(viewState.copyWith(...)) — read the current snapshot from viewState, never from state for UI fields.
+- Optional lookup in a List field of viewState (e.g. cart lines, orders): prefer indexWhere + null if missing, or a small loop — do NOT use firstWhere with orElse: () => null as SomeType? (unsafe cast, bad style).
 - WRONG: state.copyWith(...) — Map does not define copyWith; the analyzer reports copyWith on Map.
 - onAction(String action, dynamic payload): switch/if on action for every actionId emitted by the behavior (there may be many). Async, mocks, setViewState, channel.emit belong here (or private helpers called from onAction).
 
@@ -2886,6 +2891,10 @@ STRING LITERALS (encoding):
         return false;
       }
     }
+    if (RegExp(r"\b" + RegExp.escape(moduleName) + r"Agent\b").hasMatch(t)) {
+      final lower = moduleName.toLowerCase();
+      if (!t.contains("${lower}_agent.dart")) return false;
+    }
     return true;
   }
 
@@ -2899,6 +2908,7 @@ STRING LITERALS (encoding):
     if (RegExp(r"\byield\b").hasMatch(t)) return false;
     if (t.contains("msg.type")) return false;
     if (t.contains("OmegaAgentMessage")) return false;
+    if (RegExp(r"addRule\s*\(\s*condition\s*:").hasMatch(t)) return false;
     return true;
   }
 
@@ -2908,6 +2918,9 @@ STRING LITERALS (encoding):
     if (t.isEmpty) return true;
     if (!t.contains("extends OmegaStatefulAgent")) return true;
     if (RegExp(r"\bstate\.copyWith\b").hasMatch(t)) return false;
+    if (RegExp(r"orElse\s*:\s*\(\)\s*=>\s*null\s+as\b").hasMatch(t)) {
+      return false;
+    }
     return true;
   }
 
@@ -3637,7 +3650,7 @@ ${currentFiles.entries.map((e) => "--- FILE: ${e.key} ---\n${e.value}").join("\n
     late final String aiSystemContent;
     if (pageOnly) {
       aiSystemContent =
-          "You output exactly one JSON object (json_object mode). UI-ONLY mode: keys reasoning + page (+ optional response) only. NEVER events/agent/flow/behavior. The page MUST import package:omega_architecture/omega_architecture.dart and package:flutter/material.dart so OmegaScope and types resolve. Act as a senior Flutter + product designer. OmegaScope, getFlow, StreamBuilder, OmegaIntent.fromName using ONLY existing intents from the reference. No prose outside JSON.";
+          "You output exactly one JSON object (json_object mode). UI-ONLY mode: keys reasoning + page (+ optional response) only. NEVER events/agent/flow/behavior. Output valid Dart (Flutter) source only — not Kotlin, Swift, TypeScript, or pseudocode. The page MUST import package:omega_architecture/omega_architecture.dart and package:flutter/material.dart so OmegaScope and types resolve. If the page references the module agent type (e.g. ${moduleName}Agent) or OmegaAgentBuilder<${moduleName}Agent,...>, add import '../${lower}_agent.dart' the same way as events (example: auth_page imports ../auth_agent.dart). Act as a senior Flutter + product designer. OmegaScope, getFlow, StreamBuilder, OmegaIntent.fromName using ONLY existing intents from the reference. No prose outside JSON.";
       prompt =
           """
 UI-ONLY REDESIGN for Omega module '$moduleName' ($lower).
@@ -3649,7 +3662,7 @@ OUTPUT JSON RULES:
 1. Required string keys: "reasoning" (1-5 lines), "page" (complete Dart for ${moduleName}Page — file path conceptually: ui/${lower}_page.dart).
 2. Optional: "response" (duplicate of "page").
 3. FORBIDDEN: do not include keys "events", "behavior", "agent", or "flow" in the JSON at all.
-4. Page must use: import 'package:flutter/material.dart'; import 'package:omega_architecture/omega_architecture.dart'; import '../${lower}_events.dart';
+4. Page must use: import 'package:flutter/material.dart'; import 'package:omega_architecture/omega_architecture.dart'; import '../${lower}_events.dart'; if the screen uses type ${moduleName}Agent or OmegaAgentBuilder<${moduleName}Agent,...> you MUST add import '../${lower}_agent.dart'; (otherwise Undefined class ${moduleName}Agent).
 5. Keep class name ${moduleName}Page, OmegaScope.of(context), scope.flowManager.getFlow('$moduleName'), StreamBuilder<OmegaFlowExpression>. Use existing ${moduleName}Intent / ${moduleName}Event names from the reference — do not rename or replace non-UI files.
 
 $_omegaAiOmegaScopeApi
@@ -3661,10 +3674,10 @@ Return only one JSON object. No markdown fences. No text outside JSON.
 """;
     } else {
       aiSystemContent =
-          "You are a Senior Flutter Developer and UI/UX-minded engineer. You output exactly one JSON object (json_object mode) with string values only. Include a concise \"reasoning\" (1-5 lines, user’s language). Every file in the JSON (events, behavior, agent, flow, page) MUST include import 'package:omega_architecture/omega_architecture.dart'; where Omega types are used; page also needs flutter/material. Never omit the package import — that causes Undefined class errors. Rich Material 3 UI, proper OmegaIntentName/OmegaEventName, const constructors. Behavior MUST follow example/lib/auth/auth_behavior.dart: addRule (any number of rules) or evaluate only; agent implements every reaction actionId in onAction like example/lib/auth/auth_agent.dart — never Stream/handleEvent on OmegaAgentBehaviorEngine. No prose outside JSON.";
+          "You are a Senior Flutter Developer writing Dart (Flutter) only. You output exactly one JSON object (json_object mode) with string values only. Include a concise \"reasoning\" (1-5 lines, user’s language). Every code value MUST be valid Dart — never Kotlin, Swift, TypeScript, or pseudocode. Every file in the JSON (events, behavior, agent, flow, page) MUST include import 'package:omega_architecture/omega_architecture.dart'; where Omega types are used; page also needs flutter/material. Never omit the package import — that causes Undefined class errors. The page file that references ${moduleName}Agent MUST import '../${lower}_agent.dart' (same pattern as ../${lower}_events.dart from ui/). Rich Material 3 UI, proper OmegaIntentName/OmegaEventName, const constructors. Behavior MUST follow example/lib/auth/auth_behavior.dart: addRule (any number of rules) or evaluate only; agent implements every reaction actionId in onAction like example/lib/auth/auth_agent.dart — never Stream/handleEvent on OmegaAgentBehaviorEngine. No prose outside JSON.";
       prompt =
           """
-Generate COMPLETE and FUNCTIONAL Dart code for an Omega Architecture module named '$moduleName' ($lower).
+Generate COMPLETE and FUNCTIONAL Dart (Flutter) code only — not Kotlin, Swift, TypeScript, or pseudocode — for an Omega Architecture module named '$moduleName' ($lower).
 PRIMARY FOCUS / INSTRUCTION: '$description'.
 $contextBlock
 $filesContextBlock
@@ -3688,7 +3701,7 @@ CRITICAL RULES:
    The page file MUST have that import PLUS import 'package:flutter/material.dart'; (order: flutter first or architecture first, both valid).
    Without this line, the app will show Undefined class OmegaAgent / OmegaEventBus / OmegaFlow / OmegaIntentName.
 2. NEVER use internal paths like 'package:omega_architecture/omega/core/...' or relative imports into the package.
-3. Class names use '$moduleName' (PascalCase). File-level imports for sibling files: '${lower}_events.dart' or '../${lower}_events.dart' from ui/.
+3. Class names use '$moduleName' (PascalCase). File-level imports for sibling files: '${lower}_events.dart' or '../${lower}_events.dart' from ui/. If the page uses type ${moduleName}Agent or OmegaAgentBuilder<${moduleName}Agent,...>, it MUST also import '../${lower}_agent.dart' (see example/lib/auth/ui/auth_page.dart + ../auth_agent.dart).
 4. Return ONE JSON object. Every value MUST be a JSON string (no nested objects for code). Required keys:
    - "reasoning": 1-5 short lines in natural language (Spanish if the user wrote in Spanish). Brief analysis of layout, fields, states, and Omega wiring. No markdown fences.
    - "events", "behavior", "agent", "flow", "page": full Dart file contents as strings (same as before).
@@ -3718,8 +3731,10 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
 
 - 'behavior' (Omega architecture — NOT a BLoC; mirror example/lib/auth/auth_behavior.dart for style):
   - import '${lower}_events.dart';
-  - class ${moduleName}Behavior extends OmegaAgentBehaviorEngine { ${moduleName}Behavior() { addRule(...); addRule(...); /* as many rules as the module needs — events, intents, combined conditions */ } }
-  - Each addRule: condition (ctx) => ... using ctx.event?.name, ctx.intent?.name, payloadAs<...>, etc.; reaction (ctx) => OmegaAgentReaction('distinctActionId', payload: ...). Order rules from more specific to general if needed.
+  - Every rule MUST be addRule(OmegaAgentBehaviorRule(condition: ..., reaction: ...)) — never addRule(condition: ...) without OmegaAgentBehaviorRule (that is a compile error).
+  - class ${moduleName}Behavior extends OmegaAgentBehaviorEngine { ${moduleName}Behavior() { addRule(OmegaAgentBehaviorRule(...)); addRule(OmegaAgentBehaviorRule(...)); /* as many rules as needed */ } }
+  - Patterns: (1) several intents sharing one reaction: condition uses || on ctx.intent?.name == ${moduleName}Intent.start.name etc. (2) one intent with typed payload: condition adds && (ctx.intent?.payload is String) or use ctx.intent?.payloadAs<YourPayloadType>() != null. (3) react to channel events: ctx.event?.name == ${moduleName}Event.succeeded.name and pass ctx.event?.payloadAs<YourTypedEvent>()?.field into OmegaAgentReaction payload.
+  - reaction: (ctx) => OmegaAgentReaction('distinctActionId', payload: ...) — keep rules declarative; no async. Order rules from more specific to general if needed.
   - Alternative: override evaluate(OmegaAgentBehaviorContext ctx) synchronously; return OmegaAgentReaction(...) or null.
   - FORBIDDEN: handleEvent, Stream, async*, yield, OmegaAgentMessage, msg.type. Async work and setViewState live in ${moduleName}Agent.onAction (one case per actionId).
 
@@ -3730,7 +3745,7 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
       ${moduleName}Agent(OmegaEventBus channel) : super(id: '$moduleName', channel: channel, behavior: ${moduleName}Behavior(), initialState: ${moduleName}ViewState.idle);
       @override OmegaAgentContract? get contract => OmegaAgentContract(listenedEventNames: {});
       @override void onMessage(OmegaAgentMessage msg) {}
-      @override void onAction(String action, dynamic payload) { /* use setViewState(viewState.copyWith(...)) — NOT state.copyWith (state is Map) */ }
+      @override void onAction(String action, dynamic payload) { /* use setViewState(viewState.copyWith(...)) — NOT state.copyWith (state is Map). For optional items in lists inside viewState use indexWhere + ternary, not firstWhere(..., orElse: () => null as T?) */ }
     }
 
 - 'flow':
@@ -3751,7 +3766,7 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
     }
 
 - 'page' (STRUCTURE ONLY - REWRITE THE UI CONTENT):
-  - import 'package:flutter/material.dart'; import 'package:omega_architecture/omega_architecture.dart'; import '../${lower}_events.dart';
+  - import 'package:flutter/material.dart'; import 'package:omega_architecture/omega_architecture.dart'; import '../${lower}_events.dart'; AND for (B) add import '../${lower}_agent.dart'; so ${moduleName}Agent resolves (omega_architecture.dart does NOT export your app agent class).
   - EITHER (A) flow-only: `class ${moduleName}Page extends StatelessWidget { const ${moduleName}Page({super.key});` + getFlow + StreamBuilder only — omega_setup may use const ${moduleName}Page().
   - OR (B) agent + flow: `class ${moduleName}Page extends StatelessWidget { ${moduleName}Page({super.key, required this.agent}); final ${moduleName}Agent agent;` (no const constructor) + OmegaAgentBuilder<${moduleName}Agent, ${moduleName}ViewState>(agent: agent, builder: (context, state) => ...) + flow/StreamBuilder as needed — omega_setup MUST use `final $camelAgentVar = ${moduleName}Agent(channel);` (or `${moduleName}Agent(channel: channel);` if the agent ctor is `{required OmegaEventBus channel}`) in agents: [..., $camelAgentVar] and `OmegaRoute(..., builder: (c) => ${moduleName}Page(agent: $camelAgentVar))`.
   - Default template skeleton if you choose (A):
