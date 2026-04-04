@@ -2915,27 +2915,32 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
 Return ONLY valid JSON. No markdown. No conversational text.
 """;
 
+    final payloadMap = {
+      "model": model,
+      "temperature": 0.3,
+      "messages": [
+        {
+          "role": "system",
+          "content":
+              "You are a Senior Flutter Developer. You generate production-ready code using Omega Architecture. Your goal is to provide rich, well-designed UIs (Material 3) based on product descriptions. NEVER return simple placeholders or single-button screens. Use proper enums (OmegaIntentName/OmegaEventName), const constructors, and consistent PascalCase naming.",
+        },
+        {"role": "user", "content": prompt},
+      ],
+      "response_format": {"type": "json_object"},
+    };
+
+    final payloadString = jsonEncode(payloadMap);
+    final payloadBytes = utf8.encode(payloadString);
+
     HttpClient? client;
     try {
       client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
       final request = await client.postUrl(Uri.parse(endpoint));
       request.headers.set(HttpHeaders.authorizationHeader, "Bearer $apiKey");
-      request.headers.set(HttpHeaders.contentTypeHeader, "application/json");
-      request.write(
-        jsonEncode({
-          "model": model,
-          "temperature": 0.3,
-          "messages": [
-            {
-              "role": "system",
-              "content":
-                  "You are a Senior Flutter Developer. You generate production-ready code using Omega Architecture. Your goal is to provide rich, well-designed UIs (Material 3) based on product descriptions. NEVER return simple placeholders or single-button screens. Use proper enums (OmegaIntentName/OmegaEventName), const constructors, and consistent PascalCase naming.",
-            },
-            {"role": "user", "content": prompt},
-          ],
-          "response_format": {"type": "json_object"},
-        }),
-      );
+      request.headers.set(HttpHeaders.contentTypeHeader, "application/json; charset=utf-8");
+      
+      request.contentLength = payloadBytes.length;
+      request.add(payloadBytes);
 
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
@@ -2947,7 +2952,9 @@ Return ONLY valid JSON. No markdown. No conversational text.
       }
 
       final decoded = jsonDecode(body);
-      final content = decoded["choices"][0]["message"]["content"].toString();
+      final dynamic rawContent = decoded["choices"][0]["message"]["content"];
+      if (rawContent == null) return null;
+      final String content = rawContent.toString();
       
       String jsonText = content;
       if (content.contains("```json")) {
@@ -3224,7 +3231,7 @@ Return ONLY valid JSON. No markdown. No conversational text.
     ];
 
     if (useProviderApi) {
-      final providerSteps = await runWithProgress<List<String>?>(
+      final providerSteps = await _runWithProgress<List<String>?>(
         _tr(en: "Consulting AI provider", es: "Consultando proveedor IA"),
         () => _providerCoachPlan(cleanFeature),
       );
@@ -3249,7 +3256,7 @@ Return ONLY valid JSON. No markdown. No conversational text.
         }
       }
 
-      final generated = await runWithProgress<Map<String, String>?>(
+      final generated = await _runWithProgress<Map<String, String>?>(
         _tr(
           en: "Generating/Redesigning logic with AI",
           es: "Generando/Rediseñando lógica con IA",
@@ -3292,7 +3299,7 @@ Return ONLY valid JSON. No markdown. No conversational text.
         }
       }
 
-      await runWithProgress<void>(
+      await _runWithProgress<void>(
         _tr(
           en: "Generating ecosystem module",
           es: "Generando modulo de ecosistema",
