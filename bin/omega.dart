@@ -738,9 +738,14 @@ OMEGA API (must compile against package exports):
 - OmegaRuntime.bootstrap((OmegaChannel c) => createOmegaConfig(c))
 - Agents: extend OmegaAgent or OmegaStatefulAgent<T>; super(id:, channel:, behavior:) — channel is OmegaEventBus (pass OmegaChannel or namespace)
 - Flows: extend OmegaFlow or OmegaWorkflowFlow; super(id:, channel:)
-- Behavior: extend OmegaAgentBehaviorEngine; use addRule(OmegaAgentBehaviorRule(...)) OR override evaluate(OmegaAgentBehaviorContext ctx)
+- Behavior: extend OmegaAgentBehaviorEngine; use one or more addRule(OmegaAgentBehaviorRule(...)) OR override evaluate(OmegaAgentBehaviorContext ctx)
 - Enums: implements OmegaIntentName / OmegaEventName with const Enum(this.name); @override final String name;
 - OmegaIntent.fromName(MyIntent.start) — enum value only, not String, not .name
+- OmegaScope (from OmegaScope.of(context)): ONLY .channel, .flowManager, .initialFlowId. There is NO agentManager and NO getAgent on scope. Fix by using scope.flowManager.getFlow(flowId) + StreamBuilder<OmegaFlowExpression>, or pass the agent into the Page widget and use OmegaAgentBuilder (see example/lib/omega/omega_setup.dart + example/lib/auth/ui/auth_page.dart).
+- Intents from UI: scope.flowManager.handleIntent(OmegaIntent.fromName(...)). Do NOT call flow.onIntent from screens; OmegaFlow.onIntent is overridden inside the flow class only. Do NOT use OmegaFlowContext.intent (does not exist).
+- Channel: listeners see OmegaEvent only. Typed event classes live in payload — use event.payloadAs<MyTypedEvent>(), not `if (event is MyTypedEvent)`.
+- Behavior: OmegaAgentBehaviorEngine — any number of addRule(...) calls (or evaluate); each rule maps context → OmegaAgentReaction(actionId, payload). Agent implements onAction with a branch per actionId. Never handleEvent/Stream/yield in behavior. OmegaAgentMessage only in onMessage; use msg.action (no .type). See example/lib/auth/auth_behavior.dart + auth_agent.dart.
+- String literals: valid UTF-8; fix Spanish mojibake (corrupted accents) or replace with ASCII/English mock text.
 
 Return only JSON. No markdown fences.
 """;
@@ -1956,6 +1961,66 @@ UI DESIGN EXCELLENCE (ship-quality — treat this screen as a real product, not 
 - FORBIDDEN: a screen that is only one button and one Text, bare Center(Text), "TODO UI", or Lorem ipsum as main content.
 ''';
 
+  /// Stops the model from inventing OmegaScope APIs (e.g. agentManager) that do not exist.
+  static const String _omegaAiOmegaScopeApi = r'''
+OMEGA SCOPE (package API — must match example/lib/main.dart and example/lib/omega/omega_setup.dart):
+- OmegaScope.of(context) exposes ONLY: .channel (OmegaChannel), .flowManager (OmegaFlowManager), .initialFlowId (String?).
+- There is NO agentManager, NO getAgent on OmegaScope, NO OmegaRuntime on BuildContext.
+
+DEFAULT UI PATTERN (use this in the module Page unless the route passes an agent — see below):
+- final scope = OmegaScope.of(context);
+- final flow = scope.flowManager.getFlow('FLOW_ID');  // same string as super(id: '...') in the module Flow class; may be null if mis-registered
+- If flow == null, show a short error Scaffold; else StreamBuilder<OmegaFlowExpression>(stream: flow.expressions, ...).
+- To send an intent from a button: scope.flowManager.handleIntent(OmegaIntent.fromName(MyIntent.retry)); — do NOT call flow.onIntent from the UI.
+- OmegaFlowContext is only constructed inside the package when the flow runs; there is NO OmegaFlowContext.intent(...) factory. Subclasses implement onIntent(OmegaFlowContext ctx); callers use receiveIntent/handleIntent only.
+- Rare alternative when you already hold a non-null OmegaFlow: flow.receiveIntent(OmegaIntent.fromName(MyIntent.retry)); never flow.onIntent(...).
+
+IF THE PAGE NEEDS OmegaStatefulAgent VIEW STATE (OmegaAgentBuilder):
+- Do NOT resolve the agent from scope. The agent instance must be passed into the Page widget: const MyPage({super.key, required this.agent}); final MyAgent agent;
+- In omega_setup.dart (user file): create `final myAgent = MyAgent(channel);`, add to agents:[...], and OmegaRoute(id: '...', builder: (c) => MyPage(agent: myAgent)) using the SAME variable.
+- Then wrap UI with OmegaAgentBuilder<MyAgent, MyViewState>(agent: widget.agent, builder: ...).
+
+FORBIDDEN (will not compile): scope.agentManager, scope.getAgent, OmegaScope.of(context).agentManager, context.watch<SomeAgent>(), calling flow.onIntent from widgets, OmegaFlowContext.intent or any manual OmegaFlowContext(...) in UI.
+''';
+
+  /// Typed events (OmegaTypedEvent) are wrapped as OmegaEvent.payload; `event is MyTypedEvent` does not apply on the bus.
+  static const String _omegaAiOmegaChannelEvents = r'''
+OMEGA CHANNEL EVENTS (Stream<OmegaEvent>, flow onEvent ctx.event, agent listeners):
+- Every emission on the bus is an OmegaEvent (id, name, payload, namespace). It is NOT an instance of your `class FooEvent implements OmegaTypedEvent`.
+- emitTyped(ShoppingCartAddProductEvent(...)) builds OmegaEvent(name: event.name, payload: that same instance). Listeners must unwrap:
+  final add = event.payloadAs<ShoppingCartAddProductEvent>();
+  if (add != null) { ... add.product ... }
+  Or filter by name then unwrap: if (event.name == ShoppingCartEvent.productAdded.name) { final add = event.payloadAs<ShoppingCartAddProductEvent>(); ... }
+- WRONG (no promotion / product getter on OmegaEvent): if (event is ShoppingCartAddProductEvent) { event.product } — OmegaTypedEvent classes are not subtypes of OmegaEvent, so `event` stays OmegaEvent.
+- OmegaIntent is separate: use ctx.intent?.payloadAs<YourPayload>() in flows (see example/lib/auth/auth_flow.dart).
+- Extension: import omega_architecture.dart — OmegaEventPayloadExtension.payloadAs<T>() on OmegaEvent.
+''';
+
+  /// Behavior/agent patterns must match example auth module; blocks invented BLoC-style behavior APIs.
+  static const String _omegaAiAgentBehaviorApi = r'''
+OMEGA AGENT + BEHAVIOR — read the real API before coding (same package):
+- Canonical examples: example/lib/auth/auth_behavior.dart (rules) + example/lib/auth/auth_agent.dart (onAction, setViewState, emit). Generated code must follow that split — not a single fixed "requested → loadMock" pattern; that was only an illustration.
+
+OmegaAgentBehaviorEngine (*_behavior.dart*) — architecture, not a recipe count:
+- Valid shape: (1) constructor calling addRule(...) one or MANY times — each rule is one condition → one OmegaAgentReaction(actionId, payload: ...). First matching rule wins (registration order matters). (2) OR override evaluate(OmegaAgentBehaviorContext ctx) and return the first matching reaction yourself.
+- Conditions are whatever the module needs: ctx.event?.name == MyEvent.x.name, ctx.intent?.name == MyIntent.y.name, boolean combinations (|| / &&), payload checks via ctx.event?.payloadAs<MyTypedEvent>(), etc. Different features ⇒ different rules and different actionIds.
+- Reactions stay small: string action id + optional payload for the agent. No business/async in the behavior file.
+
+OmegaStatefulAgent (*_agent.dart*):
+- onAction(String action, dynamic payload): switch/if on action for every actionId emitted by the behavior (there may be many). Async, mocks, setViewState, channel.emit belong here (or private helpers called from onAction).
+
+FORBIDDEN in behavior (breaks Omega): Stream / async* / yield, handleEvent, mutating view state, importing/using OmegaAgentMessage, msg.type (OmegaAgentMessage belongs only in onMessage on the agent; fields: from, to, action, payload — use msg.action there).
+
+OmegaAgentMessage (only in *_agent.dart* onMessage): compare msg.action. There is NO .type on OmegaAgentMessage.
+''';
+
+  /// Reduces mojibake in Spanish mock strings from model/JSON pipelines.
+  static const String _omegaAiUtf8StringLiterals = r'''
+STRING LITERALS (encoding):
+- Dart source must be valid UTF-8. For Spanish (or other languages), use real accented characters (á é í ó ú ñ ü) OR plain ASCII without accents — never garbage bytes or control characters inside words (e.g. "Básica" or "Basica", not corrupted sequences).
+- If mock catalog copy might corrupt in JSON, prefer short English placeholders for names/descriptions.
+''';
+
   static Future<void> run(List<String> args) async {
     if (args.isEmpty || args[0] == "-h" || args[0] == "--help") {
       _printHelp();
@@ -2562,6 +2627,32 @@ UI DESIGN EXCELLENCE (ship-quality — treat this screen as a real product, not 
       }
       if (!t.contains("${moduleName}Intent.")) return false;
     }
+    if (t.contains("agentManager")) return false;
+    if (RegExp(r"\bscope\.getAgent\b").hasMatch(t)) return false;
+    if (RegExp(r"\bflow\s*\.\s*onIntent\b").hasMatch(t)) return false;
+    if (t.contains("OmegaFlowContext.intent")) return false;
+    return true;
+  }
+
+  /// Rejects BLoC-style behavior files (handleEvent, OmegaAgentMessage, msg.type).
+  static bool _omegaAiBehaviorPassSanity(String code) {
+    final t = code.trim();
+    if (t.isEmpty) return true;
+    if (!t.contains("extends OmegaAgentBehaviorEngine")) return true;
+    if (t.contains("handleEvent")) return false;
+    if (RegExp(r"\basync\s*\*").hasMatch(t)) return false;
+    if (RegExp(r"\byield\b").hasMatch(t)) return false;
+    if (t.contains("msg.type")) return false;
+    if (t.contains("OmegaAgentMessage")) return false;
+    return true;
+  }
+
+  /// Rejects replacement chars and C0 control characters (common mojibake artifacts).
+  static bool _omegaAiSourceEncodingPassSanity(String code) {
+    if (code.contains("\uFFFD")) return false;
+    for (final r in code.runes) {
+      if (r < 0x20 && r != 0x09 && r != 0x0A && r != 0x0D) return false;
+    }
     return true;
   }
 
@@ -2603,6 +2694,35 @@ UI DESIGN EXCELLENCE (ship-quality — treat this screen as a real product, not 
             es: "Página IA con posibles problemas. Se intentará arreglar con auto-sanación...",
           )}",
         );
+      }
+      final bh = toWrite["behavior"] ?? "";
+      if (bh.trim().isNotEmpty && !_omegaAiBehaviorPassSanity(bh)) {
+        stdout.writeln(
+          "⚠️ ${_tr(
+            en: "AI behavior file does not match OmegaAgentBehaviorEngine (addRule/evaluate). Will attempt self-healing...",
+            es: "El behavior IA no coincide con OmegaAgentBehaviorEngine (addRule/evaluate). Se intentará auto-sanación...",
+          )}",
+        );
+      }
+      for (final key in [
+        "events",
+        "behavior",
+        "agent",
+        "flow",
+        "page",
+      ]) {
+        final chunk = toWrite[key];
+        if (chunk != null &&
+            chunk.trim().isNotEmpty &&
+            !_omegaAiSourceEncodingPassSanity(chunk)) {
+          stdout.writeln(
+            "⚠️ ${_tr(
+              en: "AI file \"$key\" may contain invalid control characters or mojibake. Will attempt self-healing...",
+              es: "El archivo IA \"$key\" puede tener caracteres de control o texto corrupto. Se intentará auto-sanación...",
+            )}",
+          );
+          break;
+        }
       }
 
       if (toWrite.containsKey("events")) {
@@ -3049,13 +3169,16 @@ OUTPUT JSON RULES:
 4. Page must use: import 'package:flutter/material.dart'; import 'package:omega_architecture/omega_architecture.dart'; import '../${lower}_events.dart';
 5. Keep class name ${moduleName}Page, OmegaScope.of(context), scope.flowManager.getFlow('$moduleName'), StreamBuilder<OmegaFlowExpression>. Use existing ${moduleName}Intent / ${moduleName}Event names from the reference — do not rename or replace non-UI files.
 
+$_omegaAiOmegaScopeApi
+$_omegaAiOmegaChannelEvents
+$_omegaAiUtf8StringLiterals
 $_omegaAiUiDesignStandards
 
 Return only one JSON object. No markdown fences. No text outside JSON.
 """;
     } else {
       aiSystemContent =
-          "You are a Senior Flutter Developer and UI/UX-minded engineer. You output exactly one JSON object (json_object mode) with string values only. Include a concise \"reasoning\" (1-5 lines, user’s language). Every file in the JSON (events, behavior, agent, flow, page) MUST include import 'package:omega_architecture/omega_architecture.dart'; where Omega types are used; page also needs flutter/material. Never omit the package import — that causes Undefined class errors. Rich Material 3 UI, proper OmegaIntentName/OmegaEventName, const constructors. No prose outside JSON.";
+          "You are a Senior Flutter Developer and UI/UX-minded engineer. You output exactly one JSON object (json_object mode) with string values only. Include a concise \"reasoning\" (1-5 lines, user’s language). Every file in the JSON (events, behavior, agent, flow, page) MUST include import 'package:omega_architecture/omega_architecture.dart'; where Omega types are used; page also needs flutter/material. Never omit the package import — that causes Undefined class errors. Rich Material 3 UI, proper OmegaIntentName/OmegaEventName, const constructors. Behavior MUST follow example/lib/auth/auth_behavior.dart: addRule (any number of rules) or evaluate only; agent implements every reaction actionId in onAction like example/lib/auth/auth_agent.dart — never Stream/handleEvent on OmegaAgentBehaviorEngine. No prose outside JSON.";
       prompt =
           """
 Generate COMPLETE and FUNCTIONAL Dart code for an Omega Architecture module named '$moduleName' ($lower).
@@ -3063,10 +3186,16 @@ PRIMARY FOCUS / INSTRUCTION: '$description'.
 $contextBlock
 $filesContextBlock
 REFERENCE (official package patterns; mirror example/lib/omega/omega_setup.dart, example/lib/omega/app_semantics.dart for enums):
+- Agent + behavior ground truth (same repo): example/lib/auth/auth_behavior.dart + example/lib/auth/auth_agent.dart — match their structure before inventing patterns.
 - Flow id: ${moduleName}Flow must use super(id: '$moduleName', channel: channel) so flowManager.getFlow('$moduleName') in ${moduleName}Page resolves. If this module is the app entry flow, OmegaConfig.initialFlowId in omega_setup.dart must be that same string (example: AuthFlow uses id "authFlow" and OmegaConfig.initialFlowId: "authFlow").
 - Pages: scope.flowManager.getFlow('$moduleName'); StreamBuilder<OmegaFlowExpression>(stream: flow.expressions, ...).
 - omega_setup.dart (not in this JSON): add ${moduleName}Flow and ${moduleName}Agent to OmegaConfig; route example OmegaRoute(id: '$moduleName', builder: (context) => const ${moduleName}Page()). For typed routes use OmegaRoute.typed<T>(id: '...', builder: (context, payload) => ...).
 - Contracts (debug warnings): OmegaWorkflowFlow always emits workflow.step (and failStep emits workflow.error)—include those in emittedExpressionTypes. Flow listenedEventNames must include *.requested if that event is published on the same bus. On a shared global channel, agents should use OmegaAgentContract(listenedEventNames: {}) OR wire agents/flows with channel.namespace('$lower') for isolation.
+
+$_omegaAiOmegaScopeApi
+$_omegaAiOmegaChannelEvents
+$_omegaAiAgentBehaviorApi
+$_omegaAiUtf8StringLiterals
 
 CRITICAL RULES:
 1. IMPORTS — EVERY generated Dart string (events, behavior, agent, flow) MUST start with:
@@ -3099,10 +3228,14 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
       ${moduleName}ViewState copyWith({bool? isLoading, String? error}) => ${moduleName}ViewState(isLoading: isLoading ?? this.isLoading, error: error);
       static const idle = ${moduleName}ViewState();
     }
+  - When handling channel events (OmegaEvent): unwrap typed classes with event.payloadAs<${moduleName}RequestedEvent>() (or your other OmegaTypedEvent types). Do NOT use if (event is ${moduleName}RequestedEvent) — typed events are not subtypes of OmegaEvent.
 
-- 'behavior':
+- 'behavior' (Omega architecture — NOT a BLoC; mirror example/lib/auth/auth_behavior.dart for style):
   - import '${lower}_events.dart';
-  - class ${moduleName}Behavior extends OmegaAgentBehaviorEngine { ... rules using ${moduleName}Event ... }
+  - class ${moduleName}Behavior extends OmegaAgentBehaviorEngine { ${moduleName}Behavior() { addRule(...); addRule(...); /* as many rules as the module needs — events, intents, combined conditions */ } }
+  - Each addRule: condition (ctx) => ... using ctx.event?.name, ctx.intent?.name, payloadAs<...>, etc.; reaction (ctx) => OmegaAgentReaction('distinctActionId', payload: ...). Order rules from more specific to general if needed.
+  - Alternative: override evaluate(OmegaAgentBehaviorContext ctx) synchronously; return OmegaAgentReaction(...) or null.
+  - FORBIDDEN: handleEvent, Stream, async*, yield, OmegaAgentMessage, msg.type. Async work and setViewState live in ${moduleName}Agent.onAction (one case per actionId).
 
 - 'agent':
   - import '${lower}_events.dart' and '${lower}_behavior.dart';
