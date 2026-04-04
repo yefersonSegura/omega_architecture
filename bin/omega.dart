@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-const String _version = "0.0.31";
+const String _version = "0.0.32";
 const String _docUrl = "http://yefersonsegura.com/proyects/omega/";
 
 void _openInBrowser(String urlOrPath) {
@@ -2939,14 +2939,36 @@ Return ONLY valid JSON. No markdown. No conversational text.
 
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200) {
+        _err(
+          "AI Provider Error (${response.statusCode}): $body",
+        );
+        return null;
+      }
 
       final decoded = jsonDecode(body);
       final content = decoded["choices"][0]["message"]["content"].toString();
-      final moduleCode = jsonDecode(content);
+      
+      String jsonText = content;
+      if (content.contains("```json")) {
+        final start = content.indexOf("```json") + 7;
+        final end = content.lastIndexOf("```");
+        if (end > start) {
+          jsonText = content.substring(start, end).trim();
+        }
+      } else if (content.contains("```")) {
+        final start = content.indexOf("```") + 3;
+        final end = content.lastIndexOf("```");
+        if (end > start) {
+          jsonText = content.substring(start, end).trim();
+        }
+      }
+
+      final moduleCode = jsonDecode(jsonText);
 
       return Map<String, String>.from(moduleCode);
-    } catch (_) {
+    } catch (e) {
+      _err("AI Provider JSON Error: $e");
       return null;
     } finally {
       client?.close(force: true);
@@ -3247,6 +3269,29 @@ Return ONLY valid JSON. No markdown. No conversational text.
     var created = false;
     final originalCwd = Directory.current.path;
     if (hasSetup) {
+      final moduleDir = Directory(modulePath);
+      final moduleExists = moduleDir.existsSync();
+
+      if (aiGeneratedCode == null && useProviderApi) {
+        if (moduleExists) {
+          _err(
+            _tr(
+              en: "AI generation failed. Keeping existing files for module '$moduleName'.",
+              es: "La generación por IA falló. Manteniendo archivos existentes para el módulo '$moduleName'.",
+            ),
+          );
+          Directory.current = originalCwd;
+          return;
+        } else {
+          _err(
+            _tr(
+              en: "AI generation failed. Falling back to default template for new module '$moduleName'.",
+              es: "La generación por IA falló. Usando plantilla predeterminada para el nuevo módulo '$moduleName'.",
+            ),
+          );
+        }
+      }
+
       await runWithProgress<void>(
         _tr(
           en: "Generating ecosystem module",
