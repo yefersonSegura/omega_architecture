@@ -2771,6 +2771,64 @@ class ${moduleName}Page extends StatelessWidget {
 ''');
   }
 
+  /// OpenAI `json_object` may include extra string keys (`reasoning`, `response`).
+  /// Never use [Map.cast] or [Map.from] assuming all values are [String].
+  static Map<String, String>? _normalizeAiModuleJson(Map<String, dynamic> raw) {
+    String? pickString(String key) {
+      final v = raw[key];
+      if (v is String) return v;
+      return null;
+    }
+
+    final reasoning = pickString("reasoning");
+    if (reasoning != null && reasoning.trim().isNotEmpty) {
+      stdout.writeln("");
+      stdout.writeln(
+        "🧠 ${_tr(en: "AI reasoning (design)", es: "Razonamiento IA (diseño)")}:",
+      );
+      stdout.writeln(reasoning.trim());
+      stdout.writeln("");
+    }
+
+    final events = pickString("events");
+    final behavior = pickString("behavior");
+    final agent = pickString("agent");
+    final flow = pickString("flow");
+    var page = pickString("page");
+    final response = pickString("response");
+    if ((page == null || page.trim().isEmpty) &&
+        response != null &&
+        response.trim().isNotEmpty) {
+      page = response;
+    }
+
+    if (events == null ||
+        behavior == null ||
+        agent == null ||
+        flow == null ||
+        page == null) {
+      _err(
+        _tr(
+          en:
+              "AI JSON missing required string keys (events, behavior, agent, flow, page). "
+              "If the model put the screen only in \"response\", that key is used as \"page\" when \"page\" is empty.",
+          es:
+              "Falta en el JSON de la IA alguna clave string obligatoria (events, behavior, agent, flow, page). "
+              "Si el modelo dejó la pantalla solo en \"response\", se usa como \"page\" cuando \"page\" está vacío.",
+        ),
+      );
+      return null;
+    }
+
+    return {
+      "events": events,
+      "behavior": behavior,
+      "agent": agent,
+      "flow": flow,
+      "page": page,
+    };
+  }
+
   static Future<Map<String, String>?> _providerGenerateModuleCode(
     String description,
     String moduleName, {
@@ -2823,9 +2881,13 @@ CRITICAL RULES:
 1. ALWAYS use ONLY 'import 'package:omega_architecture/omega_architecture.dart';' plus 'import 'package:flutter/material.dart';' in page.
 2. NEVER use internal paths like 'package:omega_architecture/omega/core/...'.
 3. Class names use '$moduleName' (PascalCase). File-level imports for sibling files: '${lower}_events.dart' or '../${lower}_events.dart' from ui/.
-4. Return a JSON object with EXACTLY these keys: "events", "behavior", "agent", "flow", "page".
+4. Return ONE JSON object. Every value MUST be a JSON string (no nested objects for code). Required keys:
+   - "reasoning": 1-5 short lines in natural language (Spanish if the user wrote in Spanish). Brief analysis of layout, fields, states, and Omega wiring. No markdown fences.
+   - "events", "behavior", "agent", "flow", "page": full Dart file contents as strings (same as before).
+   - "response" (optional): if the user asked for a single "template" or "código de pantalla", you MAY put the same full Dart as "page" here too so tools can read one field; if omitted, "page" alone is enough.
 5. ENUMS: implement OmegaIntentName / OmegaEventName only (abstract name contracts). NEVER write implements OmegaIntent or implements OmegaEvent on an enum.
 6. UI: OmegaIntent.fromName(${moduleName}Intent.start) — pass the enum constant, NOT a String, NOT ${moduleName}Intent.start.name.
+7. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
 
 UI DESIGN (apply to the 'page' value only; DO NOT USE PLACEHOLDERS):
 - MANDATORY: Build a real, high-quality Material 3 interface. Use Padding, SingleChildScrollView, Column, Row, Card, TextField, ListTile, FilledButton, etc.
@@ -2912,7 +2974,7 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
       }
     }
 
-Return ONLY valid JSON. No markdown. No conversational text.
+Return ONLY one JSON object with string values, including "reasoning" plus "events","behavior","agent","flow","page". No markdown fences. No text before or after the JSON.
 """;
 
     final payloadMap = {
@@ -2922,7 +2984,7 @@ Return ONLY valid JSON. No markdown. No conversational text.
         {
           "role": "system",
           "content":
-              "You are a Senior Flutter Developer. You generate production-ready code using Omega Architecture. Your goal is to provide rich, well-designed UIs (Material 3) based on product descriptions. NEVER return simple placeholders or single-button screens. Use proper enums (OmegaIntentName/OmegaEventName), const constructors, and consistent PascalCase naming.",
+              "You are a Senior Flutter Developer. You output exactly one JSON object (json_object mode) with string values only. Always include a concise \"reasoning\" field (1-5 lines, match the user's language) before the implied code in other keys. Generate production-ready Omega Architecture Dart: rich Material 3 UIs, proper OmegaIntentName/OmegaEventName enums, const constructors, PascalCase module classes. Never return placeholder-only screens or prose outside JSON.",
         },
         {"role": "user", "content": prompt},
       ],
@@ -2971,9 +3033,14 @@ Return ONLY valid JSON. No markdown. No conversational text.
         }
       }
 
-      final moduleCode = jsonDecode(jsonText);
-
-      return Map<String, String>.from(moduleCode);
+      final decodedModule = jsonDecode(jsonText);
+      if (decodedModule is! Map) {
+        _err("AI Provider JSON Error: root is not a JSON object");
+        return null;
+      }
+      return _normalizeAiModuleJson(
+        Map<String, dynamic>.from(decodedModule),
+      );
     } catch (e) {
       _err("AI Provider JSON Error: $e");
       return null;
