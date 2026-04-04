@@ -148,6 +148,9 @@ abstract class OmegaAgent {
 
   /// Publishes an event on the channel. Use to notify the flow and other listeners of the result (success, error).
   ///
+  /// [name] must be a **string** (the event name). For app enums that implement the event-name contract, use `.name`:
+  /// `emit(AppEvent.authLoginSuccess.name, payload: user)` — not `emit(AppEvent.authLoginSuccess)`.
+  ///
   /// **Example:** `emit("auth.login.success", payload: LoginSuccessPayload(token: t, user: u));`
   void emit(String name, {dynamic payload}) {
     channel.emit(

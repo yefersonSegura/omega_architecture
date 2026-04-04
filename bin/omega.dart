@@ -785,6 +785,21 @@ HEAL RECIPE — navigationIntent missing on module Event enum:
 """
         : "";
 
+    final undefinedEventEnumHealError = errors.any(
+      (e) =>
+          (e.contains("undefined_enum_constant") ||
+              e.contains("There's no constant named")) &&
+          (e.contains("Event") || e.contains("_event")),
+    );
+    final undefinedEventEnumHealRecipe = undefinedEventEnumHealError
+        ? """
+
+HEAL RECIPE — no constant named 'X' in '*Event' (or agent.emit misuse):
+- Every MyModuleEvent.foo must exist on the enum in *_events.dart*. Add the case with the correct wire string, OR change the UI/agent to use existing cases (requested, succeeded, failed, navigationIntent).
+- OmegaAgent.emit first parameter is String: use emit(MyEvent.requested.name, payload: ...) NOT emit(MyEvent.requested) and NOT emit(MyEvent.inventedCase). From pages, prefer scope.channel.emit(OmegaEvent.fromName(MyEvent.requested, payload: ...)) so behavior rules using ctx.event?.name match.
+"""
+        : "";
+
     final prompt = """
 You fix a Flutter app that uses the published package omega_architecture (not local lib copies).
 
@@ -797,6 +812,7 @@ $routeAgentHealHints
 $omegaSetupAgentHealRecipe
 $omegaFlowContextHealRecipe
 $navigationEnumHealRecipe
+$undefinedEventEnumHealRecipe
 $healContextBlock
 CRITICAL — IMPORTS (this fixes Undefined class OmegaAgent, OmegaEventBus, OmegaFlow, OmegaIntentName, etc.):
 - LANGUAGE: output valid Dart (Flutter) only — never Kotlin, Swift, TypeScript, or pseudocode in file bodies.
@@ -817,7 +833,7 @@ OMEGA API (must compile against package exports):
 ${OmegaAiCommand._omegaAiRolesFlowAgentBehavior}
 - OmegaConfig createOmegaConfig(OmegaChannel channel) with agents: <OmegaAgent>[], flows: <OmegaFlow>[], routes: <OmegaRoute>[], initialFlowId optional
 - OmegaRuntime.bootstrap((OmegaChannel c) => createOmegaConfig(c))
-- Agents: extend OmegaAgent or OmegaStatefulAgent<T>; super(id:, channel:, behavior:) — channel is OmegaEventBus (pass OmegaChannel or namespace)
+- Agents: extend OmegaAgent or OmegaStatefulAgent<T>; super(id:, channel:, behavior:) — channel is OmegaEventBus (pass OmegaChannel or namespace). OmegaAgent.emit(String name, {payload}) — first arg is a string; use MyModuleEvent.requested.name, NOT emit(MyModuleEvent.requested) nor invented enum cases.
 - Flows: extend OmegaFlow or OmegaWorkflowFlow; super(id:, channel:). OmegaWorkflowFlow.failStep(code, {String? message}) — second argument must be named message:, not positional.
 - Behavior: extend OmegaAgentBehaviorEngine; use one or more addRule(OmegaAgentBehaviorRule(...)) OR override evaluate(OmegaAgentBehaviorContext ctx)
 - Enums: implements OmegaIntentName / OmegaEventName with const Enum(this.name); @override final String name;
@@ -2261,6 +2277,7 @@ IF THE PAGE NEEDS OmegaStatefulAgent VIEW STATE (OmegaAgentBuilder):
 - Do NOT resolve the agent from scope. Pass the agent into the Page: `MyPage({super.key, required this.agent});` — NOT a const constructor (the agent is not a compile-time constant).
 - In omega_setup.dart (NOT in the JSON): `final shoppingCartAgent = ShoppingCartAgent(channel);` or `ShoppingCartAgent(channel: channel);` if the ctor is `{required OmegaEventBus channel}` (camelCase + Agent), add `shoppingCartAgent` to agents:[...], and `OmegaRoute(id: 'ShoppingCart', builder: (c) => ShoppingCartPage(agent: shoppingCartAgent))` — NEVER `const ShoppingCartPage()` if `required ...Agent agent` exists.
 - Then wrap UI with OmegaAgentBuilder<MyAgent, MyViewState>(agent: widget.agent, builder: (context, state) => ...). Builder type is Widget Function(BuildContext, TState) only — NEVER a third (agent) parameter; use widget.agent inside the closure if needed.
+- Do NOT call agent.emit(SomeEvent.selectImage) with invented enum constants — declare every case in *_events.dart*, and remember [OmegaAgent.emit] takes a String: emit(SomeEvent.requested.name, payload: ...) or use scope.channel.emit(OmegaEvent.fromName(SomeEvent.requested, ...)).
 
 FORBIDDEN (will not compile): scope.agentManager, scope.getAgent, OmegaScope.of(context).agentManager, context.watch<SomeAgent>(), calling flow.onIntent from widgets, OmegaFlowContext.intent or any manual OmegaFlowContext(...) in UI.
 ''';
@@ -2323,6 +2340,12 @@ OmegaStatefulAgent (*_agent.dart*):
 - Optional lookup in a List field of viewState (e.g. cart lines, orders): prefer indexWhere + null if missing, or a small loop — do NOT use firstWhere with orElse: () => null as SomeType? (unsafe cast, bad style).
 - WRONG: state.copyWith(...) — Map does not define copyWith; the analyzer reports copyWith on Map.
 - onAction(String action, dynamic payload): switch/if on action for every actionId emitted by the behavior (there may be many). Async, mocks, setViewState, channel.emit belong here (or private helpers called from onAction).
+
+OmegaAgent.emit (omega_agent.dart — also inherited on your *Agent):
+- Signature: void emit(String name, {dynamic payload}) — first argument MUST be a String (event name), NOT an enum value object.
+- CORRECT: emit(MediaUploadEvent.requested.name, payload: file) or emit(MyEvent.succeeded.name, payload: result).
+- WRONG: emit(MediaUploadEvent.selectImage) — type error (enum is not String) and models invent selectImage/submit/retry on *Event when only requested/succeeded/failed exist. Add new cases to *_events.dart* first, then use .name, OR reuse existing enum cases / literal strings that behavior rules already match.
+- From *Page* widgets: prefer scope.channel.emit(OmegaEvent.fromName(MediaUploadEvent.requested, payload: ...)) or flowManager.handleIntent so behavior sees ctx.event; if calling agent.emit from UI, same rule: string name only — agent.emit(MediaUploadEvent.requested.name, ...).
 
 FORBIDDEN in behavior (breaks Omega): Stream / async* / yield, handleEvent, mutating view state, importing/using OmegaAgentMessage, msg.type (OmegaAgentMessage belongs only in onMessage on the agent; fields: from, to, action, payload — use msg.action there).
 
@@ -2950,6 +2973,7 @@ STRING LITERALS (encoding):
       return false;
     }
     if (!_omegaAiAbstractNameConstructorPassSanity(t)) return false;
+    if (!_omegaAiEmitFirstArgStringPassSanity(t)) return false;
     if (t.contains("OmegaIntent.fromName")) {
       if (t.contains("OmegaIntent.fromName('") ||
           t.contains('OmegaIntent.fromName("')) {
@@ -3010,6 +3034,7 @@ STRING LITERALS (encoding):
     if (RegExp(r"orElse\s*:\s*\(\)\s*=>\s*null\s+as\b").hasMatch(t)) {
       return false;
     }
+    if (!_omegaAiEmitFirstArgStringPassSanity(t)) return false;
     return true;
   }
 
@@ -3030,6 +3055,18 @@ STRING LITERALS (encoding):
   static bool _omegaAiAbstractNameConstructorPassSanity(String code) {
     if (RegExp(r"\bOmegaEventName\s*\(").hasMatch(code)) return false;
     if (RegExp(r"\bOmegaIntentName\s*\(").hasMatch(code)) return false;
+    return true;
+  }
+
+  /// [OmegaAgent.emit] is emit(String name, ...) — not emit(MyModuleEvent.case) without .name.
+  static bool _omegaAiEmitFirstArgStringPassSanity(String code) {
+    final badDotEmit = RegExp(
+      r"\.emit\s*\(\s*(?!OmegaEvent\b)\w+Event\.\w+(?!\.name)\s*[\),]",
+    );
+    final badBareEmit = RegExp(
+      r"(?<![.\w])emit\s*\(\s*(?!OmegaEvent\b)\w+Event\.\w+(?!\.name)\s*[\),]",
+    );
+    if (badDotEmit.hasMatch(code) || badBareEmit.hasMatch(code)) return false;
     return true;
   }
 
