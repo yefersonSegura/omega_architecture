@@ -75,8 +75,8 @@ export function activate(context: vscode.ExtensionContext) {
             cancellable: false
         }, (progress) => {
             return new Promise((resolve, reject) => {
-                // Usamos el formato "Modulo: instruccion" para actualizar el existente
-                const command = `omega ai coach module "${moduleName}: ${instruction}" --template advanced --provider-api`;
+                // Usamos el nuevo comando 'redesign'
+                const command = `omega ai coach redesign "${moduleName}: ${instruction}" --template advanced --provider-api`;
                 
                 const workspaceRoot = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
 

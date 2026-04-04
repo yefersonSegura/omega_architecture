@@ -2225,16 +2225,19 @@ class OmegaAiCommand {
         "  module  ${_tr(en: "Create a complete ecosystem module (AI-guided).", es: "Crea un modulo de ecosistema completo (guiado por IA).")}",
       );
       stdout.writeln(
+        "  redesign ${_tr(en: "Redesign an existing UI screen or module logic.", es: "Rediseña una pantalla de UI o lógica de módulo existente.")}",
+      );
+      stdout.writeln(
         "          ${_tr(en: "Use --template advanced for workflow/stateful/contracts/tests scaffold.", es: "Usa --template advanced para scaffold con workflow/stateful/contratos/tests.")}",
       );
       return;
     }
 
     final action = args[0].toLowerCase();
-    if (action != "start" && action != "audit" && action != "module") {
+    if (action != "start" && action != "audit" && action != "module" && action != "redesign") {
       _err("Unknown coach action: $action");
       stdout.writeln(
-        "  Use: omega ai coach <start|audit|module> \"<feature>\" [--json] [--provider-api] [--stdout]",
+        "  Use: omega ai coach <start|audit|module|redesign> \"<feature>\" [--json] [--provider-api] [--stdout]",
       );
       return;
     }
@@ -2243,7 +2246,7 @@ class OmegaAiCommand {
     final asJson = rest.contains("--json");
     final useProviderApi = rest.contains("--provider-api");
     final toTempFile = !rest.contains("--stdout");
-    final template = (_optionValue(rest, "--template") ?? "basic")
+    final template = (_optionValue(rest, "--template") ?? "advanced") // Default to advanced for redesign/coach
         .trim()
         .toLowerCase();
     if (template != "basic" && template != "advanced") {
@@ -2253,7 +2256,7 @@ class OmegaAiCommand {
     }
     final feature = _collectPositionalArgs(
       rest,
-      optionsWithValue: const ["--template"],
+      optionsWithValue: const ["--template", "--module", "-m"],
     ).join(" ").trim();
     if (feature.isEmpty) {
       _err(
@@ -2270,6 +2273,7 @@ class OmegaAiCommand {
       stdout.writeln('  omega ai coach start "login con MFA"');
       stdout.writeln('  omega ai coach audit "login con MFA"');
       stdout.writeln('  omega ai coach module "login con MFA"');
+      stdout.writeln('  omega ai coach redesign "Auth: add search bar"');
       return;
     }
 
@@ -2283,7 +2287,7 @@ class OmegaAiCommand {
       return;
     }
 
-    if (action == "module") {
+    if (action == "module" || action == "redesign") {
       final moduleNameFlag = _optionValue(rest, "--module") ?? _optionValue(rest, "-m");
       await _coachModule(
         feature: feature,

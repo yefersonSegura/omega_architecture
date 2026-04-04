@@ -1,6 +1,7 @@
 ## 0.0.32 (CLI & AI Redesign Support)
 
-- **AI Redesign Support**: `omega ai coach module` now detects existing module files and provides them to the AI for a "Redesign" instead of a fresh creation.
+- **New Command `omega ai coach redesign`**: Dedicated command to redesign existing modules or UI screens by providing current code as context to the AI.
+- **AI Redesign Support**: `omega ai coach module` also detects existing module files for evolutionary updates.
 - **Improved AI Prompts**: Strengthened instructions to prevent placeholder UIs and ensure consistent Material 3 usage.
 - **Contract Mismatch Reduction**: Silence false-positive debug warnings on shared global channels.
 - **Audit Tool Fixes**: Enhanced registration detection for agents, flows, and routes in `omega_setup.dart`.
