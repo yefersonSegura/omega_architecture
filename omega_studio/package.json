@@ -14,18 +14,98 @@
   "contributes": {
     "commands": [
       {
-        "command": "omega.generateModule",
-        "title": "Omega: Crear Módulo con Diseño IA",
+        "command": "omega.pickCommand",
+        "title": "Ejecutar comando Omega…",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.runValidate",
+        "title": "Validar omega_setup (validate)",
         "category": "Omega"
       },
       {
         "command": "omega.runDoctor",
-        "title": "Omega: Validar Arquitectura (Doctor)",
+        "title": "Doctor del proyecto",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.runInit",
+        "title": "Init (omega_setup.dart)",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.openDoc",
+        "title": "Abrir documentación (doc)",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.openInspector",
+        "title": "Abrir inspector local",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.generateEcosystem",
+        "title": "Generar ecosistema (g ecosystem)",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.generateAgent",
+        "title": "Generar agente (g agent)",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.generateFlow",
+        "title": "Generar flow (g flow)",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.createApp",
+        "title": "Crear app Flutter (create app)",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.traceView",
+        "title": "Trace: ver resumen (trace view)",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.traceValidate",
+        "title": "Trace: validar (trace validate)",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.runAiDoctor",
+        "title": "IA: doctor (ai doctor)",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.runAiEnv",
+        "title": "IA: variables de entorno (ai env)",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.aiExplainTrace",
+        "title": "IA: explain trace",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.aiCoachStart",
+        "title": "IA: coach start",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.aiCoachAudit",
+        "title": "IA: coach audit",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.generateModule",
+        "title": "Crear módulo con diseño IA (coach module)",
         "category": "Omega"
       },
       {
         "command": "omega.editUiWithAi",
-        "title": "Omega: Rediseñar esta pantalla con IA",
+        "title": "Rediseñar esta pantalla con IA (coach redesign)",
         "category": "Omega"
       }
     ],
@@ -46,6 +126,10 @@
         {
           "command": "omega.generateModule",
           "group": "omega@1"
+        },
+        {
+          "command": "omega.pickCommand",
+          "group": "omega@0"
         }
       ]
     }

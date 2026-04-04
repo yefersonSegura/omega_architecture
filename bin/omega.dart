@@ -831,6 +831,7 @@ RULES:
 
 OMEGA API (must compile against package exports):
 ${OmegaAiCommand._omegaAiRolesFlowAgentBehavior}
+${OmegaAiCommand._omegaAiScreenEntryDataLoad}
 - OmegaConfig createOmegaConfig(OmegaChannel channel) with agents: <OmegaAgent>[], flows: <OmegaFlow>[], routes: <OmegaRoute>[], initialFlowId optional
 - OmegaRuntime.bootstrap((OmegaChannel c) => createOmegaConfig(c))
 - Agents: extend OmegaAgent or OmegaStatefulAgent<T>; super(id:, channel:, behavior:) — channel is OmegaEventBus (pass OmegaChannel or namespace). OmegaAgent.emit(String name, {payload}) — first arg is a string; use MyModuleEvent.requested.name, NOT emit(MyModuleEvent.requested) nor invented enum cases.
@@ -2282,6 +2283,18 @@ IF THE PAGE NEEDS OmegaStatefulAgent VIEW STATE (OmegaAgentBuilder):
 FORBIDDEN (will not compile): scope.agentManager, scope.getAgent, OmegaScope.of(context).agentManager, context.watch<SomeAgent>(), calling flow.onIntent from widgets, OmegaFlowContext.intent or any manual OmegaFlowContext(...) in UI.
 ''';
 
+  /// Ensures list/catalog screens actually load: handleIntent only reaches running flows; agents often need channel.emit.
+  static const String _omegaAiScreenEntryDataLoad = r'''
+SCREEN ENTRY — lists, grids, catalogs, dashboard data (must not stay empty until the user taps a button unless the spec says so):
+- [OmegaFlowManager.handleIntent] only delivers to flows in [running] state. Call [flowManager.activate(flowId)] or [switchTo(flowId)] with the SAME id as the Flow’s super(id: ...) BEFORE relying on handleIntent on this screen.
+- If the screen shows data from [OmegaAgentBuilder] / agent viewState lists: something must fire the FIRST load when the route opens. Choose ONE coherent chain and implement it in generated flow + agent + page:
+  (A) Intent kickoff: in State.didChangeDependencies (or initState + addPostFrameCallback if you avoid context before ready), use a bool guard e.g. _entryKickApplied so you run only once: activate(flowId), then flowManager.handleIntent(OmegaIntent.fromName(MyIntent.start)) IF the flow’s onIntent for start emits channel events / starts steps that lead to the agent loading (same pattern as flow onIntent emitting MyEvent.requested).
+  (B) Event kickoff: if the agent behavior matches ctx.event?.name == MyEvent.requested (or similar) and NOT ctx.intent for load, then on entry emit once: scope.channel.emit(OmegaEvent.fromName(MyEvent.requested)) or emitTyped(MyRequestedEvent(...)). handleIntent alone will NOT trigger that rule.
+  (C) Flow onStart only: acceptable if onStart() itself emits the same events / intents the agent or next step needs — then the page must still ensure the flow is running (activate/switchTo) when this route opens.
+- WRONG: StreamBuilder + OmegaAgentBuilder showing an empty list forever because nothing ever emitted start / requested after navigation.
+- RIGHT: One clear “on open” path documented in reasoning: which of (A)(B)(C) you used and which enum (.requested vs .start) matches the behavior rules.
+''';
+
   /// Typed events (OmegaTypedEvent) are wrapped as OmegaEvent.payload; `event is MyTypedEvent` does not apply on the bus.
   static const String _omegaAiOmegaChannelEvents = r'''
 OMEGA CHANNEL EVENTS (Stream<OmegaEvent>, flow onEvent ctx.event, agent listeners):
@@ -3412,8 +3425,29 @@ import 'package:flutter/material.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 import '../${lower}_events.dart';
 
-class ${moduleName}Page extends StatelessWidget {
+/// Activates the module flow and sends [start] once when the route is ready so
+/// lists / agent work can run without an extra tap (see Omega CLI SCREEN ENTRY rules).
+class ${moduleName}Page extends StatefulWidget {
   const ${moduleName}Page({super.key});
+
+  @override
+  State<${moduleName}Page> createState() => _${moduleName}PageState();
+}
+
+class _${moduleName}PageState extends State<${moduleName}Page> {
+  bool _entryKickApplied = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_entryKickApplied) return;
+    _entryKickApplied = true;
+    final scope = OmegaScope.of(context);
+    scope.flowManager.activate('$moduleName');
+    scope.flowManager.handleIntent(
+      OmegaIntent.fromName(${moduleName}Intent.start),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3813,6 +3847,7 @@ OUTPUT JSON RULES:
 5. Keep class name ${moduleName}Page, OmegaScope.of(context), scope.flowManager.getFlow('$moduleName'), StreamBuilder<OmegaFlowExpression>. Use existing ${moduleName}Intent / ${moduleName}Event names from the reference — do not rename or replace non-UI files.
 
 $_omegaAiOmegaScopeApi
+$_omegaAiScreenEntryDataLoad
 $_omegaAiOmegaChannelEvents
 $_omegaAiRolesFlowAgentBehavior
 $_omegaAiUtf8StringLiterals
@@ -3838,6 +3873,7 @@ REFERENCE (official package patterns; mirror example/lib/omega/omega_setup.dart,
 - Contracts (debug warnings): OmegaWorkflowFlow always emits workflow.step (and failStep emits workflow.error)—include those in emittedExpressionTypes. Flow listenedEventNames must include *.requested if that event is published on the same bus. On a shared global channel, agents should use OmegaAgentContract(listenedEventNames: {}) OR wire agents/flows with channel.namespace('$lower') for isolation.
 
 $_omegaAiOmegaScopeApi
+$_omegaAiScreenEntryDataLoad
 $_omegaAiOmegaChannelEvents
 $_omegaAiRolesFlowAgentBehavior
 $_omegaAiOmegaWorkflowFlow
@@ -3858,7 +3894,8 @@ CRITICAL RULES:
 5. ENUMS: implement OmegaIntentName / OmegaEventName only (abstract name contracts). NEVER write implements OmegaIntent or implements OmegaEvent on an enum. NEVER call OmegaEventName('...') or OmegaIntentName('...') — those types cannot be instantiated; use `enum MyIntent implements OmegaIntentName { navigateRegister('navigate.register'); ... }` then OmegaIntent.fromName(MyIntent.navigateRegister).
 6. UI: OmegaIntent.fromName(${moduleName}Intent.start) — pass the enum constant, NOT a String, NOT ${moduleName}Intent.start.name.
 7. If the page uses OmegaAgentBuilder with `required ${moduleName}Agent agent`, put in "reasoning" one line: user must set omega_setup route to ${moduleName}Page(agent: $camelAgentVar) and declare `final $camelAgentVar = ${moduleName}Agent(channel);` (or `channel: channel` if ctor is named-only) in agents — same pattern as example omega_setup + auth page.
-8. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
+8. If the screen lists items, metrics, or catalog data: the "page" MUST implement an on-open kickoff per SCREEN ENTRY rules (activate + one-shot handleIntent(start) and/or channel emit of *.requested) so data loads without requiring a dummy first tap.
+9. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
 
 UI DESIGN (apply to the 'page' value only — maximize quality; the structural snippet below is NOT the final UI):
 $_omegaAiUiDesignStandards
@@ -3916,11 +3953,23 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
 
 - 'page' (STRUCTURE ONLY - REWRITE THE UI CONTENT):
   - import 'package:flutter/material.dart'; import 'package:omega_architecture/omega_architecture.dart'; import '../${lower}_events.dart'; AND for (B) add import '../${lower}_agent.dart'; so ${moduleName}Agent resolves (omega_architecture.dart does NOT export your app agent class).
-  - EITHER (A) flow-only: `class ${moduleName}Page extends StatelessWidget { const ${moduleName}Page({super.key});` + getFlow + StreamBuilder only — omega_setup may use const ${moduleName}Page().
-  - OR (B) agent + flow: `class ${moduleName}Page extends StatelessWidget { ${moduleName}Page({super.key, required this.agent}); final ${moduleName}Agent agent;` (no const constructor) + OmegaAgentBuilder<${moduleName}Agent, ${moduleName}ViewState>(agent: agent, builder: (context, state) => ...) + flow/StreamBuilder as needed — omega_setup MUST use `final $camelAgentVar = ${moduleName}Agent(channel);` (or `${moduleName}Agent(channel: channel);` if the agent ctor is `{required OmegaEventBus channel}`) in agents: [..., $camelAgentVar] and `OmegaRoute(..., builder: (c) => ${moduleName}Page(agent: $camelAgentVar))`.
-  - Default template skeleton if you choose (A):
-      class ${moduleName}Page extends StatelessWidget {
+  - EITHER (A) flow-only: prefer StatefulWidget if you need didChangeDependencies for activate + one-shot kickoff; otherwise StatelessWidget is OK only when flow onStart or another layer already loads data.
+  - OR (B) agent + flow: StatefulWidget or StatelessWidget; if lists come from OmegaAgentBuilder, almost always use StatefulWidget with didChangeDependencies + bool guard: activate('$moduleName'), then handleIntent(start) OR channel.emit(requested) per behavior — omega_setup MUST pass agent as for (B) below.
+  - Flow-only skeleton (A) with automatic first load (rewrite UI body, keep kickoff):
+      class ${moduleName}Page extends StatefulWidget {
       const ${moduleName}Page({super.key});
+      @override State<${moduleName}Page> createState() => _${moduleName}PageState();
+    }
+    class _${moduleName}PageState extends State<${moduleName}Page> {
+      bool _entryKickApplied = false;
+      @override void didChangeDependencies() {
+        super.didChangeDependencies();
+        if (_entryKickApplied) return;
+        _entryKickApplied = true;
+        final scope = OmegaScope.of(context);
+        scope.flowManager.activate('$moduleName');
+        scope.flowManager.handleIntent(OmegaIntent.fromName(${moduleName}Intent.start));
+      }
       @override Widget build(BuildContext context) {
         final scope = OmegaScope.of(context);
         final flow = scope.flowManager.getFlow('$moduleName');
@@ -3932,23 +3981,17 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
             builder: (context, snapshot) {
               final expr = snapshot.data;
               if (expr?.type == 'loading') return const Center(child: CircularProgressIndicator());
-              
-              // === IMPORTANT: DO NOT USE A SIMPLE BUTTON HERE ===
-              // REWRITE THIS ENTIRE SECTION WITH A FULL MATERIAL 3 DESIGN
-              // USE Column, ListView, Cards, TextFields, etc.
+              // Full Material 3 UI: lists/cards — data should already be loading from kickoff + flow/agent chain
               return SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    /* YOUR PROFESSIONAL UI DESIGN HERE */
-                  ],
-                ),
+                child: Column(children: [ /* YOUR PROFESSIONAL UI DESIGN HERE */ ]),
               );
             },
           ),
         );
       }
     }
+  - Agent + flow (B): `class ${moduleName}Page extends StatefulWidget { ${moduleName}Page({super.key, required this.agent}); final ${moduleName}Agent agent;` + same didChangeDependencies pattern if lists are agent-driven + OmegaAgentBuilder — omega_setup MUST use `final $camelAgentVar = ${moduleName}Agent(channel);` (or `${moduleName}Agent(channel: channel);` if the agent ctor is `{required OmegaEventBus channel}`) in agents: [..., $camelAgentVar] and `OmegaRoute(..., builder: (c) => ${moduleName}Page(agent: $camelAgentVar))`.
 
 Return ONLY one JSON object with string values, including "reasoning" plus "events","behavior","agent","flow","page". No markdown fences. No text before or after the JSON.
 """;
