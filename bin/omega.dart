@@ -119,7 +119,7 @@ void printHelp() {
     "  g flow <Name>        Generate only flow in current directory",
   );
   stdout.writeln(
-    "  validate             Check omega_setup.dart (structure, duplicate ids)",
+    "  validate             Check omega_setup.dart (structure, duplicate ids, routes vs *Page agent)",
   );
   stdout.writeln(
     "  trace [view|validate] [file]  Inspect or validate a recorded trace file (JSON)",
@@ -760,7 +760,8 @@ OMEGA API (must compile against package exports):
 - OmegaStatefulAgent: UI state is viewState + setViewState — use viewState.copyWith(...) inside setViewState, not state.copyWith (state is Map<String, dynamic>).
 - OmegaEvent / OmegaIntent: use .fromName(...) so id is set; if using constructors directly, both id and name are required.
 - OmegaWorkflowFlow: failStep(code, {String? message}) — never a second positional; use message: for text from ctx.event payload.
-- OmegaAgentBuilder: builder is (BuildContext, TState) only; do not add a third agent argument. Pass the agent into the Page and use widget.agent; never construct MyAgent(channel) inside build — that creates a new agent every frame.
+- OmegaAgentBuilder: builder is (BuildContext, TState) only; do not add a third agent argument. Pass the agent into the Page and use widget.agent; never construct MyAgent(channel) or MyAgent(channel: channel) inside build — that creates a new agent every frame.
+- If MyPage requires `required MyAgent agent`, omega_setup route must be `builder: (c) => MyPage(agent: myAgentVar)` with `final myAgentVar = MyAgent(channel);` OR `MyAgent(channel: channel);` if the agent ctor uses `{required OmegaEventBus channel}` — never `const MyPage()`.
 - String literals: valid UTF-8; fix Spanish mojibake (corrupted accents) or replace with ASCII/English mock text.
 
 Return only JSON. No markdown fences.
@@ -1272,6 +1273,54 @@ String _relativePath(String fromDir, String toPath) {
   return parts.join("/");
 }
 
+/// `ShoppingCart` -> `shoppingCartAgent` for a single shared instance in [omega_setup.dart].
+String _omegaAgentInstanceVarName(String pascal) {
+  if (pascal.isEmpty) return "moduleAgent";
+  return "${pascal[0].toLowerCase()}${pascal.substring(1)}Agent";
+}
+
+bool _omegaPageDartRequiresAgentField(String pageSource) {
+  if (pageSource.isEmpty) return false;
+  return RegExp(r"required\s+\w*Agent\s+agent\b").hasMatch(pageSource);
+}
+
+/// First constructor `ClassName(` after `class ClassName`: if the parameter list
+/// starts with `{`, assume a named bus arg — use `channel: channel` at call sites.
+/// Otherwise use positional `channel` (matches example [AuthAgent], [AuthFlow]).
+String _omegaEventBusArgListForClass(String dartSource, String className) {
+  final classMatch = RegExp(
+    r"class\s+" + RegExp.escape(className) + r"\b",
+  ).firstMatch(dartSource);
+  if (classMatch == null) return "channel";
+  final tail = dartSource.substring(classMatch.end);
+  final ctorMatch = RegExp(
+    r"\b" + RegExp.escape(className) + r"\s*\(",
+  ).firstMatch(tail);
+  if (ctorMatch == null) return "channel";
+  final afterParen = tail.substring(ctorMatch.end);
+  for (var i = 0; i < afterParen.length; i++) {
+    final c = afterParen.codeUnitAt(i);
+    if (c == 0x20 || c == 0x09 || c == 0x0A || c == 0x0D) continue;
+    if (c == 0x7B /* { */) return "channel: channel";
+    return "channel";
+  }
+  return "channel";
+}
+
+bool _omegaSetupHasAgentChannelConstruction(String content, String pascal) {
+  final name = "${pascal}Agent";
+  return RegExp(
+    r"\b" + RegExp.escape(name) + r"\s*\(\s*(?:channel\s*:\s*)?channel\s*\)",
+  ).hasMatch(content);
+}
+
+bool _omegaSetupHasFlowChannelConstruction(String content, String pascal) {
+  final name = "${pascal}Flow";
+  return RegExp(
+    r"\b" + RegExp.escape(name) + r"\s*\(\s*(?:channel\s*:\s*)?channel\s*\)",
+  ).hasMatch(content);
+}
+
 void registerInOmegaSetup(
   String name,
   String path,
@@ -1296,8 +1345,37 @@ void registerInOmegaSetup(
   var content = setupFile.readAsStringSync();
   final pascal = toPascalCase(name);
   final nameLower = name.toLowerCase();
+  final agentVar = _omegaAgentInstanceVarName(pascal);
+  final pagePath =
+      "$pathNorm${Platform.pathSeparator}ui${Platform.pathSeparator}${nameLower}_page.dart";
+  var pageNeedsAgent = false;
+  if (File(pagePath).existsSync()) {
+    pageNeedsAgent =
+        _omegaPageDartRequiresAgentField(File(pagePath).readAsStringSync());
+  }
   final agentPath = "$pathNorm/${nameLower}_agent.dart";
   final flowPath = "$pathNorm/${nameLower}_flow.dart";
+
+  var agentChannelArgs = "channel";
+  final agentFileForCtor = File(agentPath);
+  if (agentFileForCtor.existsSync()) {
+    try {
+      agentChannelArgs = _omegaEventBusArgListForClass(
+        agentFileForCtor.readAsStringSync(),
+        "${pascal}Agent",
+      );
+    } catch (_) {}
+  }
+  var flowChannelArgs = "channel";
+  final flowFileForCtor = File(flowPath);
+  if (flowFileForCtor.existsSync()) {
+    try {
+      flowChannelArgs = _omegaEventBusArgListForClass(
+        flowFileForCtor.readAsStringSync(),
+        "${pascal}Flow",
+      );
+    } catch (_) {}
+  }
 
   final String agentImport;
   final String flowImport;
@@ -1350,47 +1428,87 @@ void registerInOmegaSetup(
     content = '${newImports.join("\n")}\n$content';
   }
 
-  if (registerAgent && !content.contains("${pascal}Agent(channel)")) {
-    if (content.contains("agents: <OmegaAgent>[")) {
-      content = content.replaceFirst(
-        "agents: <OmegaAgent>[",
-        "agents: <OmegaAgent>[\n      ${pascal}Agent(channel),",
-      );
-    } else if (content.contains("agents: [")) {
-      content = content.replaceFirst(
-        "agents: [",
-        "agents: [\n      ${pascal}Agent(channel),",
-      );
+  if (registerAgent && pageNeedsAgent) {
+    final decl = "  final $agentVar = ${pascal}Agent($agentChannelArgs);";
+    if (!content.contains(decl)) {
+      final anchor = content.indexOf("OmegaConfig createOmegaConfig");
+      if (anchor >= 0) {
+        final brace = content.indexOf("{", anchor);
+        if (brace >= 0) {
+          content =
+              "${content.substring(0, brace + 1)}\n$decl\n${content.substring(brace + 1)}";
+        }
+      }
+    }
+  }
+
+  if (pageNeedsAgent && registerFlow && !registerAgent) {
+    stdout.writeln(
+      "⚠️ ${_tr(
+        en: "$pascal page expects a required agent — register the agent in omega_setup (agents + final $agentVar) and pass agent: $agentVar on the route.",
+        es: "La página $pascal requiere un agente — registra el agente en omega_setup (agents + final $agentVar) y pasa agent: $agentVar en la ruta.",
+      )}",
+    );
+  }
+
+  if (registerAgent) {
+    if (pageNeedsAgent) {
+      if (!content.contains("$agentVar,")) {
+        if (content.contains("agents: <OmegaAgent>[")) {
+          content = content.replaceFirst(
+            "agents: <OmegaAgent>[",
+            "agents: <OmegaAgent>[\n      $agentVar,",
+          );
+        } else if (content.contains("agents: [")) {
+          content = content.replaceFirst(
+            "agents: [",
+            "agents: [\n      $agentVar,",
+          );
+        }
+      }
+    } else if (!_omegaSetupHasAgentChannelConstruction(content, pascal)) {
+      if (content.contains("agents: <OmegaAgent>[")) {
+        content = content.replaceFirst(
+          "agents: <OmegaAgent>[",
+          "agents: <OmegaAgent>[\n      ${pascal}Agent($agentChannelArgs),",
+        );
+      } else if (content.contains("agents: [")) {
+        content = content.replaceFirst(
+          "agents: [",
+          "agents: [\n      ${pascal}Agent($agentChannelArgs),",
+        );
+      }
     }
   }
 
   if (registerFlow) {
     if (content.contains("flows: <OmegaFlow>[")) {
-      if (!content.contains("${pascal}Flow(channel)")) {
+      if (!_omegaSetupHasFlowChannelConstruction(content, pascal)) {
         content = content.replaceFirst(
           "flows: <OmegaFlow>[",
-          "flows: <OmegaFlow>[\n      ${pascal}Flow(channel),",
+          "flows: <OmegaFlow>[\n      ${pascal}Flow($flowChannelArgs),",
         );
       }
     } else if (content.contains("flows: [")) {
-      if (!content.contains("${pascal}Flow(channel)")) {
+      if (!_omegaSetupHasFlowChannelConstruction(content, pascal)) {
         content = content.replaceFirst(
           "flows: [",
-          "flows: [\n      ${pascal}Flow(channel),",
+          "flows: [\n      ${pascal}Flow($flowChannelArgs),",
         );
       }
     } else {
       // Si no existe la sección flows, la añadimos antes del cierre de OmegaConfig
       content = content.replaceFirst(
         ");",
-        "  flows: <OmegaFlow>[\n      ${pascal}Flow(channel),\n    ],\n  );",
+        "  flows: <OmegaFlow>[\n      ${pascal}Flow($flowChannelArgs),\n    ],\n  );",
       );
     }
 
     // Registrar ruta por defecto para el nuevo módulo
     if (!content.contains("OmegaRoute(id: '$pascal'")) {
-      final routeEntry =
-          "      OmegaRoute(id: '$pascal', builder: (context) => const ${pascal}Page()),";
+      final routeEntry = pageNeedsAgent && registerAgent
+          ? "      OmegaRoute(id: '$pascal', builder: (context) => ${pascal}Page(agent: $agentVar)),"
+          : "      OmegaRoute(id: '$pascal', builder: (context) => const ${pascal}Page()),";
       if (content.contains("routes: <OmegaRoute>[")) {
         content = content.replaceFirst(
           "routes: <OmegaRoute>[",
@@ -1643,8 +1761,10 @@ class OmegaValidateCommand {
       ok = false;
     }
 
-    // Duplicate ids: find all XAgent(channel) and XFlow(channel)
-    final agentReg = RegExp(r"(\w+)Agent\s*\(\s*channel\s*[,\)]");
+    // Duplicate ids: find all XAgent(channel) / XAgent(channel: channel) and XFlow(...)
+    final agentReg = RegExp(
+      r"(\w+)Agent\s*\(\s*(?:channel\s*:\s*)?channel\s*[,\)]",
+    );
     final flowReg = RegExp(r"(\w+)Flow\s*\(\s*[^)]*channel[^)]*\)");
     final agentMatches = agentReg.allMatches(content);
     final flowMatches = flowReg.allMatches(content);
@@ -1661,7 +1781,7 @@ class OmegaValidateCommand {
     if (duplicateAgents.isNotEmpty) {
       _err("Duplicate agent registration: ${duplicateAgents.join(", ")}.");
       stdout.writeln(
-        "  Remove duplicate XAgent(channel) from omega_setup.dart.",
+        "  Remove duplicate XAgent(channel / channel: channel) from omega_setup.dart.",
       );
       ok = false;
     }
@@ -1673,13 +1793,72 @@ class OmegaValidateCommand {
       ok = false;
     }
 
+    final routeAgentIssues = collectRouteAgentMismatches(root, content);
+    if (routeAgentIssues.isNotEmpty) {
+      ok = false;
+      for (final msg in routeAgentIssues) {
+        _err(msg);
+      }
+    }
+
     if (ok) {
       stdout.writeln("Valid.");
       stdout.writeln("  File: ${_absPath(setupPath)}");
       stdout.writeln(
         "  Agents: ${agentNames.length}, Flows: ${flowNames.length}",
       );
+    } else {
+      stdout.writeln("");
+      stdout.writeln("Validate failed.");
     }
+    if (!ok) exit(1);
+  }
+
+  /// Scans `lib/**.dart` for `*Page` classes whose constructor has `required …Agent agent`.
+  static Map<String, bool> _libPagesRequiringAgent(String libRoot) {
+    final map = <String, bool>{};
+    final dir = Directory(libRoot);
+    if (!dir.existsSync()) return map;
+    for (final e in dir.listSync(recursive: true)) {
+      if (e is! File || !e.path.endsWith("_page.dart")) continue;
+      try {
+        final text = e.readAsStringSync();
+        final cm = RegExp(r"class\s+(\w+)\s+extends").firstMatch(text);
+        if (cm == null) continue;
+        final cls = cm.group(1)!;
+        if (_omegaPageDartRequiresAgentField(text)) {
+          map[cls] = true;
+        }
+      } catch (_) {}
+    }
+    return map;
+  }
+
+  /// Detects [omega_setup.dart] calls like `FooPage()` or `const FooPage()` when [FooPage] requires [agent].
+  static List<String> collectRouteAgentMismatches(
+    String projectRoot,
+    String setupContent,
+  ) {
+    final pageNeedsAgent = _libPagesRequiringAgent("$projectRoot/lib");
+    final issues = <String>[];
+    for (final m in RegExp(r"(\w+Page)\s*\(\s*([^)]*)\)").allMatches(setupContent)) {
+      final pageName = m.group(1)!;
+      final args = m.group(2)!.trim();
+      if (pageNeedsAgent[pageName] != true) continue;
+      if (args.contains("agent:")) continue;
+      final pascal = pageName.endsWith("Page")
+          ? pageName.substring(0, pageName.length - 4)
+          : pageName;
+      final hintVar = _omegaAgentInstanceVarName(pascal);
+      issues.add(
+        "Route/widget call $pageName(...) has no `agent:` but $pageName requires a *Agent. "
+        "In createOmegaConfig add e.g. `final $hintVar = ${pascal}Agent(channel);` — or "
+        "`${pascal}Agent(channel: channel);` if the agent constructor uses `{required OmegaEventBus channel}` — "
+        "list $hintVar in agents, and use `OmegaRoute(..., builder: (c) => $pageName(agent: $hintVar))` "
+        "(do not use const $pageName()).",
+      );
+    }
+    return issues;
   }
 
   static List<String> _duplicates(List<String> list) {
@@ -1854,7 +2033,9 @@ class OmegaDoctorCommand {
       _err("omega_setup.dart must return OmegaConfig.");
       ok = false;
     }
-    final agentReg = RegExp(r"(\w+)Agent\s*\(\s*channel\s*[,\)]");
+    final agentReg = RegExp(
+      r"(\w+)Agent\s*\(\s*(?:channel\s*:\s*)?channel\s*[,\)]",
+    );
     final flowReg = RegExp(r"(\w+)Flow\s*\(\s*[^)]*channel[^)]*\)");
     final agentIds = agentReg
         .allMatches(content)
@@ -1873,6 +2054,14 @@ class OmegaDoctorCommand {
     if (dupFlows.isNotEmpty) {
       _err("Duplicate flow registration: ${dupFlows.join(", ")}.");
       ok = false;
+    }
+    final routeAgentDoctorIssues =
+        OmegaValidateCommand.collectRouteAgentMismatches(root, content);
+    if (routeAgentDoctorIssues.isNotEmpty) {
+      ok = false;
+      for (final msg in routeAgentDoctorIssues) {
+        _err(msg);
+      }
     }
     stdout.writeln("Omega Doctor");
     stdout.writeln("  Setup: ${_absPath(setupPath)}");
@@ -1992,8 +2181,8 @@ DEFAULT UI PATTERN (use this in the module Page unless the route passes an agent
 - Rare alternative when you already hold a non-null OmegaFlow: flow.receiveIntent(OmegaIntent.fromName(MyIntent.retry)); never flow.onIntent(...).
 
 IF THE PAGE NEEDS OmegaStatefulAgent VIEW STATE (OmegaAgentBuilder):
-- Do NOT resolve the agent from scope. The agent instance must be passed into the Page widget: const MyPage({super.key, required this.agent}); final MyAgent agent;
-- In omega_setup.dart (user file): create `final myAgent = MyAgent(channel);`, add to agents:[...], and OmegaRoute(id: '...', builder: (c) => MyPage(agent: myAgent)) using the SAME variable.
+- Do NOT resolve the agent from scope. Pass the agent into the Page: `MyPage({super.key, required this.agent});` — NOT a const constructor (the agent is not a compile-time constant).
+- In omega_setup.dart (NOT in the JSON): `final shoppingCartAgent = ShoppingCartAgent(channel);` or `ShoppingCartAgent(channel: channel);` if the ctor is `{required OmegaEventBus channel}` (camelCase + Agent), add `shoppingCartAgent` to agents:[...], and `OmegaRoute(id: 'ShoppingCart', builder: (c) => ShoppingCartPage(agent: shoppingCartAgent))` — NEVER `const ShoppingCartPage()` if `required ...Agent agent` exists.
 - Then wrap UI with OmegaAgentBuilder<MyAgent, MyViewState>(agent: widget.agent, builder: (context, state) => ...). Builder type is Widget Function(BuildContext, TState) only — NEVER a third (agent) parameter; use widget.agent inside the closure if needed.
 
 FORBIDDEN (will not compile): scope.agentManager, scope.getAgent, OmegaScope.of(context).agentManager, context.watch<SomeAgent>(), calling flow.onIntent from widgets, OmegaFlowContext.intent or any manual OmegaFlowContext(...) in UI.
@@ -2684,6 +2873,18 @@ STRING LITERALS (encoding):
     if (t.contains("OmegaAgentBuilder<") &&
         RegExp(r"builder:\s*\(\s*context\s*,\s*[^,)]+,\s*[^)]+\)").hasMatch(t)) {
       return false;
+    }
+    if (t.contains("OmegaAgentBuilder")) {
+      if (RegExp(r"agent:\s*\w+Agent\s*\(\s*scope\.channel").hasMatch(t)) {
+        return false;
+      }
+      if (RegExp(r"agent:\s*\w+Agent\s*\(\s*channel\s*\)").hasMatch(t)) {
+        return false;
+      }
+      if (RegExp(r"agent:\s*\w+Agent\s*\(\s*channel\s*:\s*channel\s*\)")
+          .hasMatch(t)) {
+        return false;
+      }
     }
     return true;
   }
@@ -3400,6 +3601,9 @@ class ${moduleName}Page extends StatelessWidget {
         "${baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions";
 
     final lower = moduleName.toLowerCase();
+    final camelAgentVar = moduleName.isEmpty
+        ? "moduleAgent"
+        : "${moduleName[0].toLowerCase()}${moduleName.substring(1)}Agent";
     final contextBlock = (productContext != null &&
             productContext.trim().isNotEmpty)
         ? """
@@ -3469,7 +3673,7 @@ REFERENCE (official package patterns; mirror example/lib/omega/omega_setup.dart,
 - Agent + behavior ground truth (same repo): example/lib/auth/auth_behavior.dart + example/lib/auth/auth_agent.dart — match their structure before inventing patterns.
 - Flow id: ${moduleName}Flow must use super(id: '$moduleName', channel: channel) so flowManager.getFlow('$moduleName') in ${moduleName}Page resolves. If this module is the app entry flow, OmegaConfig.initialFlowId in omega_setup.dart must be that same string (example: AuthFlow uses id "authFlow" and OmegaConfig.initialFlowId: "authFlow").
 - Pages: scope.flowManager.getFlow('$moduleName'); StreamBuilder<OmegaFlowExpression>(stream: flow.expressions, ...).
-- omega_setup.dart (not in this JSON): add ${moduleName}Flow and ${moduleName}Agent to OmegaConfig; route example OmegaRoute(id: '$moduleName', builder: (context) => const ${moduleName}Page()). For typed routes use OmegaRoute.typed<T>(id: '...', builder: (context, payload) => ...).
+- omega_setup.dart (not in this JSON): add ${moduleName}Flow and agent to OmegaConfig. If ${moduleName}Page has `required ${moduleName}Agent agent`: declare `final $camelAgentVar = ${moduleName}Agent(channel);` (or `${moduleName}Agent(channel: channel);` when the agent ctor uses `{required OmegaEventBus channel}`), add `$camelAgentVar` to agents:[...], and `OmegaRoute(id: '$moduleName', builder: (context) => ${moduleName}Page(agent: $camelAgentVar))` (no const on the Page). If the page is flow-only (no agent parameter): `OmegaRoute(id: '$moduleName', builder: (context) => const ${moduleName}Page())`. Typed routes: OmegaRoute.typed<T>(...).
 - Contracts (debug warnings): OmegaWorkflowFlow always emits workflow.step (and failStep emits workflow.error)—include those in emittedExpressionTypes. Flow listenedEventNames must include *.requested if that event is published on the same bus. On a shared global channel, agents should use OmegaAgentContract(listenedEventNames: {}) OR wire agents/flows with channel.namespace('$lower') for isolation.
 
 $_omegaAiOmegaScopeApi
@@ -3491,7 +3695,8 @@ CRITICAL RULES:
    - "response" (optional): if the user asked for a single "template" or "código de pantalla", you MAY put the same full Dart as "page" here too so tools can read one field; if omitted, "page" alone is enough.
 5. ENUMS: implement OmegaIntentName / OmegaEventName only (abstract name contracts). NEVER write implements OmegaIntent or implements OmegaEvent on an enum.
 6. UI: OmegaIntent.fromName(${moduleName}Intent.start) — pass the enum constant, NOT a String, NOT ${moduleName}Intent.start.name.
-7. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
+7. If the page uses OmegaAgentBuilder with `required ${moduleName}Agent agent`, put in "reasoning" one line: user must set omega_setup route to ${moduleName}Page(agent: $camelAgentVar) and declare `final $camelAgentVar = ${moduleName}Agent(channel);` (or `channel: channel` if ctor is named-only) in agents — same pattern as example omega_setup + auth page.
+8. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
 
 UI DESIGN (apply to the 'page' value only — maximize quality; the structural snippet below is NOT the final UI):
 $_omegaAiUiDesignStandards
@@ -3520,6 +3725,7 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
 
 - 'agent':
   - import '${lower}_events.dart' and '${lower}_behavior.dart';
+  - Prefer `${moduleName}Agent(OmegaEventBus channel)` (positional) like example/lib/auth/auth_agent.dart so omega_setup can use `Agent(channel)`. If you use `${moduleName}Agent({required OmegaEventBus channel})`, omega_setup must use `Agent(channel: channel)`.
   - class ${moduleName}Agent extends OmegaStatefulAgent<${moduleName}ViewState> {
       ${moduleName}Agent(OmegaEventBus channel) : super(id: '$moduleName', channel: channel, behavior: ${moduleName}Behavior(), initialState: ${moduleName}ViewState.idle);
       @override OmegaAgentContract? get contract => OmegaAgentContract(listenedEventNames: {});
@@ -3546,7 +3752,10 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
 
 - 'page' (STRUCTURE ONLY - REWRITE THE UI CONTENT):
   - import 'package:flutter/material.dart'; import 'package:omega_architecture/omega_architecture.dart'; import '../${lower}_events.dart';
-  - class ${moduleName}Page extends StatelessWidget {
+  - EITHER (A) flow-only: `class ${moduleName}Page extends StatelessWidget { const ${moduleName}Page({super.key});` + getFlow + StreamBuilder only — omega_setup may use const ${moduleName}Page().
+  - OR (B) agent + flow: `class ${moduleName}Page extends StatelessWidget { ${moduleName}Page({super.key, required this.agent}); final ${moduleName}Agent agent;` (no const constructor) + OmegaAgentBuilder<${moduleName}Agent, ${moduleName}ViewState>(agent: agent, builder: (context, state) => ...) + flow/StreamBuilder as needed — omega_setup MUST use `final $camelAgentVar = ${moduleName}Agent(channel);` (or `${moduleName}Agent(channel: channel);` if the agent ctor is `{required OmegaEventBus channel}`) in agents: [..., $camelAgentVar] and `OmegaRoute(..., builder: (c) => ${moduleName}Page(agent: $camelAgentVar))`.
+  - Default template skeleton if you choose (A):
+      class ${moduleName}Page extends StatelessWidget {
       const ${moduleName}Page({super.key});
       @override Widget build(BuildContext context) {
         final scope = OmegaScope.of(context);
