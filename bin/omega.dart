@@ -28,6 +28,272 @@ String _absPath(String path) {
   return File(path).absolute.path;
 }
 
+/// Shared OpenAI + Google Gemini (AI Studio) transport. Same [system] / [user] prompts; same text/JSON output handling.
+class _OmegaAiRemote {
+  static String? _providerNorm() {
+    final p = (Platform.environment["OMEGA_AI_PROVIDER"] ?? "").trim().toLowerCase();
+    return p.isEmpty ? null : p;
+  }
+
+  static bool _enabled() {
+    final v = Platform.environment["OMEGA_AI_ENABLED"]?.trim().toLowerCase();
+    return v == "true" || v == "1" || v == "yes";
+  }
+
+  static bool isRemoteProvider(String? p) =>
+      p == "openai" || p == "gemini";
+
+  /// API key: for `gemini`, prefers [OMEGA_AI_GEMINI_API_KEY] then [OMEGA_AI_API_KEY]. For `openai`, [OMEGA_AI_API_KEY].
+  static String effectiveApiKey() {
+    final env = Platform.environment;
+    final p = _providerNorm() ?? "";
+    if (p == "gemini") {
+      final g = (env["OMEGA_AI_GEMINI_API_KEY"] ?? "").trim();
+      if (g.isNotEmpty) return g;
+    }
+    return (env["OMEGA_AI_API_KEY"] ?? "").trim();
+  }
+
+  static bool canCallRemote() {
+    if (!_enabled()) return false;
+    final p = _providerNorm();
+    if (!isRemoteProvider(p)) return false;
+    return effectiveApiKey().isNotEmpty;
+  }
+
+  static String _openaiModel() =>
+      (Platform.environment["OMEGA_AI_MODEL"] ?? "gpt-4o-mini").trim();
+  static String _openaiBase() =>
+      (Platform.environment["OMEGA_AI_BASE_URL"] ?? "https://api.openai.com/v1")
+          .trim();
+
+  static String _geminiModel() =>
+      (Platform.environment["OMEGA_AI_MODEL"] ?? "gemini-2.0-flash").trim();
+  static String _geminiApiVersion() =>
+      (Platform.environment["OMEGA_AI_GEMINI_API_VERSION"] ?? "v1beta").trim();
+
+  static String stripCodeFences(String raw) {
+    var s = raw.trim();
+    if (s.contains("```json")) {
+      final start = s.indexOf("```json") + 7;
+      final end = s.lastIndexOf("```");
+      if (end > start) s = s.substring(start, end).trim();
+    } else if (s.contains("```")) {
+      final start = s.indexOf("```") + 3;
+      final end = s.lastIndexOf("```");
+      if (end > start) s = s.substring(start, end).trim();
+    }
+    return s;
+  }
+
+  static String? _extractOpenAiContent(dynamic decoded) {
+    if (decoded is! Map) return null;
+    final choices = decoded["choices"];
+    if (choices is! List || choices.isEmpty) return null;
+    final first = choices.first;
+    if (first is! Map) return null;
+    final message = first["message"];
+    if (message is! Map) return null;
+    final raw = message["content"];
+    if (raw == null) return null;
+    if (raw is String) return raw;
+    if (raw is List) {
+      final buf = StringBuffer();
+      for (final part in raw) {
+        if (part is Map && part["text"] != null) {
+          buf.write(part["text"]);
+        } else {
+          buf.write(part.toString());
+        }
+      }
+      final t = buf.toString().trim();
+      return t.isEmpty ? null : t;
+    }
+    return raw.toString();
+  }
+
+  static String? _extractGeminiText(dynamic decoded) {
+    if (decoded is! Map) return null;
+    final candidates = decoded["candidates"];
+    if (candidates is! List || candidates.isEmpty) return null;
+    final c0 = candidates.first;
+    if (c0 is! Map) return null;
+    final content = c0["content"];
+    if (content is! Map) return null;
+    final parts = content["parts"];
+    if (parts is! List || parts.isEmpty) return null;
+    final buf = StringBuffer();
+    for (final p in parts) {
+      if (p is Map && p["text"] != null) buf.write(p["text"]);
+    }
+    final t = buf.toString().trim();
+    return t.isEmpty ? null : t;
+  }
+
+  /// One assistant text response, or null. [jsonObject] maps to OpenAI `response_format` / Gemini `responseMimeType: application/json`.
+  static Future<String?> completeChat({
+    required String system,
+    required String user,
+    double temperature = 0.2,
+    bool jsonObject = false,
+    Duration timeout = const Duration(seconds: 60),
+    bool silentErrors = false,
+  }) async {
+    if (!canCallRemote()) return null;
+    final p = _providerNorm()!;
+    final apiKey = effectiveApiKey();
+
+    if (p == "gemini") {
+      return _geminiGenerate(
+        apiKey: apiKey,
+        system: system,
+        user: user,
+        temperature: temperature,
+        jsonObject: jsonObject,
+        timeout: timeout,
+        silentErrors: silentErrors,
+      );
+    }
+    return _openaiChat(
+      apiKey: apiKey,
+      system: system,
+      user: user,
+      temperature: temperature,
+      jsonObject: jsonObject,
+      timeout: timeout,
+      silentErrors: silentErrors,
+    );
+  }
+
+  static Future<String?> _openaiChat({
+    required String apiKey,
+    required String system,
+    required String user,
+    required double temperature,
+    required bool jsonObject,
+    required Duration timeout,
+    required bool silentErrors,
+  }) async {
+    final model = _openaiModel();
+    final base = _openaiBase();
+    final endpoint = base.endsWith("/chat/completions")
+        ? base
+        : "${base.replaceAll(RegExp(r'/+$'), '')}/chat/completions";
+
+    final body = <String, dynamic>{
+      "model": model,
+      "temperature": temperature,
+      "messages": [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user},
+      ],
+    };
+    if (jsonObject) {
+      body["response_format"] = {"type": "json_object"};
+    }
+
+    HttpClient? client;
+    try {
+      client = HttpClient()..connectionTimeout = timeout;
+      final request = await client.postUrl(Uri.parse(endpoint));
+      request.headers.set(HttpHeaders.authorizationHeader, "Bearer $apiKey");
+      request.headers.set(
+        HttpHeaders.contentTypeHeader,
+        "application/json; charset=utf-8",
+      );
+      final bytes = utf8.encode(jsonEncode(body));
+      request.contentLength = bytes.length;
+      request.add(bytes);
+
+      final response = await request.close().timeout(timeout);
+      final respBody =
+          await response.transform(utf8.decoder).join().timeout(timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        if (!silentErrors) {
+          _err("AI (openai) HTTP ${response.statusCode}: $respBody");
+        }
+        return null;
+      }
+      final decoded = jsonDecode(respBody);
+      return _extractOpenAiContent(decoded);
+    } catch (e) {
+      if (!silentErrors) {
+        _err("AI (openai) error: $e");
+      }
+      return null;
+    } finally {
+      client?.close(force: true);
+    }
+  }
+
+  static Future<String?> _geminiGenerate({
+    required String apiKey,
+    required String system,
+    required String user,
+    required double temperature,
+    required bool jsonObject,
+    required Duration timeout,
+    required bool silentErrors,
+  }) async {
+    var modelId = _geminiModel().replaceFirst(RegExp(r'^models/'), "");
+    final version = _geminiApiVersion();
+    final uri = Uri.parse(
+      "https://generativelanguage.googleapis.com/$version/models/$modelId:generateContent",
+    ).replace(queryParameters: {"key": apiKey});
+
+    final generationConfig = <String, dynamic>{
+      "temperature": temperature,
+    };
+    if (jsonObject) {
+      generationConfig["responseMimeType"] = "application/json";
+    }
+
+    final body = <String, dynamic>{
+      "systemInstruction": {
+        "parts": [{"text": system}],
+      },
+      "contents": [
+        {
+          "role": "user",
+          "parts": [{"text": user}],
+        },
+      ],
+      "generationConfig": generationConfig,
+    };
+
+    HttpClient? client;
+    try {
+      client = HttpClient()..connectionTimeout = timeout;
+      final request = await client.postUrl(uri);
+      request.headers.set(
+        HttpHeaders.contentTypeHeader,
+        "application/json; charset=utf-8",
+      );
+      final bytes = utf8.encode(jsonEncode(body));
+      request.contentLength = bytes.length;
+      request.add(bytes);
+
+      final response = await request.close().timeout(timeout);
+      final respBody =
+          await response.transform(utf8.decoder).join().timeout(timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        if (!silentErrors) {
+          _err("AI (gemini) HTTP ${response.statusCode}: $respBody");
+        }
+        return null;
+      }
+      return _extractGeminiText(jsonDecode(respBody));
+    } catch (e) {
+      if (!silentErrors) {
+        _err("AI (gemini) error: $e");
+      }
+      return null;
+    } finally {
+      client?.close(force: true);
+    }
+  }
+}
+
 Future<void> main(List<String> args) async {
   if (args.isEmpty) {
     printHelp();
@@ -583,10 +849,18 @@ void main() {
       return;
     }
 
-    final apiKey = (env["OMEGA_AI_API_KEY"] ?? "").trim();
-    if (apiKey.isEmpty) {
+    final providerLc = (env["OMEGA_AI_PROVIDER"] ?? "").trim().toLowerCase();
+    if (providerLc != "openai" && providerLc != "gemini") {
       stdout.writeln(
-        "❌ ${_tr(en: "OMEGA_AI_API_KEY is missing. Cannot auto-fix.", es: "Falta OMEGA_AI_API_KEY. No se puede corregir automáticamente.")}",
+        "❌ ${_tr(en: "Self-heal requires OMEGA_AI_PROVIDER=openai or gemini.", es: "La auto-sanación requiere OMEGA_AI_PROVIDER=openai o gemini.")}",
+      );
+      _printMachineErrors(errors);
+      return;
+    }
+
+    if (_OmegaAiRemote.effectiveApiKey().isEmpty) {
+      stdout.writeln(
+        "❌ ${_tr(en: "No API key for the selected provider (OMEGA_AI_API_KEY, or OMEGA_AI_GEMINI_API_KEY when using gemini). Cannot auto-fix.", es: "Falta clave API para el proveedor (OMEGA_AI_API_KEY, u OMEGA_AI_GEMINI_API_KEY con gemini). No se puede corregir automáticamente.")}",
       );
       _printMachineErrors(errors);
       return;
@@ -678,9 +952,7 @@ void main() {
     String root,
     List<String> errors,
   ) async {
-    final env = Platform.environment;
-    final apiKey = (env["OMEGA_AI_API_KEY"] ?? "").trim();
-    if (apiKey.isEmpty) return null;
+    if (!_OmegaAiRemote.canCallRemote()) return null;
 
     final errorContext = StringBuffer();
     final filesToFix = <String>{};
@@ -858,59 +1130,20 @@ ${OmegaAiCommand._omegaAiScreenEntryDataLoad}
 Return only JSON. No markdown fences.
 """;
 
-    final model = env["OMEGA_AI_MODEL"] ?? "gpt-4o-mini";
-    final baseUrl = env["OMEGA_AI_BASE_URL"] ?? "https://api.openai.com/v1";
-    final endpoint = "${baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions";
+    const healSystem =
+        "You output only valid JSON objects mapping path strings to full file contents. You fix Dart analyzer errors for Flutter + omega_architecture package. Always add missing package imports when Omega types are undefined.";
 
-    final payloadMap = {
-      "model": model,
-      "temperature": 0.15,
-      "messages": [
-        {
-          "role": "system",
-          "content":
-              "You output only valid JSON objects mapping path strings to full file contents. You fix Dart analyzer errors for Flutter + omega_architecture package. Always add missing package imports when Omega types are undefined.",
-        },
-        {"role": "user", "content": prompt},
-      ],
-      "response_format": {"type": "json_object"},
-    };
-    final payloadBytes = utf8.encode(jsonEncode(payloadMap));
+    final rawContent = await _OmegaAiRemote.completeChat(
+      system: healSystem,
+      user: prompt,
+      temperature: 0.15,
+      jsonObject: true,
+      timeout: const Duration(seconds: 120),
+    );
+    if (rawContent == null || rawContent.isEmpty) return null;
 
-    HttpClient? client;
     try {
-      client = HttpClient()..connectionTimeout = const Duration(seconds: 45);
-      final request = await client.postUrl(Uri.parse(endpoint));
-      request.headers.set(HttpHeaders.authorizationHeader, "Bearer $apiKey");
-      request.headers.set(
-        HttpHeaders.contentTypeHeader,
-        "application/json; charset=utf-8",
-      );
-      request.contentLength = payloadBytes.length;
-      request.add(payloadBytes);
-
-      final response = await request.close();
-      final body = await response.transform(utf8.decoder).join();
-      if (response.statusCode != 200) {
-        _err("AI heal HTTP ${response.statusCode}: $body");
-        return null;
-      }
-
-      final decoded = jsonDecode(body);
-      final dynamic rawContent = decoded["choices"][0]["message"]["content"];
-      if (rawContent == null) return null;
-
-      String jsonText = rawContent.toString();
-      if (jsonText.contains("```json")) {
-        final start = jsonText.indexOf("```json") + 7;
-        final end = jsonText.lastIndexOf("```");
-        if (end > start) jsonText = jsonText.substring(start, end).trim();
-      } else if (jsonText.contains("```")) {
-        final start = jsonText.indexOf("```") + 3;
-        final end = jsonText.lastIndexOf("```");
-        if (end > start) jsonText = jsonText.substring(start, end).trim();
-      }
-
+      final jsonText = _OmegaAiRemote.stripCodeFences(rawContent);
       final fixedFiles = jsonDecode(jsonText);
       if (fixedFiles is! Map) return null;
 
@@ -928,61 +1161,30 @@ Return only JSON. No markdown fences.
     } catch (e) {
       _err("AI heal parse/IO error: $e");
       return null;
-    } finally {
-      client?.close(force: true);
     }
   }
 
   static Future<List<String>?> _providerSuggestModules(
     String description,
   ) async {
-    final env = Platform.environment;
-    if (env["OMEGA_AI_ENABLED"] != "true") return null;
-    final provider = env["OMEGA_AI_PROVIDER"];
-    if (provider != "openai") return null;
-    final apiKey = env["OMEGA_AI_API_KEY"];
-    if (apiKey == null || apiKey.isEmpty) return null;
+    if (!_OmegaAiRemote.canCallRemote()) return null;
 
-    final model = env["OMEGA_AI_MODEL"] ?? "gpt-4o-mini";
-    final baseUrl = env["OMEGA_AI_BASE_URL"] ?? "https://api.openai.com/v1";
-    final endpoint =
-        "${baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions";
-
-    final requestBody = {
-      "model": model,
-      "temperature": 0.3,
-      "messages": [
-        {
-          "role": "system",
-          "content":
-              "You are Omega architecture planner. Return ONLY a comma-separated list of 2-4 core module names (PascalCase) needed for the app description. No extra text.",
-        },
-        {"role": "user", "content": "Description: $description"},
-      ],
-    };
-
-    HttpClient? client;
-    try {
-      client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
-      final request = await client.postUrl(Uri.parse(endpoint));
-      request.headers.set(HttpHeaders.authorizationHeader, "Bearer $apiKey");
-      request.headers.set(HttpHeaders.contentTypeHeader, "application/json");
-      request.write(jsonEncode(requestBody));
-      final response = await request.close();
-      final body = await response.transform(utf8.decoder).join();
-      if (response.statusCode != 200) return null;
-      final decoded = jsonDecode(body);
-      final content = decoded["choices"][0]["message"]["content"].toString();
-      return content
-          .split(",")
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-    } catch (_) {
-      return null;
-    } finally {
-      client?.close(force: true);
-    }
+    const system =
+        "You are Omega architecture planner. Return ONLY a comma-separated list of 2-4 core module names (PascalCase) needed for the app description. No extra text.";
+    final content = await _OmegaAiRemote.completeChat(
+      system: system,
+      user: "Description: $description",
+      temperature: 0.3,
+      jsonObject: false,
+      timeout: const Duration(seconds: 25),
+      silentErrors: true,
+    );
+    if (content == null || content.isEmpty) return null;
+    return content
+        .split(",")
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
   }
 }
 
@@ -2450,19 +2652,37 @@ STRING LITERALS (encoding):
     final env = Platform.environment;
     final enabled = _readBool(env["OMEGA_AI_ENABLED"], defaultValue: false);
     final provider = (env["OMEGA_AI_PROVIDER"] ?? "none").trim();
+    final providerLc = provider.toLowerCase();
     final model = (env["OMEGA_AI_MODEL"] ?? "not-set").trim();
     final baseUrl = (env["OMEGA_AI_BASE_URL"] ?? "default-provider-url").trim();
-    final key = env["OMEGA_AI_API_KEY"];
 
-    final needsKey = provider != "none" && provider != "ollama";
-    final hasKey = key != null && key.trim().isNotEmpty;
+    final remote = _OmegaAiRemote.isRemoteProvider(providerLc);
+    final hasRemoteKey = _OmegaAiRemote.effectiveApiKey().isNotEmpty;
+    final geminiKeySet =
+        (env["OMEGA_AI_GEMINI_API_KEY"] ?? "").trim().isNotEmpty;
 
     stdout.writeln("Omega AI Doctor");
     stdout.writeln("  Enabled : $enabled");
     stdout.writeln("  Provider: $provider");
     stdout.writeln("  Model   : $model");
-    stdout.writeln("  Base URL: $baseUrl");
-    stdout.writeln("  API key : ${hasKey ? "configured" : "missing"}");
+    if (providerLc == "gemini") {
+      stdout.writeln(
+        "  Base URL: Google Generative Language API (OMEGA_AI_BASE_URL ignored)",
+      );
+    } else {
+      stdout.writeln("  Base URL: $baseUrl");
+    }
+    if (remote) {
+      var keyLine = "  API key : ${hasRemoteKey ? "configured" : "missing"}";
+      if (hasRemoteKey && providerLc == "gemini") {
+        keyLine += geminiKeySet
+            ? " (OMEGA_AI_GEMINI_API_KEY)"
+            : " (OMEGA_AI_API_KEY)";
+      }
+      stdout.writeln(keyLine);
+    } else {
+      stdout.writeln("  API key : n/a for this provider (remote AI uses openai|gemini)");
+    }
     stdout.writeln("");
 
     if (!enabled) {
@@ -2471,21 +2691,33 @@ STRING LITERALS (encoding):
       return;
     }
 
-    if (provider == "none") {
+    if (providerLc == "none") {
       _err("OMEGA_AI_PROVIDER is not set.");
-      stdout.writeln("  Suggested: openai | anthropic | gemini | ollama");
+      stdout.writeln("  Suggested for remote AI: openai | gemini");
       return;
     }
 
-    if (needsKey && !hasKey) {
-      _err("Provider '$provider' usually requires OMEGA_AI_API_KEY.");
+    if (providerLc != "none" &&
+        providerLc != "ollama" &&
+        !_OmegaAiRemote.isRemoteProvider(providerLc)) {
+      stdout.writeln(
+        "Note: coach / explain / suggest / gen / heal use OpenAI or Gemini only.",
+      );
+    }
+
+    if (remote && !hasRemoteKey) {
+      if (providerLc == "gemini") {
+        _err("Gemini requires OMEGA_AI_GEMINI_API_KEY or OMEGA_AI_API_KEY.");
+      } else {
+        _err("OpenAI requires OMEGA_AI_API_KEY.");
+      }
       stdout.writeln("  Set your key and run: omega ai doctor");
       return;
     }
 
     stdout.writeln("AI base configuration looks good.");
     stdout.writeln(
-      "Next step: wire a provider adapter in CLI commands (explain/suggest/gen).",
+      "Remote calls (coach, audit, explain, suggest, gen, heal, create-app fix) use the same prompts for OpenAI and Gemini.",
     );
   }
 
@@ -2494,13 +2726,21 @@ STRING LITERALS (encoding):
     stdout.writeln("");
     stdout.writeln("  OMEGA_AI_ENABLED   true|false (default: false)");
     stdout.writeln(
-      "  OMEGA_AI_PROVIDER  openai | anthropic | gemini | ollama | none",
+      "  OMEGA_AI_PROVIDER  openai | gemini (remote) | anthropic | ollama | none",
     );
     stdout.writeln(
-      "  OMEGA_AI_API_KEY   provider API key (optional for ollama)",
+      "  OMEGA_AI_API_KEY   OpenAI key; also Gemini fallback if OMEGA_AI_GEMINI_API_KEY unset",
+    );
+    stdout.writeln(
+      "  OMEGA_AI_GEMINI_API_KEY   Google AI Studio key (optional; preferred when PROVIDER=gemini)",
+    );
+    stdout.writeln(
+      "  OMEGA_AI_GEMINI_API_VERSION   v1beta | v1 (default: v1beta)",
     );
     stdout.writeln("  OMEGA_AI_MODEL     model id (provider specific)");
-    stdout.writeln("  OMEGA_AI_BASE_URL  custom endpoint (optional)");
+    stdout.writeln(
+      "  OMEGA_AI_BASE_URL  custom OpenAI-compatible endpoint (OpenAI only)",
+    );
     stdout.writeln("");
     stdout.writeln("Package context for coach / heal (optional):");
     stdout.writeln(
@@ -2519,11 +2759,17 @@ STRING LITERALS (encoding):
       "  OMEGA_AI_SKIP_REMOTE_DOCS       true = do not GET OMEGA_AI_DOCS_URL(S)",
     );
     stdout.writeln("");
-    stdout.writeln("PowerShell example:");
+    stdout.writeln("PowerShell example (OpenAI):");
     stdout.writeln('  setx OMEGA_AI_ENABLED "true"');
     stdout.writeln('  setx OMEGA_AI_PROVIDER "openai"');
     stdout.writeln('  setx OMEGA_AI_API_KEY "sk-..."');
     stdout.writeln('  setx OMEGA_AI_MODEL "gpt-4o-mini"');
+    stdout.writeln("");
+    stdout.writeln("PowerShell example (Gemini):");
+    stdout.writeln('  setx OMEGA_AI_ENABLED "true"');
+    stdout.writeln('  setx OMEGA_AI_PROVIDER "gemini"');
+    stdout.writeln('  setx OMEGA_AI_GEMINI_API_KEY "AIza..."');
+    stdout.writeln('  setx OMEGA_AI_MODEL "gemini-2.0-flash"');
     stdout.writeln("");
   }
 
@@ -3782,17 +4028,7 @@ class _${moduleName}PageState extends State<${moduleName}Page> {
     Map<String, String>? currentFiles,
     bool pageOnly = false,
   }) async {
-    final env = Platform.environment;
-    if (env["OMEGA_AI_ENABLED"] != "true") return null;
-    final provider = env["OMEGA_AI_PROVIDER"];
-    if (provider != "openai") return null;
-    final apiKey = env["OMEGA_AI_API_KEY"];
-    if (apiKey == null || apiKey.isEmpty) return null;
-
-    final model = env["OMEGA_AI_MODEL"] ?? "gpt-4o-mini";
-    final baseUrl = env["OMEGA_AI_BASE_URL"] ?? "https://api.openai.com/v1";
-    final endpoint =
-        "${baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions";
+    if (!_OmegaAiRemote.canCallRemote()) return null;
 
     final lower = moduleName.toLowerCase();
     final camelAgentVar = moduleName.isEmpty
@@ -3997,61 +4233,17 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
 """;
     }
 
-    final payloadMap = {
-      "model": model,
-      "temperature": 0.3,
-      "messages": [
-        {
-          "role": "system",
-          "content": aiSystemContent,
-        },
-        {"role": "user", "content": prompt},
-      ],
-      "response_format": {"type": "json_object"},
-    };
+    final raw = await _OmegaAiRemote.completeChat(
+      system: aiSystemContent,
+      user: prompt,
+      temperature: 0.3,
+      jsonObject: true,
+      timeout: const Duration(seconds: 180),
+    );
+    if (raw == null || raw.isEmpty) return null;
 
-    final payloadString = jsonEncode(payloadMap);
-    final payloadBytes = utf8.encode(payloadString);
-
-    HttpClient? client;
     try {
-      client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
-      final request = await client.postUrl(Uri.parse(endpoint));
-      request.headers.set(HttpHeaders.authorizationHeader, "Bearer $apiKey");
-      request.headers.set(HttpHeaders.contentTypeHeader, "application/json; charset=utf-8");
-      
-      request.contentLength = payloadBytes.length;
-      request.add(payloadBytes);
-
-      final response = await request.close();
-      final body = await response.transform(utf8.decoder).join();
-      if (response.statusCode != 200) {
-        _err(
-          "AI Provider Error (${response.statusCode}): $body",
-        );
-        return null;
-      }
-
-      final decoded = jsonDecode(body);
-      final dynamic rawContent = decoded["choices"][0]["message"]["content"];
-      if (rawContent == null) return null;
-      final String content = rawContent.toString();
-      
-      String jsonText = content;
-      if (content.contains("```json")) {
-        final start = content.indexOf("```json") + 7;
-        final end = content.lastIndexOf("```");
-        if (end > start) {
-          jsonText = content.substring(start, end).trim();
-        }
-      } else if (content.contains("```")) {
-        final start = content.indexOf("```") + 3;
-        final end = content.lastIndexOf("```");
-        if (end > start) {
-          jsonText = content.substring(start, end).trim();
-        }
-      }
-
+      final jsonText = _OmegaAiRemote.stripCodeFences(raw);
       final decodedModule = jsonDecode(jsonText);
       if (decodedModule is! Map) {
         _err("AI Provider JSON Error: root is not a JSON object");
@@ -4068,8 +4260,6 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     } catch (e) {
       _err("AI Provider JSON Error: $e");
       return null;
-    } finally {
-      client?.close(force: true);
     }
   }
 
@@ -4575,87 +4765,44 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     return matches;
   }
 
+  /// Normalizes plain-text / bullet replies from OpenAI and Gemini for coach, audit, explain.
+  static List<String> _providerLinesFromText(String content, int maxLines) {
+    final trimmed = content.trim();
+    if (trimmed.isEmpty) return [];
+    final lines = trimmed
+        .split("\n")
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .map(
+          (l) => l
+              .replaceFirst(RegExp(r"^[-*•]\s*"), "")
+              .replaceFirst(RegExp(r"^\d+[\.\)]\s*"), ""),
+        )
+        .where((l) => l.isNotEmpty)
+        .take(maxLines)
+        .toList();
+    return lines.isEmpty ? [trimmed] : lines;
+  }
+
   static Future<List<String>?> _providerCoachPlan(String feature) async {
-    final env = Platform.environment;
-    final enabled = _readBool(env["OMEGA_AI_ENABLED"], defaultValue: false);
-    if (!enabled) return null;
+    if (!_OmegaAiRemote.canCallRemote()) return null;
 
-    final provider = (env["OMEGA_AI_PROVIDER"] ?? "").trim().toLowerCase();
-    if (provider != "openai") return null;
-
-    final apiKey = (env["OMEGA_AI_API_KEY"] ?? "").trim();
-    if (apiKey.isEmpty) return null;
-
-    final model = (env["OMEGA_AI_MODEL"] ?? "gpt-4o-mini").trim();
     final targetLanguage = _preferredAiLanguage();
-    final base = (env["OMEGA_AI_BASE_URL"] ?? "https://api.openai.com/v1")
-        .trim();
-    final endpoint = base.endsWith("/chat/completions")
-        ? base
-        : "${base.replaceAll(RegExp(r"/+$"), "")}/chat/completions";
+    final system =
+        "You are Omega coding coach. Respond strictly in $targetLanguage. Return 5-7 concise numbered steps with practical guidance for implementation.";
+    final user =
+        "Create a practical step-by-step coding guide in Omega architecture for this feature: '$feature'. Include flow, agent, intents/events, setup wiring, and testing.";
 
-    final requestBody = {
-      "model": model,
-      "temperature": 0.2,
-      "messages": [
-        {
-          "role": "system",
-          "content":
-              "You are Omega coding coach. Respond strictly in $targetLanguage. Return 5-7 concise numbered steps with practical guidance for implementation.",
-        },
-        {
-          "role": "user",
-          "content":
-              "Create a practical step-by-step coding guide in Omega architecture for this feature: '$feature'. Include flow, agent, intents/events, setup wiring, and testing.",
-        },
-      ],
-    };
-
-    HttpClient? client;
-    try {
-      client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
-      final request = await client.postUrl(Uri.parse(endpoint));
-      request.headers.set(HttpHeaders.authorizationHeader, "Bearer $apiKey");
-      request.headers.set(HttpHeaders.contentTypeHeader, "application/json");
-      request.write(jsonEncode(requestBody));
-
-      final response = await request.close().timeout(
-        const Duration(seconds: 25),
-      );
-      final body = await response.transform(utf8.decoder).join();
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return null;
-      }
-
-      final decoded = jsonDecode(body);
-      if (decoded is! Map<String, dynamic>) return null;
-      final choices = decoded["choices"];
-      if (choices is! List || choices.isEmpty) return null;
-      final first = choices.first;
-      if (first is! Map) return null;
-      final message = first["message"];
-      if (message is! Map) return null;
-      final content = (message["content"] ?? "").toString().trim();
-      if (content.isEmpty) return null;
-
-      final lines = content
-          .split("\n")
-          .map((l) => l.trim())
-          .where((l) => l.isNotEmpty)
-          .map(
-            (l) => l
-                .replaceFirst(RegExp(r"^[-*•]\s*"), "")
-                .replaceFirst(RegExp(r"^\d+[\.\)]\s*"), ""),
-          )
-          .where((l) => l.isNotEmpty)
-          .take(8)
-          .toList();
-      return lines.isEmpty ? [content] : lines;
-    } catch (_) {
-      return null;
-    } finally {
-      client?.close(force: true);
-    }
+    final content = await _OmegaAiRemote.completeChat(
+      system: system,
+      user: user,
+      temperature: 0.2,
+      jsonObject: false,
+      timeout: const Duration(seconds: 35),
+      silentErrors: true,
+    );
+    if (content == null || content.trim().isEmpty) return null;
+    return _providerLinesFromText(content, 8);
   }
 
   static Future<List<String>?> _providerAuditInsights(
@@ -4663,109 +4810,34 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     List<String> gaps,
     List<String> findings,
   ) async {
-    final env = Platform.environment;
-    final enabled = _readBool(env["OMEGA_AI_ENABLED"], defaultValue: false);
-    if (!enabled) return null;
+    if (!_OmegaAiRemote.canCallRemote()) return null;
 
-    final provider = (env["OMEGA_AI_PROVIDER"] ?? "").trim().toLowerCase();
-    if (provider != "openai") return null;
-
-    final apiKey = (env["OMEGA_AI_API_KEY"] ?? "").trim();
-    if (apiKey.isEmpty) return null;
-
-    final model = (env["OMEGA_AI_MODEL"] ?? "gpt-4o-mini").trim();
     final targetLanguage = _preferredAiLanguage();
-    final base = (env["OMEGA_AI_BASE_URL"] ?? "https://api.openai.com/v1")
-        .trim();
-    final endpoint = base.endsWith("/chat/completions")
-        ? base
-        : "${base.replaceAll(RegExp(r"/+$"), "")}/chat/completions";
+    final system =
+        "You are Omega architecture reviewer. Respond strictly in $targetLanguage with short actionable bullet points.";
+    final user =
+        "Feature: $feature\nCurrent findings: ${jsonEncode(findings)}\nCurrent gaps: ${jsonEncode(gaps)}\nReturn 3-6 prioritized actions to close gaps in Omega architecture.";
 
-    final requestBody = {
-      "model": model,
-      "temperature": 0.2,
-      "messages": [
-        {
-          "role": "system",
-          "content":
-              "You are Omega architecture reviewer. Respond strictly in $targetLanguage with short actionable bullet points.",
-        },
-        {
-          "role": "user",
-          "content":
-              "Feature: $feature\nCurrent findings: ${jsonEncode(findings)}\nCurrent gaps: ${jsonEncode(gaps)}\nReturn 3-6 prioritized actions to close gaps in Omega architecture.",
-        },
-      ],
-    };
-
-    HttpClient? client;
-    try {
-      client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
-      final request = await client.postUrl(Uri.parse(endpoint));
-      request.headers.set(HttpHeaders.authorizationHeader, "Bearer $apiKey");
-      request.headers.set(HttpHeaders.contentTypeHeader, "application/json");
-      request.write(jsonEncode(requestBody));
-
-      final response = await request.close().timeout(
-        const Duration(seconds: 25),
-      );
-      final body = await response.transform(utf8.decoder).join();
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return null;
-      }
-
-      final decoded = jsonDecode(body);
-      if (decoded is! Map<String, dynamic>) return null;
-      final choices = decoded["choices"];
-      if (choices is! List || choices.isEmpty) return null;
-      final first = choices.first;
-      if (first is! Map) return null;
-      final message = first["message"];
-      if (message is! Map) return null;
-      final content = (message["content"] ?? "").toString().trim();
-      if (content.isEmpty) return null;
-
-      final lines = content
-          .split("\n")
-          .map((l) => l.trim())
-          .where((l) => l.isNotEmpty)
-          .map(
-            (l) => l
-                .replaceFirst(RegExp(r"^[-*•]\s*"), "")
-                .replaceFirst(RegExp(r"^\d+[\.\)]\s*"), ""),
-          )
-          .where((l) => l.isNotEmpty)
-          .take(8)
-          .toList();
-      return lines.isEmpty ? [content] : lines;
-    } catch (_) {
-      return null;
-    } finally {
-      client?.close(force: true);
-    }
+    final content = await _OmegaAiRemote.completeChat(
+      system: system,
+      user: user,
+      temperature: 0.2,
+      jsonObject: false,
+      timeout: const Duration(seconds: 35),
+      silentErrors: true,
+    );
+    if (content == null || content.trim().isEmpty) return null;
+    return _providerLinesFromText(content, 8);
   }
 
   static Future<List<String>?> _providerExplain(
     List<Map<String, dynamic>> events,
   ) async {
-    final env = Platform.environment;
-    final enabled = _readBool(env["OMEGA_AI_ENABLED"], defaultValue: false);
-    if (!enabled) return null;
+    if (!_OmegaAiRemote.canCallRemote()) return null;
 
-    final provider = (env["OMEGA_AI_PROVIDER"] ?? "").trim().toLowerCase();
-    if (provider != "openai") return null;
-
-    final apiKey = (env["OMEGA_AI_API_KEY"] ?? "").trim();
-    if (apiKey.isEmpty) return null;
-
-    final model = (env["OMEGA_AI_MODEL"] ?? "gpt-4o-mini").trim();
     final targetLanguage = _preferredAiLanguage();
-    final base = (env["OMEGA_AI_BASE_URL"] ?? "https://api.openai.com/v1")
-        .trim();
-    final endpoint = base.endsWith("/chat/completions")
-        ? base
-        : "${base.replaceAll(RegExp(r"/+$"), "")}/chat/completions";
-
+    final system =
+        "You are Omega architecture assistant. Return concise diagnostics as plain bullet lines only. Respond strictly in $targetLanguage.";
     final compactEvents = events
         .take(80)
         .map(
@@ -4776,69 +4848,19 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
           },
         )
         .toList();
+    final user =
+        "Analyze this Omega trace event sequence and return 2-4 short bullet points: root cause guess, risky pattern, and concrete next check. Do not use markdown styling.\n${jsonEncode(compactEvents)}";
 
-    final requestBody = {
-      "model": model,
-      "temperature": 0.2,
-      "messages": [
-        {
-          "role": "system",
-          "content":
-              "You are Omega architecture assistant. Return concise diagnostics as plain bullet lines only. Respond strictly in $targetLanguage.",
-        },
-        {
-          "role": "user",
-          "content":
-              "Analyze this Omega trace event sequence and return 2-4 short bullet points: root cause guess, risky pattern, and concrete next check. Do not use markdown styling.\n${jsonEncode(compactEvents)}",
-        },
-      ],
-    };
-
-    HttpClient? client;
-    try {
-      client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
-      final request = await client.postUrl(Uri.parse(endpoint));
-      request.headers.set(HttpHeaders.authorizationHeader, "Bearer $apiKey");
-      request.headers.set(HttpHeaders.contentTypeHeader, "application/json");
-      request.write(jsonEncode(requestBody));
-
-      final response = await request.close().timeout(
-        const Duration(seconds: 25),
-      );
-      final body = await response.transform(utf8.decoder).join();
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return null;
-      }
-
-      final decoded = jsonDecode(body);
-      if (decoded is! Map<String, dynamic>) return null;
-      final choices = decoded["choices"];
-      if (choices is! List || choices.isEmpty) return null;
-      final first = choices.first;
-      if (first is! Map) return null;
-      final message = first["message"];
-      if (message is! Map) return null;
-      final content = (message["content"] ?? "").toString().trim();
-      if (content.isEmpty) return null;
-
-      final lines = content
-          .split("\n")
-          .map((l) => l.trim())
-          .where((l) => l.isNotEmpty)
-          .map(
-            (l) => l
-                .replaceFirst(RegExp(r"^[-*•]\s*"), "")
-                .replaceFirst(RegExp(r"^\d+[\.\)]\s*"), ""),
-          )
-          .where((l) => l.isNotEmpty)
-          .take(6)
-          .toList();
-      return lines.isEmpty ? [content] : lines;
-    } catch (_) {
-      return null;
-    } finally {
-      client?.close(force: true);
-    }
+    final content = await _OmegaAiRemote.completeChat(
+      system: system,
+      user: user,
+      temperature: 0.2,
+      jsonObject: false,
+      timeout: const Duration(seconds: 35),
+      silentErrors: true,
+    );
+    if (content == null || content.trim().isEmpty) return null;
+    return _providerLinesFromText(content, 6);
   }
 
   static bool _readBool(String? raw, {required bool defaultValue}) {
