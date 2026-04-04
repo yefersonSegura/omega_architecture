@@ -2,9 +2,9 @@
 
 import 'omega_route.dart';
 
-/// [OmegaNavigationEntry] es la entrada interna del [OmegaNavigator] por cada [OmegaRoute] registrada.
+/// Internal entry used by [OmegaNavigator] for each registered [OmegaRoute].
 class OmegaNavigationEntry {
-  /// Ruta asociada (id + builder).
+  /// Registered route (id + builder).
   final OmegaRoute route;
 
   const OmegaNavigationEntry(this.route);

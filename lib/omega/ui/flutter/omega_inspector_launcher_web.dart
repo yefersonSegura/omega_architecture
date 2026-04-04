@@ -36,8 +36,8 @@ class _OmegaInspectorLauncherWebState extends State<OmegaInspectorLauncher> {
     final base = '${loc.origin}${loc.pathname}${loc.search}';
     final sep = base.contains('?') ? '&' : '?';
     final url = '$base${sep}omega_inspector=1';
-    // Nombre único cada vez para que, si el usuario cerró la ventana anterior,
-    // el navegador abra una ventana nueva en lugar de reusar la referencia cerrada.
+    // Unique name each time so if the user closed the previous window the browser
+    // opens a new one instead of reusing a dead window reference.
     final windowName = 'omega_inspector_${DateTime.now().millisecondsSinceEpoch}';
     web.window.open(url, windowName, 'width=400,height=500');
     _sending = true;
@@ -104,7 +104,7 @@ class _OmegaInspectorLauncherWebState extends State<OmegaInspectorLauncher> {
     if (!kDebugMode) return const SizedBox.shrink();
     return IconButton(
       icon: const Icon(Icons.bug_report),
-      tooltip: 'Abrir Omega Inspector en nueva ventana',
+      tooltip: 'Open Omega Inspector in a new window',
       onPressed: _openWindow,
     );
   }

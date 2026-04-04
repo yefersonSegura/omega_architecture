@@ -28,7 +28,7 @@ void main(List<String> args) {
   }
 }
 
-/// Salida de diagnóstico; en release no imprime (evita [avoid_print] en producción).
+/// Debug logging; uses [debugPrint] (no output in release builds).
 void _log(String message) {
   debugPrint(message);
 }
@@ -139,7 +139,7 @@ class $className extends OmegaFlow {
   }
 
   // ------------------------------------------------------
-  // REGISTRAR AGENTE AUTOMÁTICAMENTE
+  // REGISTER AGENT AUTOMATICALLY
   // ------------------------------------------------------
 
   static void _registerAgent(String className, String name) {
@@ -170,7 +170,7 @@ class $className extends OmegaFlow {
   }
 
   // ------------------------------------------------------
-  // REGISTRAR FLOW AUTOMÁTICAMENTE
+  // REGISTER FLOW AUTOMATICALLY
   // ------------------------------------------------------
 
   static void _registerFlow(String className, String name) {

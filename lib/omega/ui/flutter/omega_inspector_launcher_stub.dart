@@ -1,14 +1,14 @@
-// Stub: en plataformas no-web se muestra el inspector en un diálogo (como antes).
+// Stub: on non-web the inspector opens in a dialog.
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'omega_inspector.dart';
 
-/// Botón que abre el inspector. En **web** abre una nueva ventana del navegador (estilo Isar).
-/// En otras plataformas abre el inspector en un [Dialog]. En release no se muestra (no-op).
+/// Button that opens the inspector. On **web** the implementation opens a new browser window.
+/// On other platforms this stub opens a [Dialog]. Hidden in release (no-op).
 class OmegaInspectorLauncher extends StatelessWidget {
-  /// Máximo de eventos a mostrar en el panel.
+  /// Max events to keep in the inspector panel.
   final int eventLimit;
 
   const OmegaInspectorLauncher({super.key, this.eventLimit = kOmegaInspectorDefaultEventLimit});

@@ -9,6 +9,11 @@ import 'package:omega_architecture/omega_architecture.dart';
 ///   `CartState`) and emits changes through [stateStream] so the UI can
 ///   rebuild without touching the base `Map<String, dynamic> state`.
 ///
+/// **Important:** The inherited [OmegaAgent.state] is a [Map] for generic use;
+/// your UI model lives in [viewState]. Use [setViewState] with
+/// `viewState.copyWith(...)` when [TState] supports it — do not call
+/// `state.copyWith` (maps have no such method for your view model).
+///
 /// Use this when you want an agent to also behave as a small observable
 /// store for a specific part of the UI.
 abstract class OmegaStatefulAgent<TState> extends OmegaAgent {

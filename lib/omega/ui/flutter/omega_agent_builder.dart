@@ -3,6 +3,10 @@ import 'package:flutter/widgets.dart';
 import '../../agents/omega_stateful_agent.dart';
 
 /// Builder signature that receives the state of a stateful agent.
+///
+/// Only [context] and [state] — there is no third `agent` parameter. Use the
+/// same [OmegaAgentBuilder.agent] you passed to [OmegaAgentBuilder] (e.g. hold
+/// it on the [State] or [StatefulWidget] as a field: `widget.agent`).
 typedef OmegaAgentWidgetBuilder<TState> = Widget Function(
   BuildContext context,
   TState state,

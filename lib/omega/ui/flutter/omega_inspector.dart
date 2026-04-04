@@ -14,7 +14,7 @@ import 'omega_scope.dart';
 const int kOmegaInspectorDefaultEventLimit = 30;
 
 // Inspector visual theme: mezcla de minimal + dashboard.
-const Color _kInspectorPrimary = Color(0xFF2962FF); // Azul más suave, estilo DevTools.
+const Color _kInspectorPrimary = Color(0xFF2962FF); // Softer blue, DevTools-like.
 const Color _kInspectorPrimaryDark = Color(0xFF1743B3);
 const Color _kInspectorSurface = Color(0xFFF3F4F8); // Gris muy claro, casi sin ruido.
 const Color _kInspectorCard = Color(0xFFFAFAFC);
@@ -406,7 +406,7 @@ class _OmegaInspectorState extends State<OmegaInspector> {
                       if (f.lastExpression != null) ...[
                         const SizedBox(height: 6),
                         Text(
-                          'Última expresión: ${f.lastExpression!.type}',
+                          'Last expression: ${f.lastExpression!.type}',
                           style: const TextStyle(fontSize: 11, color: _kInspectorTextMuted),
                         ),
                       ],

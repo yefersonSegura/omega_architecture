@@ -21,6 +21,7 @@ class OmegaIntent extends OmegaObject {
   /// Optional namespace (e.g. "auth", "checkout"). Can be used by the host to route to the right module.
   final String? namespace;
 
+  /// Prefer [OmegaIntent.fromName] when you have an [OmegaIntentName] — it supplies [id] when omitted.
   const OmegaIntent({
     required super.id,
     required this.name,

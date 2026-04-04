@@ -1,22 +1,22 @@
 // lib/omega/flows/omega_flow_state.dart
 
-/// [OmegaFlowState] define los estados del ciclo de vida de un [OmegaFlow].
+/// Lifecycle states for an [OmegaFlow].
 ///
-/// Solo en [running] el flow procesa eventos e intents. Los demás estados
-/// (idle, paused, sleeping, ended) indican que no está activo o ya terminó.
+/// Only [running] flows process channel events and intents. The other states mean
+/// the flow is not active or has finished (idle, paused, sleeping, ended).
 enum OmegaFlowState {
-  /// El flujo está creado pero aún no ha comenzado.
+  /// Created but not started yet.
   idle,
 
-  /// El flujo está procesando activamente eventos e intenciones.
+  /// Actively processing events and intents.
   running,
 
-  /// El flujo está en reposo, manteniendo su memoria pero sin procesar eventos.
+  /// Retaining memory but not processing events.
   sleeping,
 
-  /// El flujo ha sido detenido temporalmente.
+  /// Temporarily paused.
   paused,
 
-  /// El flujo ha finalizado su ciclo de vida y liberado recursos.
+  /// Finished; resources released.
   ended,
 }

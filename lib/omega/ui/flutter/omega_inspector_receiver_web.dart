@@ -408,7 +408,7 @@ class _OmegaInspectorReceiverWebState extends State<OmegaInspectorReceiver> {
               ),
             ],
           ),
-          if (_events.isEmpty) _emptyState('Esperando datos del canal…') else _buildTimelineRow(),
+          if (_events.isEmpty) _emptyState('Waiting for channel data…') else _buildTimelineRow(),
           const SizedBox(height: 6),
           Expanded(
             child: ListView.builder(

@@ -23,6 +23,7 @@ class OmegaEvent extends OmegaObject {
   /// that namespace (or the global stream) receive it. When null, event is global.
   final String? namespace;
 
+  /// Prefer [OmegaEvent.fromName] when you have an [OmegaEventName] — it supplies [id] when omitted.
   const OmegaEvent({
     required super.id,
     required this.name,

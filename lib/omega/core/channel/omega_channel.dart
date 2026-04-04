@@ -26,13 +26,11 @@ abstract class OmegaEventBus {
 /// do not collide. [events] receives all events; [namespace](id).events receives only
 /// global events and events in that namespace.
 ///
-/// **Example:** Emit and listen (global), or use a typed event class:
+/// **Example:** Emit and listen (global), or use a typed event:
 /// ```dart
-/// channel.emit(OmegaEvent(id: "1", name: "auth.login.request", payload: creds));
-/// // Or use a typed event (recommended): channel.emit(LoginRequestedEvent(email, password));
+/// channel.emit(OmegaEvent.fromName(MyEvent.requested, payload: creds));
+/// channel.emitTyped(MyTypedEvent(...)); // wraps as OmegaEvent with payloadAs<MyTypedEvent>()
 /// channel.events.listen((e) => print(e.name));
-/// channel.namespace('auth').emit(OmegaEvent(...));
-/// channel.namespace('auth').events.listen((e) => ...);
 /// ```
 ///
 /// **Lifecycle:** Whoever creates the channel must call [dispose] when the app closes.

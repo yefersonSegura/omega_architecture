@@ -38,6 +38,9 @@ abstract class OmegaWorkflowFlow extends OmegaFlow {
   }
 
   /// Emits a standard workflow error expression.
+  ///
+  /// Only [code] is positional; [message] must be passed by name.
+  /// Wrong: `failStep('start', errorPayload)` (extra positional). Right: `failStep('start', message: err.toString())`.
   void failStep(String code, {String? message}) {
     emitExpression(
       'workflow.error',

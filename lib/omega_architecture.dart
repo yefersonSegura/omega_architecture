@@ -1,14 +1,22 @@
-/// Omega Architecture: framework reactivo y basado en agentes para Flutter.
+/// Omega Architecture: a reactive, agent-oriented framework for Flutter.
 ///
-/// Componentes principales:
-/// - [OmegaChannel] / [OmegaChannelNamespace] / [OmegaEventBus]: bus de eventos; use [OmegaChannel.namespace] para scope por módulo (auth, checkout, etc.). Flows y agents aceptan [OmegaEventBus] (canal o namespace).
-/// - [OmegaAgent] / [OmegaAgentBehaviorEngine]: lógica en agentes.
-/// - [OmegaFlow] / [OmegaFlowManager]: flujos de negocio y orquestación.
-/// - [OmegaScope] / [OmegaBuilder] / [OmegaInspector] / [OmegaInspectorLauncher] / [OmegaInspectorReceiver] / [OmegaInspectorServer]: integración con la UI y Inspector en navegador.
-/// - [OmegaNavigator] / [OmegaRoute]: navegación por intents.
+/// Main pieces:
+/// - [OmegaChannel] / [OmegaChannelNamespace] / [OmegaEventBus]: event bus; use
+///   [OmegaChannel.namespace] to scope by module (auth, checkout, etc.). Flows and
+///   agents take an [OmegaEventBus] (channel or namespace view).
+/// - [OmegaAgent] / [OmegaAgentBehaviorEngine]: agent-side rules and reactions.
+/// - [OmegaFlow] / [OmegaFlowManager]: business flows and orchestration.
+/// - [OmegaScope] / [OmegaBuilder] / [OmegaInspector] / [OmegaInspectorLauncher] /
+///   [OmegaInspectorReceiver] / [OmegaInspectorServer]: Flutter UI and in-browser Inspector.
+/// - [OmegaNavigator] / [OmegaRoute]: intent-driven navigation.
 ///
-/// Para arrancar la app usa [OmegaRuntime.bootstrap] (ver paquete omega/bootstrap).
-/// Documentación detallada: doc/ARQUITECTURA.md.
+/// Bootstrap with [OmegaRuntime.bootstrap] (see `omega/bootstrap`).
+///
+/// Reference app (clone of this package): `example/lib/omega/omega_setup.dart`,
+/// `example/lib/auth/auth_flow.dart`, `example/lib/auth/auth_agent.dart`,
+/// `example/lib/auth/ui/auth_page.dart`.
+///
+/// Further reading: `doc/ARQUITECTURA.md` (may be partially non-English).
 library;
 
 // CORE EXPORTS
