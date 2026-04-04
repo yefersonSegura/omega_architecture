@@ -2824,15 +2824,15 @@ CRITICAL RULES:
 6. UI: OmegaIntent.fromName(${moduleName}Intent.start) — pass the enum constant, NOT a String, NOT ${moduleName}Intent.start.name.
 
 UI DESIGN (apply to the 'page' value only; DO NOT USE PLACEHOLDERS):
-- PROHIBITED: Do not return a screen with just one button or a single text.
 - MANDATORY: Build a real, high-quality Material 3 interface. Use Padding, SingleChildScrollView, Column, Row, Card, TextField, ListTile, FilledButton, etc.
+- PROHIBITED: Do not return the basic "Start button" template. That is ONLY a structural example. You MUST replace the 'Center' or 'ElevatedButton' with a complete, professionally designed screen.
 - If it's a Login: Include fields for email/password, a logo placeholder (Icon), and a primary action button.
 - If it's a Dashboard/Tracking: Include Cards with statistics, ListTiles for items, and appropriate Icons.
 - If it's a Settings: Use a list of switches and tiles.
 - Use the language of the description (e.g. if the user describes in Spanish, use Spanish labels).
 - Ensure StreamBuilder handles 'loading' (with CircularProgressIndicator), 'error' (with red text or icon), and 'success' (with the main content).
 
-FILE TEMPLATES AND RULES:
+FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
 
 - 'events' (copy this pattern exactly for intent/event enums):
   - enum ${moduleName}Intent implements OmegaIntentName { start('$lower.start'), retry('$lower.retry'); const ${moduleName}Intent(this.name); @override final String name; }
@@ -2875,7 +2875,7 @@ FILE TEMPLATES AND RULES:
       @override void onEvent(OmegaFlowContext ctx) { /* on succeeded: emitExpression('success'); next('done'); on failed: emitExpression('error', ...); failStep(...) */ }
     }
 
-- 'page':
+- 'page' (STRUCTURE ONLY - REWRITE THE UI CONTENT):
   - import 'package:flutter/material.dart'; import 'package:omega_architecture/omega_architecture.dart'; import '../${lower}_events.dart';
   - class ${moduleName}Page extends StatelessWidget {
       const ${moduleName}Page({super.key});
@@ -2891,9 +2891,17 @@ FILE TEMPLATES AND RULES:
               final expr = snapshot.data;
               if (expr?.type == 'loading') return const Center(child: CircularProgressIndicator());
               
-              // BUILD A RICH UI HERE based on module description (use Column, ListView, Cards, etc.)
-              // Example: return SingleChildScrollView(child: Padding(padding: EdgeInsets.all(16), child: Column(...)));
-              return const Center(child: Text('Designed UI goes here')); 
+              // === IMPORTANT: DO NOT USE A SIMPLE BUTTON HERE ===
+              // REWRITE THIS ENTIRE SECTION WITH A FULL MATERIAL 3 DESIGN
+              // USE Column, ListView, Cards, TextFields, etc.
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    /* YOUR PROFESSIONAL UI DESIGN HERE */
+                  ],
+                ),
+              );
             },
           ),
         );
