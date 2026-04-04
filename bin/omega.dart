@@ -213,7 +213,7 @@ class OmegaCreateAppCommand {
     ).absolute.path;
 
     // 2. Add omega_architecture
-    await runWithProgress<ProcessResult>(
+    final addRes = await runWithProgress<ProcessResult>(
       _tr(
         en: "Adding omega_architecture dependency",
         es: "Agregando dependencia omega_architecture",
@@ -221,6 +221,22 @@ class OmegaCreateAppCommand {
       () => Process.run(
         "dart",
         ["pub", "add", "omega_architecture"],
+        workingDirectory: projectRoot,
+        runInShell: true,
+      ),
+    );
+    if (addRes.exitCode != 0) {
+      _err(
+        "${_tr(en: "pub add omega_architecture failed", es: "Fallo pub add omega_architecture")}: ${addRes.stderr}",
+      );
+      return;
+    }
+
+    await runWithProgress<ProcessResult>(
+      _tr(en: "Running pub get", es: "Ejecutando pub get"),
+      () => Process.run(
+        "dart",
+        ["pub", "get"],
         workingDirectory: projectRoot,
         runInShell: true,
       ),
@@ -274,6 +290,19 @@ class OmegaCreateAppCommand {
           );
         }
       }
+
+      await runWithProgress<ProcessResult>(
+        _tr(
+          en: "Refreshing pub after Omega files",
+          es: "Actualizando pub tras archivos Omega",
+        ),
+        () => Process.run(
+          "dart",
+          ["pub", "get"],
+          workingDirectory: projectRoot,
+          runInShell: true,
+        ),
+      );
 
       // 5. Setup clean main.dart
       _setupCleanMain(projectRoot, appName, initialModule: firstModule);
@@ -622,6 +651,29 @@ void main() {
     _printMachineErrors(currentErrors);
   }
 
+  /// `dart analyze --format=machine` paths may be absolute (Windows) or `lib/...`.
+  static String _normalizeAnalyzerPathToProjectRelative(
+    String pathFromError,
+    String root,
+  ) {
+    var p = pathFromError.replaceAll("\\", "/");
+    final r = root.replaceAll("\\", "/");
+    final rLower = r.toLowerCase();
+    final pLower = p.toLowerCase();
+    if (pLower.startsWith(rLower)) {
+      return p.substring(r.length).replaceFirst(RegExp(r"^/"), "");
+    }
+    final idx = p.indexOf("/lib/");
+    if (idx >= 0) {
+      return p.substring(idx + 1);
+    }
+    final tIdx = p.indexOf("/test/");
+    if (tIdx >= 0) {
+      return p.substring(tIdx + 1);
+    }
+    return p;
+  }
+
   static Future<Map<String, String>?> _providerFixErrors(
     String root,
     List<String> errors,
@@ -633,97 +685,135 @@ void main() {
     final errorContext = StringBuffer();
     final filesToFix = <String>{};
 
-    for (var i = 0; i < errors.length && i < 10; i++) {
-      final parts = errors[i].split("|");
+    for (final errLine in errors) {
+      final parts = errLine.split("|");
       if (parts.length > 7) {
-        final filePath = parts[3];
-        filesToFix.add(filePath);
-        errorContext.writeln("- File: $filePath, Error: ${parts[7]}");
+        final rel = _normalizeAnalyzerPathToProjectRelative(parts[3], root);
+        errorContext.writeln("- $rel:${parts[4]} -> ${parts[7]}");
+        if (rel.startsWith("lib/") || rel.startsWith("test/")) {
+          filesToFix.add(rel);
+        }
       }
     }
 
     if (filesToFix.isEmpty) return null;
 
+    final sortedRel = filesToFix.toList()..sort();
     final filesContent = StringBuffer();
-    for (final path in filesToFix) {
-      final fullPath = path.startsWith("lib") || path.startsWith("test")
-          ? "$root${Platform.pathSeparator}$path"
-          : path;
-      final file = File(fullPath);
+    for (final relPosix in sortedRel.take(28)) {
+      if (filesContent.length > 120000) break;
+      final localPath =
+          "$root${Platform.pathSeparator}${relPosix.replaceAll("/", Platform.pathSeparator)}";
+      final file = File(localPath);
       if (file.existsSync()) {
-        filesContent.writeln("--- FILE: $path ---");
+        filesContent.writeln("--- FILE: $relPosix ---");
         filesContent.writeln(file.readAsStringSync());
       }
     }
 
     final prompt = """
-I have a Flutter project using Omega Architecture with the following compilation errors:
+You fix a Flutter app that uses the published package omega_architecture (not local lib copies).
+
+ANALYZER ERRORS:
 ${errorContext.toString()}
 
-Here is the content of the affected files:
+AFFECTED FILE CONTENTS:
 ${filesContent.toString()}
 
+CRITICAL — IMPORTS (this fixes Undefined class OmegaAgent, OmegaEventBus, OmegaFlow, OmegaIntentName, etc.):
+- Any Dart file under lib/ that uses Omega types MUST start with:
+  import 'package:omega_architecture/omega_architecture.dart';
+- Screens also need: import 'package:flutter/material.dart';
+- Sibling module files: import 'name_events.dart' or import '../name_events.dart' from ui/
+- NEVER use: package:omega_architecture/omega/... internal paths.
+- If a file has ZERO omega import but uses Omega*, add the package import as the first import.
+
 RULES:
-1. Fix the errors following Omega Architecture and Flutter best practices.
-2. Ensure imports are correct (use 'package:omega_architecture/omega_architecture.dart').
-3. Return a JSON object where keys are the relative file paths and values are the FULL FIXED CONTENT of the file.
-4. ONLY return valid JSON. No conversational text.
+1. Return ONE JSON object: keys = project-relative paths with forward slashes (e.g. "lib/omega/omega_setup.dart"), values = FULL fixed file content as strings.
+2. Include every file you changed; you may include only files that need edits.
+3. Preserve public API names (classes, flow ids) unless the error requires a fix.
 
-OMEGA REFERENCE (must match this API; same patterns as package example/lib/omega/omega_setup.dart and example/lib/omega/app_semantics.dart):
-- Top-level: OmegaConfig createOmegaConfig(OmegaChannel channel) { return OmegaConfig(agents: <OmegaAgent>[...], flows: <OmegaFlow>[...], routes: <OmegaRoute>[...], initialFlowId: 'flowId'); }
-- Bootstrap in main: OmegaRuntime.bootstrap((OmegaChannel c) => createOmegaConfig(c));  // do NOT pass createOmegaConfig as a raw tearoff if it confuses inference
-- Routes: OmegaRoute(id: 'screenId', builder: (context) => SomePage()) or OmegaRoute.typed<Payload>(id: 'home', builder: (context, payload) => HomePage(data: payload))
-- Flow id in class: pass the SAME string to super(id: 'MyFlow', ...) as used in flowManager.getFlow('MyFlow') and optional initialFlowId in OmegaConfig
-- Agents/flows usually take OmegaEventBus (global OmegaChannel or channel.namespace('domain'))
-- INTENTS/EVENTS: enums MUST implement OmegaIntentName and OmegaEventName (NOT OmegaIntent nor OmegaEvent). Use const constructors and final String name, e.g. enum AppIntent implements OmegaIntentName { login('x.login'); const AppIntent(this.name); @override final String name; }
-- OmegaIntent.fromName(FIRST_ARG) requires an OmegaIntentName enum VALUE (e.g. MyIntent.start), NEVER a String literal and NEVER MyIntent.start.name. Same idea: OmegaEvent.fromName(MyEvent.foo) not a raw string.
-- OmegaWorkflowFlow emits workflow.step on step changes; failStep emits workflow.error—declare both in OmegaFlowContract.emittedExpressionTypes alongside idle/loading/success/error/workflow.done as needed.
-- Flows on a shared channel receive all events: include every event name your onEvent reads OR that the same module emits on that bus (e.g. *.requested) in listenedEventNames.
-- Agents on a shared global channel: use OmegaAgentContract(listenedEventNames: {}) to avoid false "not in contract" warnings for other modules' events; prefer channel.namespace('moduleId') in createOmegaConfig for isolation.
+OMEGA API (must compile against package exports):
+- OmegaConfig createOmegaConfig(OmegaChannel channel) with agents: <OmegaAgent>[], flows: <OmegaFlow>[], routes: <OmegaRoute>[], initialFlowId optional
+- OmegaRuntime.bootstrap((OmegaChannel c) => createOmegaConfig(c))
+- Agents: extend OmegaAgent or OmegaStatefulAgent<T>; super(id:, channel:, behavior:) — channel is OmegaEventBus (pass OmegaChannel or namespace)
+- Flows: extend OmegaFlow or OmegaWorkflowFlow; super(id:, channel:)
+- Behavior: extend OmegaAgentBehaviorEngine; use addRule(OmegaAgentBehaviorRule(...)) OR override evaluate(OmegaAgentBehaviorContext ctx)
+- Enums: implements OmegaIntentName / OmegaEventName with const Enum(this.name); @override final String name;
+- OmegaIntent.fromName(MyIntent.start) — enum value only, not String, not .name
 
-Example format:
-{
-  "lib/main.dart": "...",
-  "lib/omega/omega_setup.dart": "..."
-}
+Return only JSON. No markdown fences.
 """;
 
     final model = env["OMEGA_AI_MODEL"] ?? "gpt-4o-mini";
     final baseUrl = env["OMEGA_AI_BASE_URL"] ?? "https://api.openai.com/v1";
     final endpoint = "${baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions";
 
+    final payloadMap = {
+      "model": model,
+      "temperature": 0.15,
+      "messages": [
+        {
+          "role": "system",
+          "content":
+              "You output only valid JSON objects mapping path strings to full file contents. You fix Dart analyzer errors for Flutter + omega_architecture package. Always add missing package imports when Omega types are undefined.",
+        },
+        {"role": "user", "content": prompt},
+      ],
+      "response_format": {"type": "json_object"},
+    };
+    final payloadBytes = utf8.encode(jsonEncode(payloadMap));
+
     HttpClient? client;
     try {
-      client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
+      client = HttpClient()..connectionTimeout = const Duration(seconds: 45);
       final request = await client.postUrl(Uri.parse(endpoint));
       request.headers.set(HttpHeaders.authorizationHeader, "Bearer $apiKey");
-      request.headers.set(HttpHeaders.contentTypeHeader, "application/json");
-      request.write(jsonEncode({
-        "model": model,
-        "temperature": 0.2,
-        "messages": [
-          {"role": "system", "content": "You are a senior Flutter and Omega expert."},
-          {"role": "user", "content": prompt}
-        ],
-        "response_format": {"type": "json_object"}
-      }));
+      request.headers.set(
+        HttpHeaders.contentTypeHeader,
+        "application/json; charset=utf-8",
+      );
+      request.contentLength = payloadBytes.length;
+      request.add(payloadBytes);
 
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200) {
+        _err("AI heal HTTP ${response.statusCode}: $body");
+        return null;
+      }
 
       final decoded = jsonDecode(body);
-      final content = decoded["choices"][0]["message"]["content"].toString();
-      final fixedFiles = jsonDecode(content);
+      final dynamic rawContent = decoded["choices"][0]["message"]["content"];
+      if (rawContent == null) return null;
+
+      String jsonText = rawContent.toString();
+      if (jsonText.contains("```json")) {
+        final start = jsonText.indexOf("```json") + 7;
+        final end = jsonText.lastIndexOf("```");
+        if (end > start) jsonText = jsonText.substring(start, end).trim();
+      } else if (jsonText.contains("```")) {
+        final start = jsonText.indexOf("```") + 3;
+        final end = jsonText.lastIndexOf("```");
+        if (end > start) jsonText = jsonText.substring(start, end).trim();
+      }
+
+      final fixedFiles = jsonDecode(jsonText);
+      if (fixedFiles is! Map) return null;
 
       final result = <String, String>{};
-      for (final entry in (fixedFiles as Map).entries) {
-        final relPath = entry.key.toString();
-        final fullPath = "$root${Platform.pathSeparator}$relPath";
-        result[fullPath] = entry.value.toString();
+      for (final entry in fixedFiles.entries) {
+        final relPath =
+            entry.key.toString().replaceAll("\\", "/").replaceFirst(RegExp(r"^/"), "");
+        if (!relPath.startsWith("lib/") && !relPath.startsWith("test/")) {
+          continue;
+        }
+        result["$root${Platform.pathSeparator}${relPath.replaceAll("/", Platform.pathSeparator)}"] =
+            entry.value.toString();
       }
-      return result;
-    } catch (_) {
+      return result.isEmpty ? null : result;
+    } catch (e) {
+      _err("AI heal parse/IO error: $e");
       return null;
     } finally {
       client?.close(force: true);
@@ -2945,7 +3035,7 @@ ${currentFiles.entries.map((e) => "--- FILE: ${e.key} ---\n${e.value}").join("\n
     late final String aiSystemContent;
     if (pageOnly) {
       aiSystemContent =
-          "You output exactly one JSON object (json_object mode). UI-ONLY mode: keys reasoning + page (+ optional response) only. NEVER events/agent/flow/behavior. Act as a senior Flutter + product designer: deliver the strongest possible Material 3 screen — hierarchy, spacing, theme tokens, polished states. OmegaScope, getFlow, StreamBuilder, OmegaIntent.fromName using ONLY existing intents from the reference. No prose outside JSON.";
+          "You output exactly one JSON object (json_object mode). UI-ONLY mode: keys reasoning + page (+ optional response) only. NEVER events/agent/flow/behavior. The page MUST import package:omega_architecture/omega_architecture.dart and package:flutter/material.dart so OmegaScope and types resolve. Act as a senior Flutter + product designer. OmegaScope, getFlow, StreamBuilder, OmegaIntent.fromName using ONLY existing intents from the reference. No prose outside JSON.";
       prompt =
           """
 UI-ONLY REDESIGN for Omega module '$moduleName' ($lower).
@@ -2965,7 +3055,7 @@ Return only one JSON object. No markdown fences. No text outside JSON.
 """;
     } else {
       aiSystemContent =
-          "You are a Senior Flutter Developer and UI/UX-minded engineer. You output exactly one JSON object (json_object mode) with string values only. Include a concise \"reasoning\" (1-5 lines, user’s language). Produce the best practical Material 3 screen you can: theme-driven colors/typography, clear hierarchy, spacing, Cards/inputs/buttons used deliberately, polished loading/error/success — not demo placeholders. Omega: OmegaIntentName/OmegaEventName, const constructors, PascalCase module classes. No prose outside JSON.";
+          "You are a Senior Flutter Developer and UI/UX-minded engineer. You output exactly one JSON object (json_object mode) with string values only. Include a concise \"reasoning\" (1-5 lines, user’s language). Every file in the JSON (events, behavior, agent, flow, page) MUST include import 'package:omega_architecture/omega_architecture.dart'; where Omega types are used; page also needs flutter/material. Never omit the package import — that causes Undefined class errors. Rich Material 3 UI, proper OmegaIntentName/OmegaEventName, const constructors. No prose outside JSON.";
       prompt =
           """
 Generate COMPLETE and FUNCTIONAL Dart code for an Omega Architecture module named '$moduleName' ($lower).
@@ -2979,8 +3069,11 @@ REFERENCE (official package patterns; mirror example/lib/omega/omega_setup.dart,
 - Contracts (debug warnings): OmegaWorkflowFlow always emits workflow.step (and failStep emits workflow.error)—include those in emittedExpressionTypes. Flow listenedEventNames must include *.requested if that event is published on the same bus. On a shared global channel, agents should use OmegaAgentContract(listenedEventNames: {}) OR wire agents/flows with channel.namespace('$lower') for isolation.
 
 CRITICAL RULES:
-1. ALWAYS use ONLY 'import 'package:omega_architecture/omega_architecture.dart';' plus 'import 'package:flutter/material.dart';' in page.
-2. NEVER use internal paths like 'package:omega_architecture/omega/core/...'.
+1. IMPORTS — EVERY generated Dart string (events, behavior, agent, flow) MUST start with:
+   import 'package:omega_architecture/omega_architecture.dart';
+   The page file MUST have that import PLUS import 'package:flutter/material.dart'; (order: flutter first or architecture first, both valid).
+   Without this line, the app will show Undefined class OmegaAgent / OmegaEventBus / OmegaFlow / OmegaIntentName.
+2. NEVER use internal paths like 'package:omega_architecture/omega/core/...' or relative imports into the package.
 3. Class names use '$moduleName' (PascalCase). File-level imports for sibling files: '${lower}_events.dart' or '../${lower}_events.dart' from ui/.
 4. Return ONE JSON object. Every value MUST be a JSON string (no nested objects for code). Required keys:
    - "reasoning": 1-5 short lines in natural language (Spanish if the user wrote in Spanish). Brief analysis of layout, fields, states, and Omega wiring. No markdown fences.
