@@ -14,7 +14,8 @@ typedef OmegaAgentWidgetBuilder<TState> = Widget Function(
 
 /// Helper widget to listen to [OmegaStatefulAgent.viewState] from the UI.
 ///
-/// It wraps the subscription to [OmegaStatefulAgent.stateStream] and rebuilds
+/// It wraps the subscription to [OmegaStatefulAgent.stateStream] (alias
+/// [OmegaStatefulAgent.viewStateStream]) and rebuilds
 /// the subtree every time the state changes. It does **not** manage the agent
 /// lifecycle; it only observes it.
 class OmegaAgentBuilder<TAgent extends OmegaStatefulAgent<TState>, TState>

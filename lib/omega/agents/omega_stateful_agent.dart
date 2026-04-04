@@ -14,6 +14,11 @@ import 'package:omega_architecture/omega_architecture.dart';
 /// `viewState.copyWith(...)` when [TState] supports it — do not call
 /// `state.copyWith` (maps have no such method for your view model).
 ///
+/// **Streams:** [stateStream] and [viewStateStream] are the same broadcast
+/// stream. New subscribers do not get the current [viewState] replayed — if you
+/// `await ...firstWhere((s) => !s.isLoading)`, check [viewState] first when the
+/// agent may already be idle.
+///
 /// Use this when you want an agent to also behave as a small observable
 /// store for a specific part of the UI.
 ///
@@ -37,6 +42,9 @@ abstract class OmegaStatefulAgent<TState> extends OmegaAgent {
 
   /// Stream of [viewState] changes for UI widgets and tests.
   Stream<TState> get stateStream => _stateController.stream;
+
+  /// Same stream as [stateStream]; use whichever name reads clearer in UI code.
+  Stream<TState> get viewStateStream => stateStream;
 
   /// Updates the view state and notifies all subscribers.
   void setViewState(TState next) {
