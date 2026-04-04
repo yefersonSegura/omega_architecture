@@ -748,6 +748,7 @@ RULES:
 3. Preserve public API names (classes, flow ids) unless the error requires a fix.
 
 OMEGA API (must compile against package exports):
+${OmegaAiCommand._omegaAiRolesFlowAgentBehavior}
 - OmegaConfig createOmegaConfig(OmegaChannel channel) with agents: <OmegaAgent>[], flows: <OmegaFlow>[], routes: <OmegaRoute>[], initialFlowId optional
 - OmegaRuntime.bootstrap((OmegaChannel c) => createOmegaConfig(c))
 - Agents: extend OmegaAgent or OmegaStatefulAgent<T>; super(id:, channel:, behavior:) — channel is OmegaEventBus (pass OmegaChannel or namespace)
@@ -756,7 +757,11 @@ OMEGA API (must compile against package exports):
 - Enums: implements OmegaIntentName / OmegaEventName with const Enum(this.name); @override final String name;
 - OmegaIntent.fromName(MyIntent.start) — enum value only, not String, not .name
 - OmegaScope (from OmegaScope.of(context)): ONLY .channel, .flowManager, .initialFlowId. There is NO agentManager and NO getAgent on scope. Fix by using scope.flowManager.getFlow(flowId) + StreamBuilder<OmegaFlowExpression>, or pass the agent into the Page widget and use OmegaAgentBuilder (see example/lib/omega/omega_setup.dart + example/lib/auth/ui/auth_page.dart).
-- Intents from UI: scope.flowManager.handleIntent(OmegaIntent.fromName(...)). Do NOT call flow.onIntent from screens; OmegaFlow.onIntent is overridden inside the flow class only. Do NOT use OmegaFlowContext.intent (does not exist).
+- Two ways the UI talks to the runtime (do not confuse them):
+  (A) scope.flowManager.handleIntent(OmegaIntent.fromName(...)) — delivers ONLY to flows in [running] state; use for domain intents your Flow handles in onIntent (see flow contract acceptedIntents). It does NOT push Flutter routes by itself.
+  (B) scope.channel.emit(OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateLogin))) — [OmegaNavigator] listens on the channel (wireNavigator at bootstrap). Names starting with navigate.* must reach the navigator this way (or emit an event whose name is navigate.*). example/lib/main.dart lines 74–77: WRONG to use only handleIntent for navigate.* — running flows may ignore it and no screen opens.
+  (C) To kick an agent or a flow step that listens in onEvent / behavior (including list/catalog load), emit the matching OmegaEvent or emitTyped(...) — not handleIntent — unless the flow also handles that signal in onIntent. Agents and behavior rules react to channel events, not to handleIntent.
+- Do NOT call flow.onIntent from screens; OmegaFlow.onIntent is overridden inside the flow class only. Do NOT use OmegaFlowContext.intent (does not exist).
 - Channel: listeners see OmegaEvent only. Typed event classes live in payload — use event.payloadAs<MyTypedEvent>(), not `if (event is MyTypedEvent)`.
 - Behavior: OmegaAgentBehaviorEngine — any number of addRule(...) calls (or evaluate); each rule maps context → OmegaAgentReaction(actionId, payload). Agent implements onAction with a branch per actionId. Never handleEvent/Stream/yield in behavior. OmegaAgentMessage only in onMessage; use msg.action (no .type). See example/lib/auth/auth_behavior.dart + auth_agent.dart.
 - OmegaStatefulAgent: UI state is viewState + setViewState — use viewState.copyWith(...) inside setViewState, not state.copyWith (state is Map<String, dynamic>). In onAction, to find an optional item in a List inside viewState: use `final i = list.indexWhere((e) => e.id == id); final found = i < 0 ? null : list[i];` — NEVER `firstWhere(..., orElse: () => null as T?)` (invalid cast, hides mistakes, confuses the analyzer).
@@ -2178,9 +2183,12 @@ DEFAULT UI PATTERN (use this in the module Page unless the route passes an agent
 - final scope = OmegaScope.of(context);
 - final flow = scope.flowManager.getFlow('FLOW_ID');  // same string as super(id: '...') in the module Flow class; may be null if mis-registered
 - If flow == null, show a short error Scaffold; else StreamBuilder<OmegaFlowExpression>(stream: flow.expressions, ...).
-- To send an intent from a button: scope.flowManager.handleIntent(OmegaIntent.fromName(MyIntent.retry)); — do NOT call flow.onIntent from the UI.
-- OmegaFlowContext is only constructed inside the package when the flow runs; there is NO OmegaFlowContext.intent(...) factory. Subclasses implement onIntent(OmegaFlowContext ctx); callers use receiveIntent/handleIntent only.
-- Rare alternative when you already hold a non-null OmegaFlow: flow.receiveIntent(OmegaIntent.fromName(MyIntent.retry)); never flow.onIntent(...).
+- How the UI triggers work (pick the one your module actually listens to — read agent behavior + flow onIntent/onEvent):
+  (1) scope.flowManager.handleIntent(OmegaIntent.fromName(MyIntent.xxx, payload: ...)) — only reaches flows in [running] state and only if that flow handles the intent in onIntent (see OmegaFlowContract acceptedIntents). WRONG as the only tool if the catalog/list load is driven by channel events or agent rules.
+  (2) scope.channel.emit(OmegaEvent.fromName(MyEvent.requested, payload: ...)) or scope.channel.emitTyped(const MyRequestedEvent(...)) — use when the agent [OmegaAgentBehaviorEngine] rules or flow onEvent match event.name / payloadAs<...>. Typical for "refresh list", "load catalog", "fetch orders": the behavior listens to MyEvent.requested, not to handleIntent.
+  (3) scope.channel.emit(OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateX))) — opens routes; OmegaNavigator is wired to the channel (example/lib/main.dart). navigate.* intents do not go through the navigator if you only call handleIntent.
+- Do NOT call flow.onIntent from the UI. OmegaFlowContext is only built inside the package; there is NO OmegaFlowContext.intent(...) factory. Subclasses implement onIntent/onEvent; callers use handleIntent and/or channel.emit as above.
+- Rare: flow.receiveIntent(OmegaIntent.fromName(...)) when you already hold a non-null flow; never flow.onIntent(...).
 
 IF THE PAGE NEEDS OmegaStatefulAgent VIEW STATE (OmegaAgentBuilder):
 - Do NOT resolve the agent from scope. Pass the agent into the Page: `MyPage({super.key, required this.agent});` — NOT a const constructor (the agent is not a compile-time constant).
@@ -2193,6 +2201,7 @@ FORBIDDEN (will not compile): scope.agentManager, scope.getAgent, OmegaScope.of(
   /// Typed events (OmegaTypedEvent) are wrapped as OmegaEvent.payload; `event is MyTypedEvent` does not apply on the bus.
   static const String _omegaAiOmegaChannelEvents = r'''
 OMEGA CHANNEL EVENTS (Stream<OmegaEvent>, flow onEvent ctx.event, agent listeners):
+- Listing / loading / refresh: if your module starts work when an event appears on the bus (e.g. product.catalog.requested, orders.refresh), the button must emit that event: scope.channel.emit(OmegaEvent.fromName(MyEvent.requested)) or emitTyped(MyRequestedEvent(...)). Agents never see handleIntent — they see channel.events. Using only handleIntent when behavior uses ctx.event?.name == MyEvent.requested.name will not load data.
 - Every emission on the bus is an OmegaEvent (id, name, payload, namespace). It is NOT an instance of your `class FooEvent implements OmegaTypedEvent`.
 - emitTyped(ShoppingCartAddProductEvent(...)) builds OmegaEvent(name: event.name, payload: that same instance). Listeners must unwrap:
   final add = event.payloadAs<ShoppingCartAddProductEvent>();
@@ -2206,6 +2215,14 @@ OMEGAEVENT / OMEGAINTENT — required id:
 - OmegaEvent( and OmegaIntent( direct constructors require BOTH id: and name: (see package). channel.emit(OmegaEvent(name: 'x')) without id fails analysis.
 - Preferred: OmegaEvent.fromName(MyEventEnum.foo, payload: ...) and OmegaIntent.fromName(MyIntentEnum.bar, payload: ...) — factories generate id unless you pass id: explicitly.
 - Inside an OmegaAgent subclass, prefer emit(someEvent.name, payload: ...) (inherited helper builds OmegaEvent with id) instead of hand-building OmegaEvent( without id.
+''';
+
+  /// What Flow vs Agent vs Behavior are for (keep responsibilities separate in generated code).
+  static const String _omegaAiRolesFlowAgentBehavior = r'''
+OMEGA ROLES — Flow vs Agent vs Behavior (do not merge into one class):
+- Flow (OmegaFlow / OmegaWorkflowFlow): Orchestrates one feature or screen journey. Receives flowManager.handleIntent → onIntent; receives channel events → onEvent. Publishes OmegaFlowExpression for UI (StreamBuilder on flow.expressions). May emit channel events to ask agents or trigger navigation. Think: steps, wizard, “where is this feature in the process”. Registered in OmegaConfig; UI uses flowManager.getFlow(flowId) with the same id as super(id: ...) in the flow class.
+- Agent (OmegaAgent / OmegaStatefulAgent): Listens to the event bus; OmegaAgentBehaviorEngine maps matching intents/events to action ids; the agent runs onAction (async OK, APIs, channel.emit results). OmegaStatefulAgent adds viewState + setViewState for OmegaAgentBuilder. Agents do not replace flows: often the flow coordinates and the agent does side-effect work (load data, call backend).
+- Behavior (*_behavior.dart*, OmegaAgentBehaviorEngine): Declarative rules only — condition(ctx) → OmegaAgentReaction(actionId, payload). No async, no HTTP, no setViewState. First matching rule wins. The agent implements onAction for each actionId. Keeps the routing table (behavior) separate from execution (agent).
 ''';
 
   /// OmegaWorkflowFlow API (failStep / emitExpression signatures).
@@ -3667,6 +3684,7 @@ OUTPUT JSON RULES:
 
 $_omegaAiOmegaScopeApi
 $_omegaAiOmegaChannelEvents
+$_omegaAiRolesFlowAgentBehavior
 $_omegaAiUtf8StringLiterals
 $_omegaAiUiDesignStandards
 
@@ -3691,6 +3709,7 @@ REFERENCE (official package patterns; mirror example/lib/omega/omega_setup.dart,
 
 $_omegaAiOmegaScopeApi
 $_omegaAiOmegaChannelEvents
+$_omegaAiRolesFlowAgentBehavior
 $_omegaAiOmegaWorkflowFlow
 $_omegaAiAgentBehaviorApi
 $_omegaAiUtf8StringLiterals
