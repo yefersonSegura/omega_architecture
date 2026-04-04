@@ -755,6 +755,36 @@ HEAL RECIPE — analyzer says missing required named parameter `agent` (usually 
 """
         : "";
 
+    final flowContextFakeApiError = errors.any(
+      (e) =>
+          e.contains("getAgentViewState") ||
+          e.contains("isn't defined for the type 'OmegaFlowContext'"),
+    );
+    final omegaFlowContextHealRecipe = flowContextFakeApiError
+        ? """
+
+HEAL RECIPE — OmegaFlowContext has no getAgentViewState (and no agent API):
+- Replace with data from ctx.intent: use flowManager.handleIntent(OmegaIntent.fromName(UserAuthIntent.start, payload: UserAuthCredentials(email: e, password: p))) from the UI, then in onIntent: final creds = ctx.intent?.payloadAs<UserAuthCredentials>(); channel.emitTyped(UserAuthRequestedEvent(email: creds?.email ?? '', password: creds?.password ?? '')); OR store fields in ctx.memory on prior intents.
+- Compare intents with intent?.name == UserAuthIntent.start.name, not intent == UserAuthIntent.start.
+"""
+        : "";
+
+    final navigationEnumHealError = errors.any(
+      (e) =>
+          e.contains("navigationIntent") ||
+          e.contains("constant named 'navigation") ||
+          (e.contains("There's no constant named") &&
+              e.contains("navigation") &&
+              e.contains("Event")),
+    );
+    final navigationEnumHealRecipe = navigationEnumHealError
+        ? """
+
+HEAL RECIPE — navigationIntent missing on module Event enum:
+- OmegaEvent.fromName(??? , payload: OmegaIntent.fromName(...)) for [OmegaNavigator] requires an OmegaEventName whose string is exactly navigation.intent. Either add to your *Event enum: `navigationIntent('navigation.intent'),` OR import your app `omega/app_semantics.dart` (or equivalent) and use `AppEvent.navigationIntent` for the outer emit. The inner payload intent must be a real enum case e.g. UserAuthIntent.navigateRegister with name navigate.register.
+"""
+        : "";
+
     final prompt = """
 You fix a Flutter app that uses the published package omega_architecture (not local lib copies).
 
@@ -765,6 +795,8 @@ AFFECTED FILE CONTENTS:
 ${filesContent.toString()}
 $routeAgentHealHints
 $omegaSetupAgentHealRecipe
+$omegaFlowContextHealRecipe
+$navigationEnumHealRecipe
 $healContextBlock
 CRITICAL — IMPORTS (this fixes Undefined class OmegaAgent, OmegaEventBus, OmegaFlow, OmegaIntentName, etc.):
 - LANGUAGE: output valid Dart (Flutter) only — never Kotlin, Swift, TypeScript, or pseudocode in file bodies.
@@ -794,9 +826,9 @@ ${OmegaAiCommand._omegaAiRolesFlowAgentBehavior}
 - OmegaScope (from OmegaScope.of(context)): ONLY .channel, .flowManager, .initialFlowId. There is NO agentManager and NO getAgent on scope. Fix by using scope.flowManager.getFlow(flowId) + StreamBuilder<OmegaFlowExpression>, or pass the agent into the Page widget and use OmegaAgentBuilder (see example/lib/omega/omega_setup.dart + example/lib/auth/ui/auth_page.dart).
 - Two ways the UI talks to the runtime (do not confuse them):
   (A) scope.flowManager.handleIntent(OmegaIntent.fromName(...)) — delivers ONLY to flows in [running] state; use for domain intents your Flow handles in onIntent (see flow contract acceptedIntents). It does NOT push Flutter routes by itself.
-  (B) scope.channel.emit(OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateLogin))) — [OmegaNavigator] listens on the channel (wireNavigator at bootstrap). Names starting with navigate.* must reach the navigator this way (or emit an event whose name is navigate.*). example/lib/main.dart lines 74–77: WRONG to use only handleIntent for navigate.* — running flows may ignore it and no screen opens.
+  (B) scope.channel.emit(OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateLogin))) — or use YourModuleEvent.navigationIntent ONLY if your *Event enum declares navigationIntent('navigation.intent') (CLI template includes it). [OmegaNavigator] listens on the channel (wireNavigator at bootstrap). example/lib/main.dart: WRONG to use only handleIntent for navigate.*.
   (C) To kick an agent or a flow step that listens in onEvent / behavior (including list/catalog load), emit the matching OmegaEvent or emitTyped(...) — not handleIntent — unless the flow also handles that signal in onIntent. Agents and behavior rules react to channel events, not to handleIntent.
-- Do NOT call flow.onIntent from screens; OmegaFlow.onIntent is overridden inside the flow class only. Do NOT use OmegaFlowContext.intent (does not exist).
+- Do NOT call flow.onIntent from screens; OmegaFlow.onIntent is overridden inside the flow class only. OmegaFlowContext has ONLY: event, intent, memory — no getAgentViewState, no agent lookup. To pass email/password (etc.) into onIntent use OmegaIntent.fromName(..., payload: YourPayload(...)) and intent?.payloadAs<YourPayload>() in the flow (see example auth_flow). Do NOT construct OmegaFlowContext in UI.
 - Channel: listeners see OmegaEvent only. Typed event classes live in payload — use event.payloadAs<MyTypedEvent>(), not `if (event is MyTypedEvent)`.
 - Behavior: OmegaAgentBehaviorEngine — any number of addRule(...) calls (or evaluate); each rule maps context → OmegaAgentReaction(actionId, payload). Agent implements onAction with a branch per actionId. Never handleEvent/Stream/yield in behavior. OmegaAgentMessage only in onMessage; use msg.action (no .type). See example/lib/auth/auth_behavior.dart + auth_agent.dart.
 - OmegaStatefulAgent: UI state is viewState + setViewState — use viewState.copyWith(...) inside setViewState, not state.copyWith (state is Map<String, dynamic>). In onAction, to find an optional item in a List inside viewState: use `final i = list.indexWhere((e) => e.id == id); final found = i < 0 ? null : list[i];` — NEVER `firstWhere(..., orElse: () => null as T?)` (invalid cast, hides mistakes, confuses the analyzer).
@@ -2250,6 +2282,7 @@ OMEGAEVENT / OMEGAINTENT — required id:
 - OmegaEvent( and OmegaIntent( direct constructors require BOTH id: and name: (see package). channel.emit(OmegaEvent(name: 'x')) without id fails analysis.
 - Preferred: OmegaEvent.fromName(MyEventEnum.foo, payload: ...) and OmegaIntent.fromName(MyIntentEnum.bar, payload: ...) — factories generate id unless you pass id: explicitly.
 - FORBIDDEN (analyzer: abstract class can't be instantiated): OmegaEventName('navigation.intent') or OmegaIntentName('navigate.register') — [OmegaEventName] and [OmegaIntentName] are abstract contracts only. You MUST pass a concrete enum value that implements them, e.g. OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateLogin)) after defining `enum AppEvent implements OmegaEventName { navigationIntent('navigation.intent'), ... }` and `enum AppIntent implements OmegaIntentName { navigateLogin('navigate.login'), navigateRegister('navigate.register'), ... }`.
+- NAVIGATION WRAP (OmegaNavigator): the OUTER event passed to OmegaEvent.fromName MUST have .name == `navigation.intent` exactly. [OmegaFlowManager.wireNavigator] only reacts to that name (or navigate.*). WRONG: `UserAuthEvent.navigationIntent` if UserAuthEvent has no such enum constant — analyzer: "no constant named 'navigationIntent'". FIX: (1) Add `navigationIntent('navigation.intent'),` to your module Event enum, OR (2) import app-wide `app_semantics.dart` and use `AppEvent.navigationIntent` for navigation only (example/lib/main.dart). Do NOT invent MyModuleEvent.navigation without defining it.
 - Inside an OmegaAgent subclass, prefer emit(someEvent.name, payload: ...) (inherited helper builds OmegaEvent with id) instead of hand-building OmegaEvent( without id.
 ''';
 
@@ -2264,7 +2297,9 @@ OMEGA ROLES — Flow vs Agent vs Behavior (do not merge into one class):
   /// OmegaWorkflowFlow API (failStep / emitExpression signatures).
   static const String _omegaAiOmegaWorkflowFlow = r'''
 OMEGA WORKFLOW FLOW (OmegaWorkflowFlow — omega_workflow_flow.dart):
+- OmegaFlowContext exposes ONLY: [event], [intent], [memory]. FORBIDDEN (undefined): ctx.getAgentViewState, ctx.getAgent, any read of OmegaStatefulAgent.viewState from the flow. Put credentials or form data in the intent payload (payloadAs<T>()) or in memory / channel events.
 - onEvent(OmegaFlowContext ctx): ctx.event is OmegaEvent? (single object). Use event?.name, event?.payload, event?.payloadAs<T>(). There is no overload that takes two positional event arguments.
+- onIntent: compare with intent?.name == MyIntent.start.name (not intent == MyIntent.start — [OmegaIntent] is not the enum).
 - emitExpression(String type, {dynamic payload}) — payload is a NAMED parameter only: emitExpression('error', payload: event?.payload).
 - failStep(String code, {String? message}) — only ONE positional argument (the code). WRONG: failStep('start', ctx.event?.payload). RIGHT: failStep('start', message: ctx.event?.payloadAs<OmegaFailure>()?.message ?? ctx.event?.payload?.toString()).
 - next(String stepId) and startAt(String stepId): one positional step id each.
@@ -2982,6 +3017,8 @@ STRING LITERALS (encoding):
   static bool _omegaAiFlowPassSanity(String code) {
     final t = code.trim();
     if (t.isEmpty) return true;
+    if (t.contains("getAgentViewState")) return false;
+    if (RegExp(r"\bctx\.getAgent\b").hasMatch(t)) return false;
     if (!t.contains("failStep(")) return true;
     if (RegExp(r"failStep\s*\(\s*[^,)]+\s*,\s*(?!message\s*:)").hasMatch(t)) {
       return false;
@@ -3180,6 +3217,7 @@ enum ${moduleName}Intent implements OmegaIntentName {
 }
 
 enum ${moduleName}Event implements OmegaEventName {
+  navigationIntent('navigation.intent'),
   requested('$lower.requested'),
   succeeded('$lower.succeeded'),
   failed('$lower.failed');
@@ -3793,7 +3831,7 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
 
 - 'events' (copy this pattern exactly for intent/event enums):
   - enum ${moduleName}Intent implements OmegaIntentName { start('$lower.start'), retry('$lower.retry'); const ${moduleName}Intent(this.name); @override final String name; }
-  - enum ${moduleName}Event implements OmegaEventName { requested('$lower.requested'), succeeded('$lower.succeeded'), failed('$lower.failed'); const ${moduleName}Event(this.name); @override final String name; }
+  - enum ${moduleName}Event implements OmegaEventName { navigationIntent('navigation.intent'), requested('$lower.requested'), succeeded('$lower.succeeded'), failed('$lower.failed'); const ${moduleName}Event(this.name); @override final String name; } — navigationIntent is required if you emit OmegaEvent.fromName(X.navigationIntent, payload: OmegaIntent.fromName(navigate.*)); add navigateRegister etc. to ${moduleName}Intent with names navigate.register matching OmegaRoute ids.
   - class ${moduleName}RequestedEvent implements OmegaTypedEvent { const ${moduleName}RequestedEvent({required this.input}); final String input; @override String get name => ${moduleName}Event.requested.name; }
   - class ${moduleName}ViewState {
       final bool isLoading; final String? error;
@@ -3835,7 +3873,7 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
         emittedExpressionTypes: {'idle', 'loading', 'success', 'error', 'workflow.done', 'workflow.step', 'workflow.error'},
       );
       @override void onStart() { emitExpression('idle'); }
-      @override void onIntent(OmegaFlowContext ctx) { /* on start: channel.emitTyped(const ${moduleName}RequestedEvent(...)); startAt('start'); */ }
+      @override void onIntent(OmegaFlowContext ctx) { /* use ctx.intent?.name == ${moduleName}Intent.start.name; payload: ctx.intent?.payloadAs<...>(); NEVER ctx.getAgentViewState — OmegaFlowContext only has event, intent, memory */ }
       @override void onEvent(OmegaFlowContext ctx) { /* on succeeded: emitExpression('success'); next('done'); on failed: emitExpression('error', payload: ...); failStep('code', message: ...) — failStep has only one positional arg */ }
     }
 
