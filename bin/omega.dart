@@ -723,6 +723,38 @@ void main() {
     final healContextBlock =
         healGroundTruth.isEmpty ? "" : "\n$healGroundTruth\n";
 
+    final setupHealPath =
+        "$root${Platform.pathSeparator}lib${Platform.pathSeparator}omega${Platform.pathSeparator}omega_setup.dart";
+    final setupHealFile = File(setupHealPath);
+    var routeAgentHealHints = "";
+    if (setupHealFile.existsSync()) {
+      try {
+        final mis = OmegaValidateCommand.collectRouteAgentMismatches(
+          root,
+          setupHealFile.readAsStringSync(),
+        );
+        if (mis.isNotEmpty) {
+          routeAgentHealHints =
+              "\nVALIDATOR (lib/**/*_page.dart requires agent) — apply to omega_setup.dart:\n"
+              "${mis.map((m) => "- $m").join("\n")}\n";
+        }
+      } catch (_) {}
+    }
+    final agentParamError = errors.any(
+      (e) =>
+          e.contains("named parameter 'agent'") ||
+          e.contains('named parameter "agent"') ||
+          e.contains("parameter 'agent' is required"),
+    );
+    final omegaSetupAgentHealRecipe = agentParamError
+        ? """
+
+HEAL RECIPE — analyzer says missing required named parameter `agent` (usually in lib/omega/omega_setup.dart):
+- A *Page widget constructor has `required SomeAgent agent`. You MUST NOT use `const ThatPage()` or `ThatPage()` without arguments.
+- In createOmegaConfig(OmegaChannel channel): (1) import the agent Dart file; (2) add `final myModuleAgent = MyModuleAgent(channel);` or `MyModuleAgent(channel: channel);` if ctor uses named channel (read *_agent.dart); (3) put `myModuleAgent` in `agents: <OmegaAgent>[..., myModuleAgent]` once; (4) set route `builder: (context) => ThatPage(agent: myModuleAgent)` (same variable reference). Match Page class name ↔ Agent class name (e.g. ProductCatalogPage ↔ ProductCatalogAgent).
+"""
+        : "";
+
     final prompt = """
 You fix a Flutter app that uses the published package omega_architecture (not local lib copies).
 
@@ -731,6 +763,8 @@ ${errorContext.toString()}
 
 AFFECTED FILE CONTENTS:
 ${filesContent.toString()}
+$routeAgentHealHints
+$omegaSetupAgentHealRecipe
 $healContextBlock
 CRITICAL — IMPORTS (this fixes Undefined class OmegaAgent, OmegaEventBus, OmegaFlow, OmegaIntentName, etc.):
 - LANGUAGE: output valid Dart (Flutter) only — never Kotlin, Swift, TypeScript, or pseudocode in file bodies.
@@ -769,7 +803,7 @@ ${OmegaAiCommand._omegaAiRolesFlowAgentBehavior}
 - OmegaEvent / OmegaIntent: use .fromName(...) so id is set; if using constructors directly, both id and name are required.
 - OmegaWorkflowFlow: failStep(code, {String? message}) — never a second positional; use message: for text from ctx.event payload.
 - OmegaAgentBuilder: builder is (BuildContext, TState) only; do not add a third agent argument. Pass the agent into the Page and use widget.agent; never construct MyAgent(channel) or MyAgent(channel: channel) inside build — that creates a new agent every frame.
-- If MyPage requires `required MyAgent agent`, omega_setup route must be `builder: (c) => MyPage(agent: myAgentVar)` with `final myAgentVar = MyAgent(channel);` OR `MyAgent(channel: channel);` if the agent ctor uses `{required OmegaEventBus channel}` — never `const MyPage()`.
+- If MyPage requires `required MyAgent agent`, omega_setup route must be `builder: (c) => MyPage(agent: myAgentVar)` with `final myAgentVar = MyAgent(channel);` OR `MyAgent(channel: channel);` if the agent ctor uses `{required OmegaEventBus channel}` — never `const MyPage()`. Analyzer error "The named parameter 'agent' is required" on omega_setup.dart means the route builder omits `agent:` — fix as above (declare one shared agent instance, list it in agents:, pass it to the Page).
 - String literals: valid UTF-8; fix Spanish mojibake (corrupted accents) or replace with ASCII/English mock text.
 
 Return only JSON. No markdown fences.
