@@ -1,0 +1,66 @@
+{
+  "name": "omega-studio",
+  "displayName": "Omega Studio",
+  "description": "IDE avanzado para arquitectura Omega",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Architecture"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "omega.generateModule",
+        "title": "Omega: Crear Módulo con Diseño IA",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.runDoctor",
+        "title": "Omega: Validar Arquitectura (Doctor)",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.editUiWithAi",
+        "title": "Omega: Rediseñar esta pantalla con IA",
+        "category": "Omega"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "omega.editUiWithAi",
+          "group": "navigation",
+          "when": "resourceExtname == .dart"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "omega.editUiWithAi",
+          "group": "omega@1",
+          "when": "resourceFilename =~ /.*_page\\.dart/"
+        },
+        {
+          "command": "omega.generateModule",
+          "group": "omega@1"
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@types/node": "16.x",
+    "typescript": "^4.9.5"
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  }
+}

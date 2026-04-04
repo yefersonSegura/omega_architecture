@@ -2771,6 +2771,7 @@ class ${moduleName}Page extends StatelessWidget {
     String description,
     String moduleName, {
     String? productContext,
+    Map<String, String>? currentFiles,
   }) async {
     final env = Platform.environment;
     if (env["OMEGA_AI_ENABLED"] != "true") return null;
@@ -2793,11 +2794,21 @@ ${productContext.trim()}
 
 """
         : "";
+
+    final currentCodeBlock = (currentFiles != null && currentFiles.isNotEmpty)
+        ? """
+CURRENT MODULE CODE (EVOLVE AND REDESIGN THIS CODE, DO NOT IGNORE EXISTING LOGIC):
+${currentFiles.entries.map((e) => "--- FILE: ${e.key} ---\n${e.value}").join("\n\n")}
+
+"""
+        : "";
+
     final prompt =
         """
 Generate COMPLETE and FUNCTIONAL Dart code for an Omega Architecture module named '$moduleName' ($lower).
-PRIMARY FOCUS: '$description'.
+PRIMARY FOCUS / INSTRUCTION: '$description'.
 $contextBlock
+$currentCodeBlock
 REFERENCE (official package patterns; mirror example/lib/omega/omega_setup.dart, example/lib/omega/app_semantics.dart for enums):
 - Flow id: ${moduleName}Flow must use super(id: '$moduleName', channel: channel) so flowManager.getFlow('$moduleName') in ${moduleName}Page resolves. If this module is the app entry flow, OmegaConfig.initialFlowId in omega_setup.dart must be that same string (example: AuthFlow uses id "authFlow" and OmegaConfig.initialFlowId: "authFlow").
 - Pages: scope.flowManager.getFlow('$moduleName'); StreamBuilder<OmegaFlowExpression>(stream: flow.expressions, ...).
@@ -2871,9 +2882,7 @@ FILE TEMPLATES AND RULES:
       @override Widget build(BuildContext context) {
         final scope = OmegaScope.of(context);
         final flow = scope.flowManager.getFlow('$moduleName');
-        if (flow == null) {
-          return const Scaffold(body: Center(child: Text('Flow not registered in omega_setup.dart')));
-        }
+        if (flow == null) return const Scaffold(body: Center(child: Text('Flow not registered')));
         return Scaffold(
           appBar: AppBar(title: const Text('$moduleName')),
           body: StreamBuilder<OmegaFlowExpression>(
@@ -2881,12 +2890,10 @@ FILE TEMPLATES AND RULES:
             builder: (context, snapshot) {
               final expr = snapshot.data;
               if (expr?.type == 'loading') return const Center(child: CircularProgressIndicator());
-              return Center(
-                child: ElevatedButton(
-                  onPressed: () => scope.flowManager.handleIntent(OmegaIntent.fromName(${moduleName}Intent.start)),
-                  child: const Text('Start'),
-                ),
-              );
+              
+              // BUILD A RICH UI HERE based on module description (use Column, ListView, Cards, etc.)
+              // Example: return SingleChildScrollView(child: Padding(padding: EdgeInsets.all(16), child: Column(...)));
+              return const Center(child: Text('Designed UI goes here')); 
             },
           ),
         );
@@ -3159,32 +3166,6 @@ Return ONLY valid JSON. No markdown. No conversational text.
 
     Map<String, String>? aiGeneratedCode;
 
-    if (useProviderApi) {
-      final providerSteps = await runWithProgress<List<String>?>(
-        _tr(en: "Consulting AI provider", es: "Consultando proveedor IA"),
-        () => _providerCoachPlan(cleanFeature),
-      );
-      if (providerSteps != null && providerSteps.isNotEmpty) {
-        insights.addAll(providerSteps);
-        mode = "provider-api";
-      }
-
-      final generated = await runWithProgress<Map<String, String>?>(
-        _tr(
-          en: "Generating custom logic with AI",
-          es: "Generando lógica personalizada con IA",
-        ),
-        () => _providerGenerateModuleCode(
-          cleanFeature,
-          moduleName,
-          productContext: productContext,
-        ),
-      );
-      if (generated != null) {
-        aiGeneratedCode = generated;
-      }
-    }
-
     String appRoot;
     try {
       appRoot = findAppRoot();
@@ -3198,15 +3179,58 @@ Return ONLY valid JSON. No markdown. No conversational text.
         "$appRoot${Platform.pathSeparator}lib${Platform.pathSeparator}omega${Platform.pathSeparator}omega_setup.dart";
     final hasSetup = File(setupPath).existsSync();
 
-    final modulePath =
-        "$appLib${Platform.pathSeparator}${moduleName.toLowerCase()}";
+    final lower = moduleName.toLowerCase();
+    final modulePath = "$appLib${Platform.pathSeparator}$lower";
     final expectedFiles = <String>[
-      "$modulePath${Platform.pathSeparator}${moduleName.toLowerCase()}_agent.dart",
-      "$modulePath${Platform.pathSeparator}${moduleName.toLowerCase()}_flow.dart",
-      "$modulePath${Platform.pathSeparator}${moduleName.toLowerCase()}_behavior.dart",
-      "$modulePath${Platform.pathSeparator}${moduleName.toLowerCase()}_events.dart",
-      "$modulePath${Platform.pathSeparator}ui${Platform.pathSeparator}${moduleName.toLowerCase()}_page.dart",
+      "$modulePath${Platform.pathSeparator}${lower}_agent.dart",
+      "$modulePath${Platform.pathSeparator}${lower}_flow.dart",
+      "$modulePath${Platform.pathSeparator}${lower}_behavior.dart",
+      "$modulePath${Platform.pathSeparator}${lower}_events.dart",
+      "$modulePath${Platform.pathSeparator}ui${Platform.pathSeparator}${lower}_page.dart",
     ];
+
+    if (useProviderApi) {
+      final providerSteps = await runWithProgress<List<String>?>(
+        _tr(en: "Consulting AI provider", es: "Consultando proveedor IA"),
+        () => _providerCoachPlan(cleanFeature),
+      );
+      if (providerSteps != null && providerSteps.isNotEmpty) {
+        insights.addAll(providerSteps);
+        mode = "provider-api";
+      }
+
+      // Read current files if they exist to allow Redesign/Evolve
+      final Map<String, String> currentFiles = {};
+      final mapping = {
+        "agent": expectedFiles[0],
+        "flow": expectedFiles[1],
+        "behavior": expectedFiles[2],
+        "events": expectedFiles[3],
+        "page": expectedFiles[4],
+      };
+      for (final entry in mapping.entries) {
+        final f = File(entry.value);
+        if (f.existsSync()) {
+          currentFiles[entry.key] = f.readAsStringSync();
+        }
+      }
+
+      final generated = await runWithProgress<Map<String, String>?>(
+        _tr(
+          en: "Generating/Redesigning logic with AI",
+          es: "Generando/Rediseñando lógica con IA",
+        ),
+        () => _providerGenerateModuleCode(
+          cleanFeature,
+          moduleName,
+          productContext: productContext,
+          currentFiles: currentFiles.isNotEmpty ? currentFiles : null,
+        ),
+      );
+      if (generated != null) {
+        aiGeneratedCode = generated;
+      }
+    }
 
     var created = false;
     final originalCwd = Directory.current.path;
