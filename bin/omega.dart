@@ -1851,6 +1851,21 @@ class OmegaDoctorCommand {
 /// AI tooling bootstrap (no provider call yet).
 /// Helps users configure environment variables in a safe, optional way.
 class OmegaAiCommand {
+  /// Appended to provider prompts so UIs aim at production-grade quality, not placeholders.
+  static const String _omegaAiUiDesignStandards = r'''
+UI DESIGN EXCELLENCE (ship-quality — treat this screen as a real product, not a tutorial):
+- Goal: the best layout you can produce in one file — clear hierarchy, generous spacing, cohesive Material 3, and a credible real-app feel.
+- Hierarchy: AppBar or in-body title; optional subtitle; group content (Cards, sections) with SizedBox height between groups; avoid a flat column of undifferentiated widgets.
+- Material 3: Theme.of(context).colorScheme and textTheme (headlineMedium, titleLarge, bodyLarge, labelLarge); FilledButton primary, OutlinedButton/TextButton secondary; TextField/TextFormField with InputDecoration (label, hint, prefixIcon where useful); Cards with consistent margin and clipBehavior if needed.
+- Layout: SafeArea when content touches edges; SingleChildScrollView for vertical overflow; on wide screens center the main column with ConstrainedBox(maxWidth: 480–560) so forms do not stretch edge-to-edge.
+- Visual polish: meaningful Icons; Chips for tags/filters; Divider between sections; subtle borders or tonal surfaces (surfaceContainer*) from colorScheme where it improves scanability.
+- States: loading — centered CircularProgressIndicator or a compact skeleton-style placeholder (shimmer not required); error — Icon + Text + optional FilledButton.tonal/FilledButton for retry; success — the full designed UI (not a stub).
+- Domain hints: Login — email + password fields, optional logo/header, primary sign-in, secondary links as TextButton; Dashboard — metric Cards, lists, avatars or leading icons; Settings — SwitchListTile / ListTile groups.
+- Accessibility: tooltips on icon-only actions; error text with sufficient contrast; comfortable tap targets (min ~48 logical pixels).
+- Copy: all user-visible strings in the same language as the user’s instruction.
+- FORBIDDEN: a screen that is only one button and one Text, bare Center(Text), "TODO UI", or Lorem ipsum as main content.
+''';
+
   static Future<void> run(List<String> args) async {
     if (args.isEmpty || args[0] == "-h" || args[0] == "--help") {
       _printHelp();
@@ -2225,7 +2240,7 @@ class OmegaAiCommand {
         "  module  ${_tr(en: "Create a complete ecosystem module (AI-guided).", es: "Crea un modulo de ecosistema completo (guiado por IA).")}",
       );
       stdout.writeln(
-        "  redesign ${_tr(en: "Redesign an existing UI screen or module logic.", es: "Rediseña una pantalla de UI o lógica de módulo existente.")}",
+        "  redesign ${_tr(en: "Redesign the module UI only (updates ui/*_page.dart; does not change agent/flow/behavior/events).", es: "Rediseña solo la vista del módulo (actualiza ui/*_page.dart; no cambia agent/flow/behavior/events).")}",
       );
       stdout.writeln(
         "          ${_tr(en: "Use --template advanced for workflow/stateful/contracts/tests scaffold.", es: "Usa --template advanced para scaffold con workflow/stateful/contratos/tests.")}",
@@ -2297,6 +2312,7 @@ class OmegaAiCommand {
         asJson: asJson,
         useProviderApi: useProviderApi,
         toTempFile: toTempFile,
+        uiOnly: action == "redesign",
       );
       return;
     }
@@ -2479,7 +2495,9 @@ class OmegaAiCommand {
 
     if (customCode != null) {
       Map<String, String> toWrite = Map<String, String>.from(customCode);
-      if (!_omegaAiEventsPassSanity(toWrite["events"] ?? "", moduleName)) {
+      final ev = toWrite["events"] ?? "";
+      if (ev.trim().isNotEmpty &&
+          !_omegaAiEventsPassSanity(ev, moduleName)) {
         stdout.writeln(
           "⚠️ ${_tr(
             en: "AI events file has potential issues. Will attempt to fix via self-healing...",
@@ -2487,7 +2505,8 @@ class OmegaAiCommand {
           )}",
         );
       }
-      if (!_omegaAiPagePassSanity(toWrite["page"] ?? "", moduleName)) {
+      final pg = toWrite["page"] ?? "";
+      if (pg.trim().isNotEmpty && !_omegaAiPagePassSanity(pg, moduleName)) {
         stdout.writeln(
           "⚠️ ${_tr(
             en: "AI page has potential issues. Will attempt to fix via self-healing...",
@@ -2829,11 +2848,66 @@ class ${moduleName}Page extends StatelessWidget {
     };
   }
 
+  /// `omega ai coach redesign`: model returns only the screen file; disk keeps agent/flow/behavior/events.
+  static Map<String, String>? _normalizeAiPageOnlyJson(Map<String, dynamic> raw) {
+    String? pickString(String key) {
+      final v = raw[key];
+      if (v is String) return v;
+      return null;
+    }
+
+    final reasoning = pickString("reasoning");
+    if (reasoning != null && reasoning.trim().isNotEmpty) {
+      stdout.writeln("");
+      stdout.writeln(
+        "🧠 ${_tr(en: "AI reasoning (UI only)", es: "Razonamiento IA (solo vista)")}:",
+      );
+      stdout.writeln(reasoning.trim());
+      stdout.writeln("");
+    }
+
+    var page = pickString("page");
+    final response = pickString("response");
+    if ((page == null || page.trim().isEmpty) &&
+        response != null &&
+        response.trim().isNotEmpty) {
+      page = response;
+    }
+
+    if (page == null || page.trim().isEmpty) {
+      _err(
+        _tr(
+          en:
+              "AI JSON missing UI file: need non-empty string key \"page\" (or \"response\").",
+          es:
+              "Falta la pantalla en el JSON de la IA: se requiere \"page\" o \"response\" con el Dart completo.",
+        ),
+      );
+      return null;
+    }
+
+    // Reject if model still sent full module (avoid overwriting other files downstream).
+    if (raw.containsKey("agent") ||
+        raw.containsKey("flow") ||
+        raw.containsKey("events") ||
+        raw.containsKey("behavior")) {
+      stdout.writeln(
+        "⚠️ ${_tr(
+          en: "AI returned non-UI keys; only \"page\" will be written.",
+          es: "La IA devolvió claves fuera de la vista; solo se escribirá \"page\".",
+        )}",
+      );
+    }
+
+    return {"page": page};
+  }
+
   static Future<Map<String, String>?> _providerGenerateModuleCode(
     String description,
     String moduleName, {
     String? productContext,
     Map<String, String>? currentFiles,
+    bool pageOnly = false,
   }) async {
     final env = Platform.environment;
     if (env["OMEGA_AI_ENABLED"] != "true") return null;
@@ -2857,20 +2931,47 @@ ${productContext.trim()}
 """
         : "";
 
-    final currentCodeBlock = (currentFiles != null && currentFiles.isNotEmpty)
+    final filesContextBlock = (currentFiles != null && currentFiles.isNotEmpty)
         ? """
-CURRENT MODULE CODE (EVOLVE AND REDESIGN THIS CODE, DO NOT IGNORE EXISTING LOGIC):
+${pageOnly
+            ? "EXISTING MODULE FILES (REFERENCE ONLY — keep agent, flow, behavior, and events on disk unchanged; only the page Dart may change):"
+            : "CURRENT MODULE CODE (EVOLVE AND REDESIGN THIS CODE, DO NOT IGNORE EXISTING LOGIC):"}
 ${currentFiles.entries.map((e) => "--- FILE: ${e.key} ---\n${e.value}").join("\n\n")}
 
 """
         : "";
 
-    final prompt =
-        """
+    late final String prompt;
+    late final String aiSystemContent;
+    if (pageOnly) {
+      aiSystemContent =
+          "You output exactly one JSON object (json_object mode). UI-ONLY mode: keys reasoning + page (+ optional response) only. NEVER events/agent/flow/behavior. Act as a senior Flutter + product designer: deliver the strongest possible Material 3 screen — hierarchy, spacing, theme tokens, polished states. OmegaScope, getFlow, StreamBuilder, OmegaIntent.fromName using ONLY existing intents from the reference. No prose outside JSON.";
+      prompt =
+          """
+UI-ONLY REDESIGN for Omega module '$moduleName' ($lower).
+USER INSTRUCTION: '$description'.
+$contextBlock
+$filesContextBlock
+OUTPUT JSON RULES:
+1. Required string keys: "reasoning" (1-5 lines), "page" (complete Dart for ${moduleName}Page — file path conceptually: ui/${lower}_page.dart).
+2. Optional: "response" (duplicate of "page").
+3. FORBIDDEN: do not include keys "events", "behavior", "agent", or "flow" in the JSON at all.
+4. Page must use: import 'package:flutter/material.dart'; import 'package:omega_architecture/omega_architecture.dart'; import '../${lower}_events.dart';
+5. Keep class name ${moduleName}Page, OmegaScope.of(context), scope.flowManager.getFlow('$moduleName'), StreamBuilder<OmegaFlowExpression>. Use existing ${moduleName}Intent / ${moduleName}Event names from the reference — do not rename or replace non-UI files.
+
+$_omegaAiUiDesignStandards
+
+Return only one JSON object. No markdown fences. No text outside JSON.
+""";
+    } else {
+      aiSystemContent =
+          "You are a Senior Flutter Developer and UI/UX-minded engineer. You output exactly one JSON object (json_object mode) with string values only. Include a concise \"reasoning\" (1-5 lines, user’s language). Produce the best practical Material 3 screen you can: theme-driven colors/typography, clear hierarchy, spacing, Cards/inputs/buttons used deliberately, polished loading/error/success — not demo placeholders. Omega: OmegaIntentName/OmegaEventName, const constructors, PascalCase module classes. No prose outside JSON.";
+      prompt =
+          """
 Generate COMPLETE and FUNCTIONAL Dart code for an Omega Architecture module named '$moduleName' ($lower).
 PRIMARY FOCUS / INSTRUCTION: '$description'.
 $contextBlock
-$currentCodeBlock
+$filesContextBlock
 REFERENCE (official package patterns; mirror example/lib/omega/omega_setup.dart, example/lib/omega/app_semantics.dart for enums):
 - Flow id: ${moduleName}Flow must use super(id: '$moduleName', channel: channel) so flowManager.getFlow('$moduleName') in ${moduleName}Page resolves. If this module is the app entry flow, OmegaConfig.initialFlowId in omega_setup.dart must be that same string (example: AuthFlow uses id "authFlow" and OmegaConfig.initialFlowId: "authFlow").
 - Pages: scope.flowManager.getFlow('$moduleName'); StreamBuilder<OmegaFlowExpression>(stream: flow.expressions, ...).
@@ -2889,14 +2990,9 @@ CRITICAL RULES:
 6. UI: OmegaIntent.fromName(${moduleName}Intent.start) — pass the enum constant, NOT a String, NOT ${moduleName}Intent.start.name.
 7. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
 
-UI DESIGN (apply to the 'page' value only; DO NOT USE PLACEHOLDERS):
-- MANDATORY: Build a real, high-quality Material 3 interface. Use Padding, SingleChildScrollView, Column, Row, Card, TextField, ListTile, FilledButton, etc.
-- PROHIBITED: Do not return the basic "Start button" template. That is ONLY a structural example. You MUST replace the 'Center' or 'ElevatedButton' with a complete, professionally designed screen.
-- If it's a Login: Include fields for email/password, a logo placeholder (Icon), and a primary action button.
-- If it's a Dashboard/Tracking: Include Cards with statistics, ListTiles for items, and appropriate Icons.
-- If it's a Settings: Use a list of switches and tiles.
-- Use the language of the description (e.g. if the user describes in Spanish, use Spanish labels).
-- Ensure StreamBuilder handles 'loading' (with CircularProgressIndicator), 'error' (with red text or icon), and 'success' (with the main content).
+UI DESIGN (apply to the 'page' value only — maximize quality; the structural snippet below is NOT the final UI):
+$_omegaAiUiDesignStandards
+- Map the PRIMARY FOCUS / INSTRUCTION above to a concrete layout (auth, feed, settings, wizard, etc.); add enough widgets that the screen feels like a shipped feature.
 
 FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
 
@@ -2976,6 +3072,7 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
 
 Return ONLY one JSON object with string values, including "reasoning" plus "events","behavior","agent","flow","page". No markdown fences. No text before or after the JSON.
 """;
+    }
 
     final payloadMap = {
       "model": model,
@@ -2983,8 +3080,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
       "messages": [
         {
           "role": "system",
-          "content":
-              "You are a Senior Flutter Developer. You output exactly one JSON object (json_object mode) with string values only. Always include a concise \"reasoning\" field (1-5 lines, match the user's language) before the implied code in other keys. Generate production-ready Omega Architecture Dart: rich Material 3 UIs, proper OmegaIntentName/OmegaEventName enums, const constructors, PascalCase module classes. Never return placeholder-only screens or prose outside JSON.",
+          "content": aiSystemContent,
         },
         {"role": "user", "content": prompt},
       ],
@@ -3037,6 +3133,11 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
       if (decodedModule is! Map) {
         _err("AI Provider JSON Error: root is not a JSON object");
         return null;
+      }
+      if (pageOnly) {
+        return _normalizeAiPageOnlyJson(
+          Map<String, dynamic>.from(decodedModule),
+        );
       }
       return _normalizeAiModuleJson(
         Map<String, dynamic>.from(decodedModule),
@@ -3245,6 +3346,9 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     required bool asJson,
     required bool useProviderApi,
     required bool toTempFile,
+
+    /// When true (`omega ai coach redesign`), only `ui/*_page.dart` is regenerated; agent/flow/behavior/events stay as-is.
+    bool uiOnly = false,
   }) async {
     String moduleName;
     String cleanFeature = feature;
@@ -3297,6 +3401,32 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
       "$modulePath${Platform.pathSeparator}ui${Platform.pathSeparator}${lower}_page.dart",
     ];
 
+    final moduleDir = Directory(modulePath);
+    final moduleExists = moduleDir.existsSync();
+
+    if (uiOnly) {
+      if (!useProviderApi) {
+        _err(
+          _tr(
+            en: "Command redesign requires --provider-api.",
+            es: "El comando redesign requiere --provider-api.",
+          ),
+        );
+        return;
+      }
+      if (!moduleExists) {
+        _err(
+          _tr(
+            en:
+                "Module folder not found: create the module first with 'omega ai coach module ...' or 'omega g ecosystem $moduleName'.",
+            es:
+                "No existe la carpeta del módulo: créalo antes con 'omega ai coach module ...' o 'omega g ecosystem $moduleName'.",
+          ),
+        );
+        return;
+      }
+    }
+
     if (useProviderApi) {
       final providerSteps = await _runWithProgress<List<String>?>(
         _tr(en: "Consulting AI provider", es: "Consultando proveedor IA"),
@@ -3325,14 +3455,19 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
 
       final generated = await _runWithProgress<Map<String, String>?>(
         _tr(
-          en: "Generating/Redesigning logic with AI",
-          es: "Generando/Rediseñando lógica con IA",
+          en: uiOnly
+              ? "Redesigning UI with AI (page only)"
+              : "Generating/Redesigning logic with AI",
+          es: uiOnly
+              ? "Rediseñando la vista con IA (solo página)"
+              : "Generando/Rediseñando lógica con IA",
         ),
         () => _providerGenerateModuleCode(
           cleanFeature,
           moduleName,
           productContext: productContext,
           currentFiles: currentFiles.isNotEmpty ? currentFiles : null,
+          pageOnly: uiOnly,
         ),
       );
       if (generated != null) {
@@ -3343,9 +3478,6 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     var created = false;
     final originalCwd = Directory.current.path;
     if (hasSetup) {
-      final moduleDir = Directory(modulePath);
-      final moduleExists = moduleDir.existsSync();
-
       if (aiGeneratedCode == null && useProviderApi) {
         if (moduleExists) {
           _err(
@@ -3366,23 +3498,34 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
         }
       }
 
-      await _runWithProgress<void>(
-        _tr(
-          en: "Generating ecosystem module",
-          es: "Generando modulo de ecosistema",
-        ),
-        () async {
-          Directory.current = appLib;
-          OmegaGenerateCommand._createEcosystem(moduleName);
-        },
-      );
-      created = true;
-      if (template == "advanced") {
+      if (!(uiOnly && moduleExists)) {
+        await _runWithProgress<void>(
+          _tr(
+            en: "Generating ecosystem module",
+            es: "Generando modulo de ecosistema",
+          ),
+          () async {
+            Directory.current = appLib;
+            OmegaGenerateCommand._createEcosystem(moduleName);
+          },
+        );
+        created = true;
+      }
+      if (template == "advanced" || uiOnly) {
         _applyAdvancedModuleTemplate(
           appRoot: appRoot,
           modulePath: modulePath,
           moduleName: moduleName,
           customCode: aiGeneratedCode,
+        );
+      }
+
+      if (uiOnly && aiGeneratedCode != null) {
+        stdout.writeln(
+          "✅ ${_tr(
+            en: "Updated UI file only (${lower}_page.dart); agent, flow, behavior, and events were not modified.",
+            es: "Solo se actualizó la vista (${lower}_page.dart); no se modificaron agent, flow, behavior ni events.",
+          )}",
         );
       }
 
@@ -3411,11 +3554,12 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     if (asJson) {
       _emitAiOutput(
         content: jsonEncode({
-          "coach": "module",
+          "coach": uiOnly ? "redesign" : "module",
           "mode": mode,
           "feature": feature,
           "moduleName": moduleName,
           "template": template,
+          "uiOnly": uiOnly,
           "modulePath": _absPath(modulePath),
           "requiredArtifacts": requiredArtifacts,
           "created": created,
@@ -3431,12 +3575,17 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     }
 
     final out = StringBuffer()
-      ..writeln("# Omega AI Coach Module ($mode)")
+      ..writeln(
+        "# Omega AI Coach ${uiOnly ? "Redesign" : "Module"} ($mode)",
+      )
       ..writeln("")
       ..writeln("- Feature: `$feature`")
       ..writeln("- Module name: `$moduleName`")
       ..writeln("- Template: `$template`")
       ..writeln("- Module path: `${_absPath(modulePath)}`")
+      ..writeln(
+        "- ${_tr(en: "UI only (page)", es: "Solo vista (página)")}: `${uiOnly ? "yes" : "no"}`",
+      )
       ..writeln("- Created: `${created ? "yes" : "no"}`")
       ..writeln("")
       ..writeln(
