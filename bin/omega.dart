@@ -831,7 +831,11 @@ void main() {
           "$root${Platform.pathSeparator}${entry.key.replaceAll("/", Platform.pathSeparator)}",
         );
       }
-      targetFile.writeAsStringSync(entry.value);
+      var body = entry.value;
+      if (targetFile.path.endsWith(".dart")) {
+        body = _omegaDedupeDuplicateImportLines(body);
+      }
+      targetFile.writeAsStringSync(body);
       _formatFile(targetFile.path);
       final rel = targetFile.absolute.path.replaceAll("\\", "/");
       final short = rel.startsWith(rootNorm)
@@ -1424,6 +1428,7 @@ CRITICAL — IMPORTS (this fixes Undefined class OmegaAgent, OmegaEventBus, Omeg
 - NEVER use: package:omega_architecture/omega/... internal paths.
 - If a file has ZERO omega import but uses Omega*, add the package import as the first import.
 - Do NOT add imports for package:equatable, package:intl, or other packages unless they appear under dependencies in the PROJECT PUBSPEC block below. Prefer deleting those imports and rewriting code with plain Dart.
+- NEVER duplicate the same import line (e.g. two identical `import 'package:apponly/foo/ui/foo_page.dart';`). In lib/omega/omega_setup.dart and every file: at most ONE line per exact import URI + modifiers (show/hide/deferred). Re-read the file you output and remove repeats.
 
 RULES:
 1. Return ONE JSON object: keys = project-relative paths with forward slashes (e.g. "lib/omega/omega_setup.dart"), values = FULL fixed file content as strings.
@@ -1461,7 +1466,7 @@ Return only JSON. No markdown fences.
 """;
 
     const healSystem =
-        "You output only valid JSON objects mapping path strings to full file contents. You fix Dart analyzer errors for Flutter + omega_architecture package. Follow the MASTER CHECKLIST BY FILE in the user message: keep FLOW_ID aligned across flow/page/route; behavior OmegaAgentReaction ids must match agent onAction string cases; flow contracts must list intents/events/expression types actually used. In omega_setup.dart add imports for every Flow/Agent/Page; flows list must use constructor calls like MyFlow(channel), never bare MyFlow without parentheses (missing import or missing () causes undefined symbol). Add package:omega_architecture (and flutter/material where needed) when Omega types are missing. If PROJECT PUBSPEC lists equatable, intl, camera, image_picker, etc. (including after CLI pub add), you may import them; otherwise remove broken third-party imports and rewrite with plain Dart. When *ViewState or *Event types are missing, define them in the module *_events.dart* and emit via channel.emitTyped, not as methods on the agent. Never introduce OmegaViewState. In onAction, switch cases use string literals, never case Enum.value.name. Replace undefined viewStateStream with stateStream on OmegaStatefulAgent.";
+        "You output only valid JSON objects mapping path strings to full file contents. You fix Dart analyzer errors for Flutter + omega_architecture package. Follow the MASTER CHECKLIST BY FILE in the user message: keep FLOW_ID aligned across flow/page/route; behavior OmegaAgentReaction ids must match agent onAction string cases; flow contracts must list intents/events/expression types actually used. In omega_setup.dart add imports for every Flow/Agent/Page; flows list must use constructor calls like MyFlow(channel), never bare MyFlow without parentheses (missing import or missing () causes undefined symbol). Never emit duplicate identical import lines in any file (common mistake — each URI once). Add package:omega_architecture (and flutter/material where needed) when Omega types are missing. If PROJECT PUBSPEC lists equatable, intl, camera, image_picker, etc. (including after CLI pub add), you may import them; otherwise remove broken third-party imports and rewrite with plain Dart. When *ViewState or *Event types are missing, define them in the module *_events.dart* and emit via channel.emitTyped, not as methods on the agent. Never introduce OmegaViewState. In onAction, switch cases use string literals, never case Enum.value.name. Replace undefined viewStateStream with stateStream on OmegaStatefulAgent.";
 
     final rawContent = await _OmegaAiRemote.completeChat(
       system: healSystem,
@@ -1992,6 +1997,24 @@ String _omegaUpgradeOmegaRouteForAgent(
   });
 }
 
+/// Drops duplicate `import` / `export` lines (identical after [String.trim]). Safe for
+/// AI heal output and [omega_setup.dart] (models often repeat the same import twice).
+String _omegaDedupeDuplicateImportLines(String content) {
+  final lines = content.split("\n");
+  final seen = <String>{};
+  final out = <String>[];
+  for (final line in lines) {
+    final left = line.trimLeft();
+    if (left.startsWith("import ") || left.startsWith("export ")) {
+      final key = line.trim();
+      if (seen.contains(key)) continue;
+      seen.add(key);
+    }
+    out.add(line);
+  }
+  return out.join("\n");
+}
+
 /// First constructor `ClassName(` after `class ClassName`: if the parameter list
 /// starts with `{`, assume a named bus arg — use `channel: channel` at call sites.
 /// Otherwise use positional `channel` (matches example [AuthAgent], [AuthFlow]).
@@ -2110,9 +2133,23 @@ void registerInOmegaSetup(
   final flowPattern = RegExp(
     "import\\s+['\"].*${RegExp.escape(flowFile)}['\"];\\s*",
   );
-  // Solo quitar el import del artefacto que estamos registrando (no el del otro)
-  if (registerAgent) content = content.replaceFirst(agentPattern, "");
-  if (registerFlow) content = content.replaceFirst(flowPattern, "");
+  final pagePattern = RegExp(
+    "import\\s+['\"].*${RegExp.escape("${nameLower}_page.dart")}['\"];\\s*",
+  );
+  // Quita todas las líneas de import de este módulo (IA / doble register pueden duplicar).
+  if (registerAgent) {
+    while (agentPattern.hasMatch(content)) {
+      content = content.replaceFirst(agentPattern, "");
+    }
+  }
+  if (registerFlow) {
+    while (flowPattern.hasMatch(content)) {
+      content = content.replaceFirst(flowPattern, "");
+    }
+    while (pagePattern.hasMatch(content)) {
+      content = content.replaceFirst(pagePattern, "");
+    }
+  }
 
   final newImports = <String>[];
   if (registerAgent) newImports.add(agentImport);
@@ -2257,6 +2294,8 @@ void registerInOmegaSetup(
   if (registerAgent && pageNeedsAgent) {
     content = _omegaUpgradeOmegaRouteForAgent(content, pascal, agentVar);
   }
+
+  content = _omegaDedupeDuplicateImportLines(content);
 
   setupFile.writeAsStringSync(content);
 
@@ -3073,6 +3112,7 @@ Forbidden: scope.agentManager; flow.onIntent from widget; OmegaFlowContext in UI
 
 ━━ 6) omega_setup.dart (human wiring after JSON — mention in reasoning) ━━
 - REQUIRED imports (or analyzer: "function/class isn't defined"): from `lib/omega/omega_setup.dart` use relative `../<folder>/<lower>_flow.dart`, `../<folder>/<lower>_agent.dart`, `../<folder>/ui/<lower>_page.dart` OR `package:<app_name>/...` matching pubspec `name:`.
+- FORBIDDEN: duplicate `import` lines (same URI twice). Each `*_agent`, `*_flow`, `*_page` path appears at most once at the top of omega_setup.dart.
 - `flows: <OmegaFlow>[ ..., NewsFlow(channel), ]` — each item is a **constructor call** `ClassName(channelOrBus)` matching the Flow’s ctor in *_flow.dart*. FORBIDDEN: bare `NewsFlow` without parentheses in the list; FORBIDDEN: treating Flow as a function — it is a class.
 - `agents: <OmegaAgent>[ ..., MyAgent(channel), ]` same rule; read ctor in *_agent.dart* (positional vs `{required OmegaEventBus channel}`).
 - Routes: `OmegaRoute(id: '...', builder: ...)`; Page with `required agent` needs `final x = MyAgent(...);` once and `MyPage(agent: x)`.
@@ -3086,6 +3126,7 @@ COHERENCE SELF-TEST (model should mentally verify before answering):
 - [ ] Flow contract sets include all emitted expression types and listened event names used in onEvent.
 - [ ] No forbidden APIs (OmegaViewState, case Enum.name in switch, emit(enumWithoutDotName), etc.).
 - [ ] omega_setup imports every Flow/Agent/Page class used; flows/agents lists use `FooFlow(channel)` / `FooAgent(channel)` constructors, not bare type names.
+- [ ] No duplicate identical import lines in omega_setup or module files.
 ''';
 
   /// Reduces mojibake in Spanish mock strings from model/JSON pipelines.
@@ -4191,19 +4232,29 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
           );
         }
         if (toWrite.containsKey("events")) {
-          File(eventsPath).writeAsStringSync(toWrite["events"]!);
+          File(eventsPath).writeAsStringSync(
+            _omegaDedupeDuplicateImportLines(toWrite["events"]!),
+          );
         }
         if (toWrite.containsKey("behavior")) {
-          File(behaviorPath).writeAsStringSync(toWrite["behavior"]!);
+          File(behaviorPath).writeAsStringSync(
+            _omegaDedupeDuplicateImportLines(toWrite["behavior"]!),
+          );
         }
         if (toWrite.containsKey("agent")) {
-          File(agentPath).writeAsStringSync(toWrite["agent"]!);
+          File(agentPath).writeAsStringSync(
+            _omegaDedupeDuplicateImportLines(toWrite["agent"]!),
+          );
         }
         if (toWrite.containsKey("flow")) {
-          File(flowPath).writeAsStringSync(toWrite["flow"]!);
+          File(flowPath).writeAsStringSync(
+            _omegaDedupeDuplicateImportLines(toWrite["flow"]!),
+          );
         }
         if (toWrite.containsKey("page")) {
-          File(pagePath).writeAsStringSync(toWrite["page"]!);
+          File(pagePath).writeAsStringSync(
+            _omegaDedupeDuplicateImportLines(toWrite["page"]!),
+          );
         }
       }
     } else {
