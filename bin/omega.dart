@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-const String _version = "0.0.32";
+const String _version = "0.0.33";
 const String _docUrl = "http://yefersonsegura.com/proyects/omega/";
 
 void _openInBrowser(String urlOrPath) {

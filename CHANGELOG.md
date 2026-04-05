@@ -1,3 +1,11 @@
+## 0.0.33
+
+- **`omega init`:** Creates `lib/omega/app_semantics.dart` next to `omega_setup.dart` (minimal `AppEvent` / `AppIntent`). If `omega_setup.dart` already exists, running `init` again adds only the missing semantics file (no `--force` on setup).
+- **`registerInOmegaSetup` / coach:** Detects pages with `required this.agent` and `final …Agent agent`; upgrades routes from `const FooPage()` to `FooPage(agent: …)`; strips and re-adds agent/flow/**page** imports in a loop to avoid duplicates; runs **`registerInOmegaSetup` again** after the advanced/IA template so `omega_setup` matches the final page.
+- **Self-healing:** Includes each module’s `*_events.dart` when errors touch that folder; recipes for missing `ViewState` / typed events, nullable `OmegaAgentBuilder` state, and `channel.emitTyped` vs bogus “methods” on the agent; optional **`dart pub add`** when the analyzer reports missing `package:` URIs (`OMEGA_AI_HEAL_PUB_ADD`, default on); slightly larger file context and stricter prompts.
+- **Imports:** Deduplicates identical `import` / `export` lines when applying heal JSON and when writing coach module files; dedupe pass on `omega_setup` after registration; heal + artifact guide forbid duplicate imports in `omega_setup`.
+- **Docs in prompts:** `omega_setup` checklist mentions `app_semantics` and single import per URI.
+
 ## 0.0.32 (CLI & AI Redesign Support)
 
 - **New Command `omega ai coach redesign`**: Dedicated command to redesign existing modules or UI screens by providing current code as context to the AI.
