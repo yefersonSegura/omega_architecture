@@ -1132,6 +1132,28 @@ HEAL RECIPE — OmegaFlowContext has no getAgentViewState (and no agent API):
 """
         : "";
 
+    final omegaSetupUndefinedFlowAgentError = errors.any((e) {
+      if (!e.contains("omega_setup.dart")) return false;
+      if (!e.contains("isn't defined") && !e.contains("undefined_function")) {
+        return false;
+      }
+      return e.contains("Flow") ||
+          e.contains("Agent") ||
+          RegExp(r"'\w+Flow'").hasMatch(e) ||
+          RegExp(r"'\w+Agent'").hasMatch(e);
+    });
+    final omegaSetupFlowAgentImportRecipe = omegaSetupUndefinedFlowAgentError
+        ? """
+
+HEAL RECIPE — lib/omega/omega_setup.dart: "The function 'SomeFlow' isn't defined" / undefined Flow or Agent (InvalidType):
+- Flow and Agent are CLASSES in other files — Dart reports "function isn't defined" when the import is missing or the name is wrong.
+- Add imports at the top (path from lib/omega/omega_setup.dart): e.g. module `news` in lib/news/ → `import '../news/news_flow.dart';` `import '../news/news_agent.dart';` `import '../news/ui/news_page.dart';` OR `import 'package:<pubspec_name>/news/news_flow.dart';` using the app package name from pubspec.
+- In `flows: <OmegaFlow>[...]` each entry must be a CONSTRUCTOR CALL: `NewsFlow(channel)` or `NewsFlow(channel.namespace('news'))` — exactly matching the constructor in news_flow.dart. NEVER put bare `NewsFlow` without `(...)` in the list; NEVER call Flow like a top-level function.
+- In `agents: <OmegaAgent>[...]` same: `NewsAgent(channel)` (or named args per *_agent.dart).
+- If the symbol name does not match the class in the file (e.g. NewsFlow vs NewFlow), rename to match the class declared in *_flow.dart.
+"""
+        : "";
+
     final navigationEnumHealError = errors.any(
       (e) =>
           e.contains("navigationIntent") ||
@@ -1210,6 +1232,7 @@ ${filesContent.toString()}
 $routeAgentHealHints
 $omegaSetupAgentHealRecipe
 $omegaFlowContextHealRecipe
+$omegaSetupFlowAgentImportRecipe
 $navigationEnumHealRecipe
 $undefinedEventEnumHealRecipe
 $optionalPackagesAndStateHealRecipe
@@ -1262,7 +1285,7 @@ Return only JSON. No markdown fences.
 """;
 
     const healSystem =
-        "You output only valid JSON objects mapping path strings to full file contents. You fix Dart analyzer errors for Flutter + omega_architecture package. Follow the MASTER CHECKLIST BY FILE in the user message: keep FLOW_ID aligned across flow/page/route; behavior OmegaAgentReaction ids must match agent onAction string cases; flow contracts must list intents/events/expression types actually used. Add package:omega_architecture (and flutter/material where needed) when Omega types are missing. Do NOT add equatable, intl, or other third-party imports unless the user’s pubspec dependencies list already contains that package — otherwise remove those imports and rewrite with plain Dart. Never introduce OmegaViewState. In onAction, switch cases use string literals, never case Enum.value.name. Replace undefined viewStateStream with stateStream on OmegaStatefulAgent.";
+        "You output only valid JSON objects mapping path strings to full file contents. You fix Dart analyzer errors for Flutter + omega_architecture package. Follow the MASTER CHECKLIST BY FILE in the user message: keep FLOW_ID aligned across flow/page/route; behavior OmegaAgentReaction ids must match agent onAction string cases; flow contracts must list intents/events/expression types actually used. In omega_setup.dart add imports for every Flow/Agent/Page; flows list must use constructor calls like MyFlow(channel), never bare MyFlow without parentheses (missing import or missing () causes undefined symbol). Add package:omega_architecture (and flutter/material where needed) when Omega types are missing. Do NOT add equatable, intl, or other third-party imports unless the user pubspec dependencies list already contains that package — otherwise remove those imports and rewrite with plain Dart. Never introduce OmegaViewState. In onAction, switch cases use string literals, never case Enum.value.name. Replace undefined viewStateStream with stateStream on OmegaStatefulAgent.";
 
     final rawContent = await _OmegaAiRemote.completeChat(
       system: healSystem,
@@ -2771,8 +2794,11 @@ Must include:
 Forbidden: scope.agentManager; flow.onIntent from widget; OmegaFlowContext in UI; const Page if non-const agent required.
 
 ━━ 6) omega_setup.dart (human wiring after JSON — mention in reasoning) ━━
-- Import flow, agent, page; `createOmegaConfig`: `flows: [..., <Module>Flow(channel)]`, `agents: [..., <module>AgentVar]`, `routes: [..., OmegaRoute(id: 'FLOW_ID', builder: ...) ]`.
-- initialFlowId must match the entry flow’s id when this module is first screen.
+- REQUIRED imports (or analyzer: "function/class isn't defined"): from `lib/omega/omega_setup.dart` use relative `../<folder>/<lower>_flow.dart`, `../<folder>/<lower>_agent.dart`, `../<folder>/ui/<lower>_page.dart` OR `package:<app_name>/...` matching pubspec `name:`.
+- `flows: <OmegaFlow>[ ..., NewsFlow(channel), ]` — each item is a **constructor call** `ClassName(channelOrBus)` matching the Flow’s ctor in *_flow.dart*. FORBIDDEN: bare `NewsFlow` without parentheses in the list; FORBIDDEN: treating Flow as a function — it is a class.
+- `agents: <OmegaAgent>[ ..., MyAgent(channel), ]` same rule; read ctor in *_agent.dart* (positional vs `{required OmegaEventBus channel}`).
+- Routes: `OmegaRoute(id: '...', builder: ...)`; Page with `required agent` needs `final x = MyAgent(...);` once and `MyPage(agent: x)`.
+- initialFlowId must match the entry flow’s `super(id: ...)` string when this module is first screen.
 
 COHERENCE SELF-TEST (model should mentally verify before answering):
 - [ ] Every behavior actionId has agent switch case string.
@@ -2780,6 +2806,7 @@ COHERENCE SELF-TEST (model should mentally verify before answering):
 - [ ] FLOW_ID identical in Flow, Page, Route.
 - [ ] Flow contract sets include all emitted expression types and listened event names used in onEvent.
 - [ ] No forbidden APIs (OmegaViewState, case Enum.name in switch, emit(enumWithoutDotName), etc.).
+- [ ] omega_setup imports every Flow/Agent/Page class used; flows/agents lists use `FooFlow(channel)` / `FooAgent(channel)` constructors, not bare type names.
 ''';
 
   /// Reduces mojibake in Spanish mock strings from model/JSON pipelines.
@@ -4554,7 +4581,7 @@ REFERENCE (official package patterns; mirror example/lib/omega/omega_setup.dart,
 - Agent + behavior ground truth (same repo): example/lib/auth/auth_behavior.dart + example/lib/auth/auth_agent.dart — match their structure before inventing patterns.
 - Flow id: ${moduleName}Flow must use super(id: '$moduleName', channel: channel) so flowManager.getFlow('$moduleName') in ${moduleName}Page resolves. If this module is the app entry flow, OmegaConfig.initialFlowId in omega_setup.dart must be that same string (example: AuthFlow uses id "authFlow" and OmegaConfig.initialFlowId: "authFlow").
 - Pages: scope.flowManager.getFlow('$moduleName'); StreamBuilder<OmegaFlowExpression>(stream: flow.expressions, ...).
-- omega_setup.dart (not in this JSON): add ${moduleName}Flow and agent to OmegaConfig. If ${moduleName}Page has `required ${moduleName}Agent agent`: declare `final $camelAgentVar = ${moduleName}Agent(channel);` (or `${moduleName}Agent(channel: channel);` when the agent ctor uses `{required OmegaEventBus channel}`), add `$camelAgentVar` to agents:[...], and `OmegaRoute(id: '$moduleName', builder: (context) => ${moduleName}Page(agent: $camelAgentVar))` (no const on the Page). If the page is flow-only (no agent parameter): `OmegaRoute(id: '$moduleName', builder: (context) => const ${moduleName}Page())`. Typed routes: OmegaRoute.typed<T>(...).
+- omega_setup.dart (not in this JSON): add imports `../$lower/${lower}_flow.dart`, `../$lower/${lower}_agent.dart`, `../$lower/ui/${lower}_page.dart` (from lib/omega/) or `package:<app>/...`. Register `${moduleName}Flow(channel)` in flows — must be a constructor call with `channel`, NOT bare `${moduleName}Flow`. Same for `${moduleName}Agent(channel)` in agents. If ${moduleName}Page has `required ${moduleName}Agent agent`: declare `final $camelAgentVar = ${moduleName}Agent(channel);` (or `${moduleName}Agent(channel: channel);` when the agent ctor uses `{required OmegaEventBus channel}`), add `$camelAgentVar` to agents:[...], and `OmegaRoute(id: '$moduleName', builder: (context) => ${moduleName}Page(agent: $camelAgentVar))` (no const on the Page). If the page is flow-only (no agent parameter): `OmegaRoute(id: '$moduleName', builder: (context) => const ${moduleName}Page())`. Typed routes: OmegaRoute.typed<T>(...).
 - Contracts (debug warnings): OmegaWorkflowFlow always emits workflow.step (and failStep emits workflow.error)—include those in emittedExpressionTypes. Flow listenedEventNames must include *.requested if that event is published on the same bus. On a shared global channel, agents should use OmegaAgentContract(listenedEventNames: {}) OR wire agents/flows with channel.namespace('$lower') for isolation.
 
 $_omegaAiOmegaScopeApi
