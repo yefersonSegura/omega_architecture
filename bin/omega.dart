@@ -381,7 +381,7 @@ void printHelp() {
     "  inspector            Open the local Omega Inspector HTML (desktop/mobile VM Service)",
   );
   stdout.writeln(
-    "  init [--force]       Create lib/omega/omega_setup.dart (use --force to overwrite)",
+    "  init [--force]       Create lib/omega/omega_setup.dart and lib/omega/app_semantics.dart (or add missing semantics if setup exists; --force overwrites setup only)",
   );
   stdout.writeln(
     "  g ecosystem <Name>    Generate agent, flow, behavior and page in the current directory",
@@ -930,6 +930,42 @@ void main() {
         );
       }
 
+      final pubAdded = await _omegaHealTryPubAddMissingPackages(
+        root,
+        currentErrors,
+      );
+      if (pubAdded) {
+        await runWithProgress<ProcessResult>(
+          _tr(
+            en: "Running pub get after heal pub add",
+            es: "Ejecutando pub get tras pub add en sanación",
+          ),
+          () => Process.run(
+            "dart",
+            ["pub", "get"],
+            workingDirectory: root,
+            runInShell: true,
+          ),
+        );
+        final afterPub = await _dartAnalyzeMachine(root);
+        if (afterPub.exitCode == 0) {
+          stdout.writeln(
+            "✅ ${_tr(en: "Project healed successfully (pub add cleared errors)!", es: "¡Proyecto sanado (pub add resolvió errores)!")}",
+          );
+          return;
+        }
+        currentErrors = _extractAnalyzerErrors(_analyzeMachineLines(afterPub));
+        if (currentErrors.isEmpty) {
+          stdout.writeln(
+            "✅ ${_tr(
+              en: "No analyzer errors after pub add (non-zero exit may be warnings only).",
+              es: "Sin errores del analizador tras pub add (código distinto de 0 puede ser advertencias).",
+            )}",
+          );
+          return;
+        }
+      }
+
       final fixedFiles = await runWithProgress<Map<String, String>?>(
         _tr(
           en: "Asking AI to fix compilation errors",
@@ -1001,6 +1037,106 @@ void main() {
     return p;
   }
 
+  /// Ensures `lib/<module>/<module>_events.dart` is sent to the heal model when any error
+  /// lives under `lib/<module>/` — fixes "isn't a type" for ViewState / typed events defined there.
+  static void _omegaHealIncludeModuleEventsFiles(
+    String root,
+    List<String> errors,
+    Set<String> filesToFix,
+  ) {
+    final seenFolders = <String>{};
+    for (final errLine in errors) {
+      final parts = errLine.split("|");
+      if (parts.length <= 4) continue;
+      final rel = _normalizeAnalyzerPathToProjectRelative(parts[3], root);
+      if (!rel.startsWith("lib/")) continue;
+      final segs = rel.split("/");
+      if (segs.length < 3) continue;
+      final folder = segs[1];
+      if (folder == "omega") continue;
+      if (!seenFolders.add(folder)) continue;
+      final eventsRel = "lib/$folder/${folder}_events.dart";
+      final fsPath =
+          "$root${Platform.pathSeparator}${eventsRel.replaceAll("/", Platform.pathSeparator)}";
+      if (File(fsPath).existsSync()) {
+        filesToFix.add(eventsRel);
+      }
+    }
+  }
+
+  /// Parses analyzer output for missing `package:...` URIs and runs `dart pub add` when enabled.
+  /// Returns true if any package was added (caller should run pub get + re-analyze).
+  static Future<bool> _omegaHealTryPubAddMissingPackages(
+    String root,
+    List<String> errors,
+  ) async {
+    final allowPubAdd = OmegaAiCommand._readBool(
+      Platform.environment["OMEGA_AI_HEAL_PUB_ADD"],
+      defaultValue: true,
+    );
+    if (!allowPubAdd) return false;
+
+    final pubFile = File(
+      "$root${Platform.pathSeparator}pubspec.yaml",
+    );
+    if (!pubFile.existsSync()) return false;
+
+    String pubText;
+    try {
+      pubText = pubFile.readAsStringSync();
+    } catch (_) {
+      return false;
+    }
+    final existing =
+        _parsePubspecDependencyNames(pubText).map((n) => n.toLowerCase()).toSet();
+
+    final toAdd = <String>{};
+    final uriRe = RegExp(r"package:([a-zA-Z0-9_]+)/");
+    for (final e in errors) {
+      final lower = e.toLowerCase();
+      if (!lower.contains("target of uri doesn't exist") &&
+          !lower.contains("couldn't find package") &&
+          !lower.contains("uri hasn't been generated") &&
+          !lower.contains("uri has not been generated")) {
+        continue;
+      }
+      for (final m in uriRe.allMatches(e)) {
+        final pkg = m.group(1)!;
+        if (pkg == "flutter" ||
+            pkg == "sky_engine" ||
+            pkg == "omega_architecture") {
+          continue;
+        }
+        if (existing.contains(pkg.toLowerCase())) continue;
+        toAdd.add(pkg);
+      }
+    }
+
+    if (toAdd.isEmpty) return false;
+
+    var any = false;
+    for (final pkg in toAdd) {
+      stdout.writeln(
+        "📦 ${_tr(en: "Heal: adding missing dependency: $pkg", es: "Sanación: agregando dependencia faltante: $pkg")}",
+      );
+      final res = await Process.run(
+        "dart",
+        ["pub", "add", pkg],
+        workingDirectory: root,
+        runInShell: true,
+      );
+      if (res.exitCode == 0) {
+        any = true;
+        existing.add(pkg.toLowerCase());
+      } else {
+        stdout.writeln(
+          "   ${_tr(en: "pub add failed for $pkg", es: "pub add falló para $pkg")}: ${res.stderr}",
+        );
+      }
+    }
+    return any;
+  }
+
   /// Dependency names under `dependencies:` for heal prompts (no version resolution).
   static List<String> _parsePubspecDependencyNames(String yamlText) {
     final lines = yamlText.split("\n");
@@ -1061,9 +1197,11 @@ void main() {
 
     if (filesToFix.isEmpty) return null;
 
+    _omegaHealIncludeModuleEventsFiles(root, errors, filesToFix);
+
     final sortedRel = filesToFix.toList()..sort();
     final filesContent = StringBuffer();
-    for (final relPosix in sortedRel.take(28)) {
+    for (final relPosix in sortedRel.take(40)) {
       if (filesContent.length > 120000) break;
       final localPath =
           "$root${Platform.pathSeparator}${relPosix.replaceAll("/", Platform.pathSeparator)}";
@@ -1221,6 +1359,41 @@ HEAL RECIPE — optional pub packages + invented Omega types (common AI mistakes
 """
             : "";
 
+    final missingModuleTypesHealError = errors.any((e) {
+      final viewOrEvent = e.contains("ViewState") ||
+          e.contains("ImageCaptured") ||
+          e.contains("ImageProcessed") ||
+          RegExp(r"The name '\w+Event'").hasMatch(e) ||
+          RegExp(r"'[^']+Event' isn't a type").hasMatch(e);
+      if (!viewOrEvent) return false;
+      return e.contains("isn't a type") ||
+          e.contains("Undefined name") ||
+          e.contains("isn't defined for the type");
+    });
+    final missingModuleTypesHealRecipe = missingModuleTypesHealError
+        ? """
+
+HEAL RECIPE — missing module ViewState / typed events (analyzer: name isn't a type / isn't a type argument):
+- The module’s `lib/<folder>/<folder>_events.dart` is the single place to define: (1) `enum …Intent` / `enum …Event` implementing OmegaIntentName / OmegaEventName, (2) **plain** `class …ViewState` with every field the Page and Agent reference (`isLoading`, `error`, `imagePath`, `recognitionResult`, …), `copyWith`, and `static const idle = …ViewState(…);` for `OmegaStatefulAgent` initialState — NEVER extend OmegaViewState (type does not exist).
+- For each missing `…ImageCapturedEvent` / `…ProcessedEvent` / similar: add `class … implements OmegaTypedEvent { const …({…}); @override String get name => …Event.<matchingEnum>.name; … }` and add the enum case to `…Event` if needed.
+- In *_agent.dart*: **never** write `this.SomeEvent(...)` or `agent.SomeEvent(...)` as if it were a method — the error "The method 'SomeEvent' isn't defined for the type '…Agent'" means that mistake. Use `channel.emitTyped(SomeEvent(...))` or `channel.emit(OmegaEvent.fromName(…Event.case, payload: …))`.
+- Wire imports: *_agent.dart*, *_behavior.dart*, *_flow.dart*, *_page.dart* must `import '…/<folder>_events.dart'` (correct relative path). Return the FULL updated *_events.dart* in JSON whenever you add types.
+"""
+        : "";
+
+    final nullableReceiverHealError = errors.any(
+      (e) =>
+          e.contains("can't be unconditionally accessed") ||
+          e.contains("unchecked_use_of_nullable_value"),
+    );
+    final nullableReceiverHealRecipe = nullableReceiverHealError
+        ? """
+
+HEAL RECIPE — nullable state in UI (`can't be unconditionally accessed` / unchecked_use_of_nullable_value):
+- In `OmegaAgentBuilder` / `StreamBuilder` callbacks, if `state` is `T?`, first guard: `if (state == null) return const SizedBox.shrink();` (or `CircularProgressIndicator`), then use `state!` or `final s = state!;` and only then read `s.isLoading`, `s.error`, etc.
+"""
+        : "";
+
     final prompt = """
 You fix a Flutter app that uses the published package omega_architecture (not local lib copies).
 
@@ -1236,7 +1409,10 @@ $omegaSetupFlowAgentImportRecipe
 $navigationEnumHealRecipe
 $undefinedEventEnumHealRecipe
 $optionalPackagesAndStateHealRecipe
+$missingModuleTypesHealRecipe
+$nullableReceiverHealRecipe
 $pubspecDepsHint
+HEAL — PUB: The CLI may run `dart pub add <pkg>` before this call when analyzer reports missing package: URIs (unless OMEGA_AI_HEAL_PUB_ADD=false). After that, PROJECT PUBSPEC lists those packages — you MAY import them. Prefer removing unused imports over leaving broken URIs.
 $healContextBlock
 CRITICAL — IMPORTS (this fixes Undefined class OmegaAgent, OmegaEventBus, OmegaFlow, OmegaIntentName, etc.):
 - LANGUAGE: output valid Dart (Flutter) only — never Kotlin, Swift, TypeScript, or pseudocode in file bodies.
@@ -1285,7 +1461,7 @@ Return only JSON. No markdown fences.
 """;
 
     const healSystem =
-        "You output only valid JSON objects mapping path strings to full file contents. You fix Dart analyzer errors for Flutter + omega_architecture package. Follow the MASTER CHECKLIST BY FILE in the user message: keep FLOW_ID aligned across flow/page/route; behavior OmegaAgentReaction ids must match agent onAction string cases; flow contracts must list intents/events/expression types actually used. In omega_setup.dart add imports for every Flow/Agent/Page; flows list must use constructor calls like MyFlow(channel), never bare MyFlow without parentheses (missing import or missing () causes undefined symbol). Add package:omega_architecture (and flutter/material where needed) when Omega types are missing. Do NOT add equatable, intl, or other third-party imports unless the user pubspec dependencies list already contains that package — otherwise remove those imports and rewrite with plain Dart. Never introduce OmegaViewState. In onAction, switch cases use string literals, never case Enum.value.name. Replace undefined viewStateStream with stateStream on OmegaStatefulAgent.";
+        "You output only valid JSON objects mapping path strings to full file contents. You fix Dart analyzer errors for Flutter + omega_architecture package. Follow the MASTER CHECKLIST BY FILE in the user message: keep FLOW_ID aligned across flow/page/route; behavior OmegaAgentReaction ids must match agent onAction string cases; flow contracts must list intents/events/expression types actually used. In omega_setup.dart add imports for every Flow/Agent/Page; flows list must use constructor calls like MyFlow(channel), never bare MyFlow without parentheses (missing import or missing () causes undefined symbol). Add package:omega_architecture (and flutter/material where needed) when Omega types are missing. If PROJECT PUBSPEC lists equatable, intl, camera, image_picker, etc. (including after CLI pub add), you may import them; otherwise remove broken third-party imports and rewrite with plain Dart. When *ViewState or *Event types are missing, define them in the module *_events.dart* and emit via channel.emitTyped, not as methods on the agent. Never introduce OmegaViewState. In onAction, switch cases use string literals, never case Enum.value.name. Replace undefined viewStateStream with stateStream on OmegaStatefulAgent.";
 
     final rawContent = await _OmegaAiRemote.completeChat(
       system: healSystem,
@@ -1342,6 +1518,29 @@ Return only JSON. No markdown fences.
   }
 }
 
+/// Default [AppEvent] / [AppIntent] for greenfield apps (`omega init`).
+String _defaultAppSemanticsDartSource() => '''
+import 'package:omega_architecture/omega_architecture.dart';
+
+/// App-wide event names for [OmegaEvent.fromName]. Add enum values as features grow.
+enum AppEvent implements OmegaEventName {
+  navigationIntent('navigation.intent');
+
+  const AppEvent(this.name);
+  @override
+  final String name;
+}
+
+/// App-wide intent names for [OmegaIntent.fromName]. Add enum values as features grow.
+enum AppIntent implements OmegaIntentName {
+  navigateHome('navigate.home');
+
+  const AppIntent(this.name);
+  @override
+  final String name;
+}
+''';
+
 class OmegaInitCommand {
   static void run(List<String> args) {
     final force = args.contains("--force");
@@ -1363,15 +1562,28 @@ class OmegaInitCommand {
       omegaDir.createSync(recursive: true);
     }
 
-    final file = File("$lib/omega/omega_setup.dart");
-    if (file.existsSync() && !force) {
+    final setupFile = File("$lib/omega/omega_setup.dart");
+    final semanticsFile = File("$lib/omega/app_semantics.dart");
+
+    if (setupFile.existsSync() && !force) {
+      if (!semanticsFile.existsSync()) {
+        semanticsFile.writeAsStringSync(_defaultAppSemanticsDartSource());
+        _formatFile(semanticsFile.path);
+        stdout.writeln("Created lib/omega/app_semantics.dart");
+        stdout.writeln("  Project root: ${_absPath(root)}");
+        stdout.writeln("  Path: ${_absPath(semanticsFile.path)}");
+        stdout.writeln(
+          "  omega_setup.dart was already present; import this file where you use AppEvent / AppIntent.",
+        );
+        return;
+      }
       _err("omega_setup.dart already exists.");
-      stdout.writeln("  Path: ${_absPath(file.path)}");
+      stdout.writeln("  Path: ${_absPath(setupFile.path)}");
       stdout.writeln("  Use --force to overwrite.");
       return;
     }
 
-    file.writeAsStringSync('''
+    setupFile.writeAsStringSync('''
 import 'package:omega_architecture/omega_architecture.dart';
 
 OmegaConfig createOmegaConfig(OmegaChannel channel) {
@@ -1383,11 +1595,25 @@ OmegaConfig createOmegaConfig(OmegaChannel channel) {
 }
 ''');
 
-    _formatFile(file.path);
+    _formatFile(setupFile.path);
+
+    var createdSemantics = false;
+    if (!semanticsFile.existsSync()) {
+      semanticsFile.writeAsStringSync(_defaultAppSemanticsDartSource());
+      _formatFile(semanticsFile.path);
+      createdSemantics = true;
+    }
 
     stdout.writeln("Omega setup created.");
     stdout.writeln("  Project root: ${_absPath(root)}");
-    stdout.writeln("  File: ${_absPath(file.path)}");
+    stdout.writeln("  File: ${_absPath(setupFile.path)}");
+    if (createdSemantics) {
+      stdout.writeln("  File: ${_absPath(semanticsFile.path)}");
+    } else {
+      stdout.writeln(
+        "  app_semantics.dart already present: ${_absPath(semanticsFile.path)}",
+      );
+    }
   }
 }
 
@@ -1728,7 +1954,42 @@ String _omegaAgentInstanceVarName(String pascal) {
 
 bool _omegaPageDartRequiresAgentField(String pageSource) {
   if (pageSource.isEmpty) return false;
-  return RegExp(r"required\s+\w*Agent\s+agent\b").hasMatch(pageSource);
+  if (RegExp(r"required\s+\w*Agent\s+agent\b").hasMatch(pageSource)) {
+    return true;
+  }
+  // Typical AI/template pattern: `required this.agent` with `final FooAgent agent;`
+  if (RegExp(r"required\s+this\.agent\b").hasMatch(pageSource)) return true;
+  if (RegExp(r"\bfinal\s+\w+Agent\s+agent\s*;").hasMatch(pageSource)) {
+    return true;
+  }
+  return false;
+}
+
+/// When [Page] gained `required agent` after the first [registerInOmegaSetup] pass
+/// (e.g. AI overwrote the scaffold), rewrite `const FooPage()` / `FooPage()` routes.
+String _omegaUpgradeOmegaRouteForAgent(
+  String content,
+  String pascal,
+  String agentVar,
+) {
+  final id = RegExp.escape(pascal);
+  final page = RegExp.escape("${pascal}Page");
+  final re = RegExp(
+    r"OmegaRoute\s*\(\s*id:\s*'" +
+        id +
+        r"'\s*,\s*builder\s*:\s*\(([^)]*)\)\s*=>\s*(?:const\s+)?\s*" +
+        page +
+        r"\s*\(\s*([^)]*)\)\s*\)",
+    multiLine: true,
+  );
+  return content.replaceAllMapped(re, (m) {
+    final builderParam = m[1]!;
+    final insidePage = m[2]!.trim();
+    if (insidePage.contains('agent:')) return m[0]!;
+    if (insidePage.isNotEmpty) return m[0]!;
+    return "OmegaRoute(id: '$pascal', builder: ($builderParam) => "
+        "${pascal}Page(agent: $agentVar))";
+  });
 }
 
 /// First constructor `ClassName(` after `class ClassName`: if the parameter list
@@ -1889,6 +2150,19 @@ void registerInOmegaSetup(
     }
   }
 
+  // First pass may have added `PascalAgent(channel),` before the page required agent.
+  if (registerAgent && pageNeedsAgent) {
+    final inlineRe = RegExp(
+      r"\n(\s*)" + RegExp.escape(pascal) + r"Agent\s*\([^)]*\)\s*,",
+    );
+    if (inlineRe.hasMatch(content)) {
+      content = content.replaceFirstMapped(
+        inlineRe,
+        (m) => "\n${m[1]}$agentVar,",
+      );
+    }
+  }
+
   if (pageNeedsAgent && registerFlow && !registerAgent) {
     stdout.writeln(
       "⚠️ ${_tr(
@@ -1978,6 +2252,10 @@ void registerInOmegaSetup(
         );
       }
     }
+  }
+
+  if (registerAgent && pageNeedsAgent) {
+    content = _omegaUpgradeOmegaRouteForAgent(content, pascal, agentVar);
   }
 
   setupFile.writeAsStringSync(content);
@@ -2799,6 +3077,7 @@ Forbidden: scope.agentManager; flow.onIntent from widget; OmegaFlowContext in UI
 - `agents: <OmegaAgent>[ ..., MyAgent(channel), ]` same rule; read ctor in *_agent.dart* (positional vs `{required OmegaEventBus channel}`).
 - Routes: `OmegaRoute(id: '...', builder: ...)`; Page with `required agent` needs `final x = MyAgent(...);` once and `MyPage(agent: x)`.
 - initialFlowId must match the entry flow’s `super(id: ...)` string when this module is first screen.
+- `lib/omega/app_semantics.dart`: shared `AppEvent` / `AppIntent` implementing `OmegaEventName` / `OmegaIntentName`. `omega init` creates it next to `omega_setup.dart` (minimal `navigationIntent` + `navigate.home`); extend enums there for cross-module names — do not duplicate app-wide enums inside feature `*_events.dart`; import `../omega/app_semantics.dart` or `package:<app>/omega/app_semantics.dart` where needed.
 
 COHERENCE SELF-TEST (model should mentally verify before answering):
 - [ ] Every behavior actionId has agent switch case string.
@@ -5164,6 +5443,18 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
           modulePath: modulePath,
           moduleName: moduleName,
           customCode: aiGeneratedCode,
+        );
+      }
+
+      // Re-read *_page.dart after AI/advanced template: first register pass used the
+      // Stateless scaffold and may have wired `const FooPage()`; sync agent + route.
+      if (hasSetup && (template == "advanced" || uiOnly)) {
+        registerInOmegaSetup(
+          moduleName,
+          modulePath,
+          appRoot,
+          registerAgent: true,
+          registerFlow: true,
         );
       }
 
