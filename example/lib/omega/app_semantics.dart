@@ -1,29 +1,24 @@
 import 'package:omega_architecture/omega_architecture.dart';
 
-/// Eventos conocidos del example. Usar con [OmegaEvent.fromName] para evitar strings mágicos.
-enum AppEvent implements OmegaEventName {
-  navigationIntent('navigation.intent'),
-  authLoginRequest('auth.login.request'),
-  authLogoutRequest('auth.logout.request'),
-  authLoginStarted('auth.login.started'),
-  authLoginSuccess('auth.login.success'),
-  authLoginError('auth.login.error'),
-  authLogoutSuccess('auth.logout.success');
-
-  const AppEvent(this.name);
-  @override
-  final String name;
+/// Eventos globales del example. Cada miembro es **camelCase**; el nombre en alambre
+/// lleva puntos automáticamente ([OmegaEventNameDottedCamel]), p. ej.
+/// `authLoginSuccess` → `auth.login.success`.
+enum AppEvent with OmegaEventNameDottedCamel implements OmegaEventName {
+  navigationIntent,
+  authLoginRequest,
+  authLogoutRequest,
+  authLoginStarted,
+  authLoginSuccess,
+  authLoginError,
+  authLogoutSuccess,
 }
 
-/// Intents conocidos del example. Usar con [OmegaIntent.fromName] para evitar strings mágicos.
-enum AppIntent implements OmegaIntentName {
-  navigateLogin('navigate.login'),
-  navigateHome('navigate.home'),
-  authLogin('auth.login'),
-  authLogout('auth.logout'),
-  createOrder('orders.create');
-
-  const AppIntent(this.name);
-  @override
-  final String name;
+/// Intents globales del example. Misma convención ([OmegaIntentNameDottedCamel]):
+/// `navigateLogin` → `navigate.login`, `ordersCreate` → `orders.create`.
+enum AppIntent with OmegaIntentNameDottedCamel implements OmegaIntentName {
+  navigateLogin,
+  navigateHome,
+  authLogin,
+  authLogout,
+  ordersCreate,
 }

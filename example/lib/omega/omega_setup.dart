@@ -9,6 +9,8 @@ import '../home/home.dart';
 import '../orders/orders_flow.dart';
 import '../provider/provider_agent.dart';
 import '../provider/provider_flow.dart';
+import '../demo/example_intent_handlers.dart';
+import 'app_runtime_ids.dart';
 
 OmegaConfig createOmegaConfig(OmegaChannel channel) {
   final offlineQueue = OmegaMemoryOfflineQueue();
@@ -35,6 +37,7 @@ OmegaConfig createOmegaConfig(OmegaChannel channel) {
         builder: (context, userData) => HomePage(userData: userData),
       ),
     ],
-    initialFlowId: "authFlow",
+    initialFlowId: AppFlowId.authFlow.id,
+    intentHandlerRegistrars: [ExampleIntentHandlerDemo.attach],
   );
 }

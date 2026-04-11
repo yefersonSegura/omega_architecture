@@ -1,6 +1,7 @@
 // lib/omega/flows/omega_flow_manager.dart
 
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'package:omega_architecture/omega/core/semantics/omega_intent.dart';
 import 'package:omega_architecture/omega/ui/navigation/omega_navigator.dart';
 
@@ -8,6 +9,7 @@ import '../core/channel/omega_channel.dart';
 import 'omega_flow.dart';
 import 'omega_flow_snapshot.dart';
 import 'omega_flow_state.dart';
+import 'omega_intent_handler_context.dart';
 
 /// Manages all flows: registers them, activates/pauses, and routes intents to those in running state.
 ///
@@ -15,10 +17,23 @@ import 'omega_flow_state.dart';
 /// sends it only to flows in [OmegaFlowState.running]. With [wireNavigator] you connect the channel to the navigator.
 ///
 /// **Example:** `manager.registerFlow(AuthFlow(channel)); manager.switchTo("authFlow"); manager.handleIntent(intent);`
+class _RegisteredIntentHandler {
+  const _RegisteredIntentHandler({
+    required this.intentName,
+    required this.handler,
+    required this.consumeIntent,
+  });
+
+  final String intentName;
+  final OmegaIntentHandler handler;
+  final bool consumeIntent;
+}
+
 class OmegaFlowManager {
   final OmegaChannel channel;
 
   final Map<String, OmegaFlow> _flows = {};
+  final List<_RegisteredIntentHandler> _intentHandlers = [];
   StreamSubscription? _navSubscription;
 
   /// Id of the main flow (the one last activated with [switchTo]). Useful for snapshot and restore.
@@ -83,11 +98,58 @@ class OmegaFlowManager {
   // Handle Intent
   // -----------------------------------------------------------
 
-  /// Sends the [intent] to all flows that are running. The UI calls this when emitting an action.
+  /// Registers a lightweight [handler] invoked when [handleIntent] receives an intent
+  /// whose [OmegaIntent.name] equals [intentName].
+  ///
+  /// Handlers run **before** running flows. If any matching handler was registered with
+  /// [consumeIntent] `true`, intents are **not** forwarded to flows (use for trivial cases
+  /// that replace a whole [OmegaFlow] for one intent, or for side-effects only).
+  ///
+  /// For domain orchestration and UI expressions, prefer a real [OmegaFlow]; handlers are
+  /// optional sugar to reduce boilerplate.
+  void registerIntentHandler({
+    required String intentName,
+    required OmegaIntentHandler handler,
+    bool consumeIntent = false,
+  }) {
+    _intentHandlers.add(
+      _RegisteredIntentHandler(
+        intentName: intentName,
+        handler: handler,
+        consumeIntent: consumeIntent,
+      ),
+    );
+  }
+
+  /// Removes all intent handlers (e.g. in tests or hot-restart scenarios).
+  void clearIntentHandlers() {
+    _intentHandlers.clear();
+  }
+
+  /// Sends the [intent] to registered handlers (if any), then to all flows that are running.
   ///
   /// **Why use it:** The screen doesn't know the flow; it just calls handleIntent(OmegaIntent.fromName(AppIntent.authLogin, payload: creds)).
   /// **Example:** `flowManager.handleIntent(OmegaIntent.fromName(AppIntent.authLogin, payload: creds));`
   void handleIntent(OmegaIntent intent) {
+    var consume = false;
+    final ctx = OmegaIntentHandlerContext(channel: channel, intent: intent);
+    for (final h in _intentHandlers) {
+      if (h.intentName != intent.name) continue;
+      try {
+        h.handler(intent, ctx);
+      } catch (e, st) {
+        developer.log(
+          'Intent handler failed; other handlers and flows still run.',
+          name: 'omega_flow_manager',
+          error: e,
+          stackTrace: st,
+        );
+        continue;
+      }
+      if (h.consumeIntent) consume = true;
+    }
+    if (consume) return;
+
     for (final flow in _flows.values) {
       if (flow.state == OmegaFlowState.running) {
         flow.receiveIntent(intent);
@@ -209,13 +271,22 @@ class OmegaFlowManager {
   void wireNavigator(OmegaNavigator nav) {
     _navSubscription?.cancel();
     _navSubscription = channel.events.listen((event) {
-      if (event.name == navigationIntentEvent) {
-        if (event.payload is OmegaIntent) {
-          nav.handleIntent(event.payload as OmegaIntent);
+      try {
+        if (event.name == navigationIntentEvent) {
+          if (event.payload is OmegaIntent) {
+            nav.handleIntent(event.payload as OmegaIntent);
+          }
+        } else if (event.name.startsWith("navigate.")) {
+          nav.handleIntent(
+            OmegaIntent(id: event.id, name: event.name, payload: event.payload),
+          );
         }
-      } else if (event.name.startsWith("navigate.")) {
-        nav.handleIntent(
-          OmegaIntent(id: event.id, name: event.name, payload: event.payload),
+      } catch (e, st) {
+        developer.log(
+          'Navigator handling failed for event "${event.name}".',
+          name: 'omega_flow_manager',
+          error: e,
+          stackTrace: st,
         );
       }
     });
@@ -225,5 +296,6 @@ class OmegaFlowManager {
   void dispose() {
     _navSubscription?.cancel();
     _navSubscription = null;
+    _intentHandlers.clear();
   }
 }

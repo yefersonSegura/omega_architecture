@@ -131,6 +131,8 @@
             <a href="#api-intent"><i class="fa fa-bullseye"></i> OmegaIntent</a>
             <a href="#api-event-name"><i class="fa fa-tag"></i> OmegaEventName</a>
             <a href="#api-intent-name"><i class="fa fa-tag"></i> OmegaIntentName</a>
+            <a href="#api-dotted-wire"><i class="fa fa-link"></i> Wire dotted (camelCase)</a>
+            <a href="#api-intent-handlers"><i class="fa fa-magic"></i> Intent handlers</a>
             <a href="#api-object"><i class="fa fa-cube"></i> OmegaObject</a>
             <a href="#api-failure"><i class="fa fa-exclamation-triangle"></i> OmegaFailure</a>
             <h3>4. Referencia API — Agentes</h3>
@@ -144,7 +146,9 @@
             <a href="#api-message"><i class="fa fa-envelope-o"></i> OmegaAgentMessage</a>
             <h3>5. Referencia API — Flujos</h3>
             <a href="#api-flow"><i class="fa fa-random"></i> OmegaFlow</a>
+            <a href="#api-flow-activator"><i class="fa fa-toggle-on"></i> OmegaFlowActivator</a>
             <a href="#api-flow-manager"><i class="fa fa-sitemap"></i> OmegaFlowManager</a>
+            <a href="#api-flow-agent-id"><i class="fa fa-id-card-o"></i> OmegaFlowId / OmegaAgentId</a>
             <a href="#api-flow-state"><i class="fa fa-circle-o"></i> OmegaFlowState</a>
             <a href="#api-flow-expression"><i class="fa fa-comment"></i> OmegaFlowExpression</a>
             <a href="#api-flow-context"><i class="fa fa-hand-o-right"></i> OmegaFlowContext</a>
@@ -434,8 +438,9 @@ if (ev != null) {
                             El intent lleva el nombre semántico ("auth.login") y los datos (credenciales).</p>
                     </div>
                     <div class="card glass animate" style="margin-bottom: 20px;">
-                        <h3 style="margin-bottom: 12px;">Paso 2 — El flow (en running) recibe el intent</h3>
-                        <p>El <code>OmegaFlowManager</code> envía el intent solo a los flows que están en estado
+                        <h3 style="margin-bottom: 12px;">Paso 2 — Handlers (opcional) y el flow (en running)</h3>
+                        <p>El <code>OmegaFlowManager</code> ejecuta primero los <strong>intent handlers</strong>
+                            registrados para ese nombre; si ninguno consume el intent, lo envía a los flows en estado
                             <code>running</code>. El AuthFlow recibe en <code>onIntent(ctx)</code>. Ahí puede: emitir
                             una expresión "loading" para la UI, y emitir un evento al canal para pedir trabajo al
                             agente:
@@ -494,8 +499,9 @@ if (ev != null) {
                             <tr>
                                 <td><strong>Intent (OmegaIntent)</strong></td>
                                 <td>Petición de acción con significado de negocio: "quiero hacer login", "quiero ir a
-                                    home". La UI emite intents; no llama métodos. El FlowManager los reparte a los flows
-                                    en <code>running</code>. También se usan para navegación; el payload llega a la
+                                    home". La UI emite intents; no llama métodos. El FlowManager ejecuta handlers
+                                    coincidentes y, si el intent no se consume, lo reparte a los flows en
+                                    <code>running</code>. También se usan para navegación; el payload llega a la
                                     pantalla como argumentos.</td>
                             </tr>
                             <tr>
@@ -507,7 +513,8 @@ if (ev != null) {
                             <tr>
                                 <td><strong>Canal (OmegaChannel)</strong></td>
                                 <td>Bus de eventos global. Punto único de comunicación: cualquiera puede
-                                    <code>emit(OmegaEvent)</code> y cualquiera puede suscribirse a <code>events</code>.
+                                    <code>emit(OmegaEvent)</code> o <code>emitTyped(OmegaTypedEvent)</code> y cualquiera
+                                    puede suscribirse a <code>events</code>.
                                     Desacopla quién emite de quién escucha.</td>
                             </tr>
                             <tr>
@@ -526,8 +533,9 @@ if (ev != null) {
                             </tr>
                             <tr>
                                 <td><strong>FlowManager (OmegaFlowManager)</strong></td>
-                                <td>Registra flows, los activa/pausa (<code>activate</code>, <code>switchTo</code>) y
-                                    reparte los intents solo a los que están en <code>running</code>. Conecta el canal
+                                <td>Registra flows, los activa/pausa (<code>activate</code>, <code>switchTo</code>),
+                                    ejecuta <strong>intent handlers</strong> registrados y luego reparte el intent a los
+                                    flows en <code>running</code> (salvo <code>consumeIntent</code>). Conecta el canal
                                     al navegador (<code>wireNavigator</code>) para que "navigate.*" y
                                     "navigation.intent" cambien de pantalla.</td>
                             </tr>
@@ -566,11 +574,16 @@ if (ev != null) {
                         <div class="card glass">
                             <h3>Comunicación y semántica</h3>
                             <ul style="margin-left: 20px; margin-top: 8px;">
-                                <li>Bus de eventos global (<code>OmegaChannel</code>): emit y listen desacoplados.</li>
+                                <li>Bus de eventos global (<code>OmegaChannel</code>): <code>emit</code>,
+                                    <code>emitTyped</code> y listen desacoplados.</li>
                                 <li>Eventos con nombre y payload; nombres tipados con <code>OmegaEventName</code> y
                                     <code>OmegaEvent.fromName</code>.</li>
                                 <li>Intents con nombre y payload; nombres tipados con <code>OmegaIntentName</code> y
-                                    <code>OmegaIntent.fromName</code>.</li>
+                                    <code>OmegaIntent.fromName</code>; wire dotted opcional
+                                    (<code>OmegaIntentNameDottedCamel</code>).</li>
+                                <li>Handlers de intent (<code>registerIntentHandler</code>, <code>Omega.handle</code>,
+                                    <code>OmegaIntentHandlerPipeline</code>, <code>OmegaIntentReducer</code>) y
+                                    registro en arranque con <code>OmegaConfig.intentHandlerRegistrars</code>.</li>
                                 <li>Lectura de payload con tipo: <code>payloadAs&lt;T&gt;()</code> en eventos, intents y
                                     expresiones.</li>
                             </ul>
@@ -596,8 +609,10 @@ if (ev != null) {
                             <ul style="margin-left: 20px; margin-top: 8px;">
                                 <li>Flows de negocio (<code>OmegaFlow</code>) con estados: idle, running, sleeping,
                                     paused, ended.</li>
-                                <li><code>OmegaFlowManager</code>: registerFlow, activate, switchTo, handleIntent,
-                                    wireNavigator.</li>
+                                <li><code>OmegaFlowManager</code>: registerFlow, activate, switchTo,
+                                    registerIntentHandler, handleIntent, wireNavigator.</li>
+                                <li><code>OmegaFlowActivator</code>: activa o hace <code>switchTo</code> del flow al
+                                    entrar en la ruta (sin repetir lógica en cada pantalla).</li>
                                 <li>Expresiones hacia la UI: <code>emitExpression(type, payload)</code>; la UI escucha
                                     <code>expressions</code>.</li>
                                 <li>Memoria por flow (<code>memory</code>) que persiste y se incluye en el snapshot.
@@ -609,7 +624,7 @@ if (ev != null) {
                             <h3>UI, navegación y bootstrap</h3>
                             <ul style="margin-left: 20px; margin-top: 8px;">
                                 <li><code>OmegaScope</code>: inyección de channel y flowManager;
-                                    <code>OmegaScope.of(context)</code>.</li>
+                                    <code>OmegaScope.of(context)</code>; <code>initialFlowId</code> opcional.</li>
                                 <li><code>OmegaBuilder</code>: widget que reacciona a un evento del canal (opcionalmente
                                     por eventName).</li>
                                 <li>Navegación desacoplada: "navigate.id" (pushReplacement), "navigate.push.id" (push);
@@ -617,7 +632,8 @@ if (ev != null) {
                                 <li>Rutas tipadas: <code>OmegaRoute.typed&lt;T&gt;</code> y
                                     <code>routeArguments&lt;T&gt;(context)</code>.</li>
                                 <li><code>OmegaConfig</code> y <code>OmegaRuntime.bootstrap</code>: un solo punto de
-                                    arranque; initialFlowId opcional.</li>
+                                    arranque; <code>initialFlowId</code> e <code>intentHandlerRegistrars</code>
+                                    opcionales.</li>
                             </ul>
                         </div>
                     </div>
@@ -917,8 +933,8 @@ class AuthFlow extends OmegaFlow {
                         intenciones y reacciona a eventos y expresiones.</p>
                     <div class="highlight-box animate" style="margin-bottom: 24px;">
                         <p><strong>Definición breve:</strong> En Omega, <em>evento</em> = "algo que pasó" (se emite al
-                            canal). <em>Intent</em> = "quiero que pase esto" (la UI lo emite; el FlowManager lo reparte
-                            a los flows en running). <em>Expresión</em> = mensaje del flow a la UI ("loading",
+                            canal). <em>Intent</em> = "quiero que pase esto" (la UI lo emite; el FlowManager ejecuta
+                            handlers opcionales y luego lo reparte a los flows en running). <em>Expresión</em> = mensaje del flow a la UI ("loading",
                             "success", "error"). Agentes y flows escuchan eventos; los flows además reciben intents y
                             emiten expresiones e intents de navegación.</p>
                     </div>
@@ -940,7 +956,8 @@ class AuthFlow extends OmegaFlow {
                         <div class="pillar card glass">
                             <div class="icon">📡</div>
                             <h3>Event-driven</h3>
-                            <p>Todo pasa por <code>OmegaChannel</code>: <code>emit(OmegaEvent)</code> y suscripción a
+                            <p>Todo pasa por <code>OmegaChannel</code>: <code>emit(OmegaEvent)</code>,
+                                <code>emitTyped(OmegaTypedEvent)</code> y suscripción a
                                 <code>events</code>. Agentes y flows se suscriben; la UI puede usar
                                 <code>OmegaBuilder</code> para reaccionar a un evento concreto.</p>
                         </div>
@@ -950,7 +967,8 @@ class AuthFlow extends OmegaFlow {
                             <h3>Gestión de flujos</h3>
                             <p><code>OmegaFlow</code> orquesta un caso de uso (login, checkout). Tiene estados (idle,
                                 running, paused, sleeping, ended); solo en <code>running</code> procesa eventos e
-                                intents. <code>OmegaFlowManager</code> registra flows, activa/pausa y reparte intents.
+                                intents. <code>OmegaFlowManager</code> registra flows, activa/pausa, ejecuta intent
+                                handlers y reparte intents a los flows en running.
                                 Varios flows pueden estar activos a la vez con <code>activate(id)</code>;
                                 <code>switchTo(id)</code> deja solo uno activo.</p>
                         </div>
@@ -1228,7 +1246,8 @@ if (loaded != null) {
                         <tbody>
                             <tr>
                                 <td><strong>OmegaChannel</strong></td>
-                                <td>Bus de eventos central. <code>emit(OmegaEvent)</code> para publicar;
+                                <td>Bus de eventos central. <code>emit(OmegaEvent)</code> y
+                                    <code>emitTyped(OmegaTypedEvent)</code> para publicar;
                                     <code>events</code> (Stream) para suscribirse. Todos los agentes y flows usan el
                                     mismo canal. Quien lo crea debe llamar <code>dispose()</code> al cerrar.</td>
                             </tr>
@@ -1242,8 +1261,8 @@ if (loaded != null) {
                             <tr>
                                 <td><strong>OmegaIntent</strong></td>
                                 <td>Petición de acción con <code>name</code> y <code>payload</code>. La UI emite intents
-                                    vía <code>flowManager.handleIntent(intent)</code>. Para navegación el payload se
-                                    pasa como argumentos de ruta. Nombres tipados:
+                                    vía <code>flowManager.handleIntent(intent)</code> (handlers primero, luego flows).
+                                    Para navegación el payload se pasa como argumentos de ruta. Nombres tipados:
                                     <code>OmegaIntent.fromName(OmegaIntentName, payload)</code>.</td>
                             </tr>
                             <tr>
@@ -1272,7 +1291,8 @@ if (loaded != null) {
                                 <td><strong>OmegaFlowManager</strong></td>
                                 <td>Registra flows con <code>registerFlow(flow)</code>. <code>activate(id)</code> activa
                                     sin pausar otros; <code>switchTo(id)</code> activa uno y pausa el resto.
-                                    <code>handleIntent(intent)</code> envía el intent a todos los flows en running.
+                                    <code>registerIntentHandler</code> y <code>handleIntent(intent)</code>: handlers
+                                    primero, luego todos los flows en running (salvo consumo).
                                     <code>wireNavigator(navigator)</code> conecta el canal al navegador.
                                     <code>getAppSnapshot()</code> y <code>restoreFromSnapshot(snapshot)</code> para
                                     persistencia.</td>
@@ -1285,9 +1305,10 @@ if (loaded != null) {
                             </tr>
                             <tr>
                                 <td><strong>OmegaScope / OmegaBuilder</strong></td>
-                                <td>OmegaScope inyecta <code>channel</code> y <code>flowManager</code>; cualquier hijo
-                                    usa <code>OmegaScope.of(context)</code>. OmegaBuilder es un widget que se
-                                    reconstruye cuando llega un evento (opcionalmente filtrando por
+                                <td>OmegaScope inyecta <code>channel</code> y <code>flowManager</code> (y opcionalmente
+                                    <code>initialFlowId</code>); cualquier hijo usa <code>OmegaScope.of(context)</code>.
+                                    <code>OmegaFlowActivator</code> activa el flow al construir la ruta. OmegaBuilder es
+                                    un widget que se reconstruye cuando llega un evento (opcionalmente filtrando por
                                     <code>eventName</code>).</td>
                             </tr>
                             <tr>
@@ -2054,6 +2075,11 @@ recorder.replay(session, channel, flowManager, upToIndex: 5);</code></pre>
                                 <td>Publica un evento. Todos los suscriptores de <code>events</code> lo reciben.</td>
                             </tr>
                             <tr>
+                                <td><code>emitTyped(OmegaTypedEvent event)</code></td>
+                                <td>Publica un evento cuyo nombre y tipo de payload vienen del propio tipo (menos
+                                    repetición de <code>fromName</code> en emisores).</td>
+                            </tr>
+                            <tr>
                                 <td><code>dispose()</code></td>
                                 <td>Cierra el canal. Llamar al cerrar la app para evitar fugas.</td>
                             </tr>
@@ -2109,7 +2135,9 @@ final data = event.payloadAs&lt;LoginSuccessPayload&gt;();</code></pre>
                         "quiero hacer login", "quiero ir a home". La UI no llama métodos del flow ni del agente; emite
                         un intent con
                         <code>flowManager.handleIntent(OmegaIntent.fromName(AppIntent.authLogin, payload: creds))</code>.
-                        El FlowManager solo lo envía a los flows que están en estado <code>running</code>. También se
+                        El FlowManager ejecuta primero los <strong>intent handlers</strong> registrados (mismo
+                        <code>name</code>); si ninguno consume el intent (<code>consumeIntent: true</code>), lo reenvía
+                        a los flows en estado <code>running</code>. También se
                         usan para navegación: cuando el canal emite un evento con nombre "navigation.intent" y payload =
                         OmegaIntent, el navegador ejecuta push/pushReplacement y pasa el <code>payload</code> del intent
                         como <code>RouteSettings.arguments</code>. Nombres tipados:
@@ -2142,12 +2170,41 @@ final data = event.payloadAs&lt;LoginSuccessPayload&gt;();</code></pre>
                     <h2>OmegaEventName</h2>
                     <p>Contrato para nombres de evento tipados. Implementar con un enum (ej.
                         <code>enum AppEvent implements OmegaEventName { authLoginSuccess('auth.login.success'); @override final String name; }</code>)
-                        y usar <code>OmegaEvent.fromName(AppEvent.authLoginSuccess, payload: x)</code>.</p>
+                        y usar <code>OmegaEvent.fromName(AppEvent.authLoginSuccess, payload: x)</code>. En apps nuevas
+                        puedes usar el mixin <code>OmegaEventNameDottedCamel</code> para derivar el wire desde
+                        <code>Enum.name</code> (notación dotted). Eventos tipados en el canal:
+                        <code>OmegaTypedEvent</code> + <code>channel.emitTyped(...)</code>.</p>
                 </section>
                 <section id="api-intent-name" class="slide doc-section">
                     <h2>OmegaIntentName</h2>
-                    <p>Contrato para nombres de intent tipados. Implementar con un enum y usar
-                        <code>OmegaIntent.fromName(AppIntent.authLogin, payload: creds)</code>.</p>
+                    <p>Contrato para nombres de intent tipados. Lo habitual es un <code>enum</code> con
+                        <code>implements OmegaIntentName</code> y un <code>final String name</code> con el wire literal.
+                        Alternativa: mixin <code>OmegaIntentNameDottedCamel</code> para derivar el wire desde
+                        <code>Enum.name</code> (ver <code>doc/GUIA.md</code> y <code>example/lib/omega/app_semantics.dart</code>).</p>
+                    <p>Uso: <code>OmegaIntent.fromName(AppIntent.authLogin, payload: creds)</code>.</p>
+                </section>
+                <section id="api-dotted-wire" class="slide doc-section">
+                    <h2>Wire dotted desde camelCase</h2>
+                    <p><code>omegaWireNameFromCamelCaseEnumMember(String enumMemberName)</code> y los mixins
+                        <code>OmegaIntentNameDottedCamel</code> / <code>OmegaEventNameDottedCamel</code> alinean wire
+                        del canal con los miembros del enum sin duplicar strings. Encaja con handlers, flows y IDs
+                        tipados.</p>
+                </section>
+                <section id="api-intent-handlers" class="slide doc-section">
+                    <h2>Intent handlers: Omega.handle, pipeline y reducer</h2>
+                    <p><strong>Registro:</strong>
+                        <code>flowManager.registerIntentHandler(intentName: ..., handler: ..., consumeIntent: ...)</code>.
+                        Corren antes que los flows en <code>running</code>; con <code>consumeIntent: true</code> el
+                        intent no llega a los flows.</p>
+                    <p><strong>Omega.handle:</strong> fachada estática con el mismo contrato.</p>
+                    <p><strong>OmegaIntentHandlerPipeline:</strong> validar → ejecutar →
+                        <code>onSuccess</code> / <code>onError</code> / <code>onPayloadMissing</code> para pasos async
+                        sobre un intent.</p>
+                    <p><strong>OmegaIntentReducer:</strong> estado escalar derivado del intent (o un
+                        <code>ValueNotifier</code> propio).</p>
+                    <p><strong>Bootstrap:</strong> <code>OmegaConfig.intentHandlerRegistrars</code> — callbacks
+                        <code>(OmegaFlowManager, OmegaChannel)</code> que <code>OmegaRuntime.bootstrap</code> ejecuta
+                        tras <code>wireNavigator</code>.</p>
                 </section>
                 <section id="api-object" class="slide doc-section">
                     <h2>OmegaObject</h2>
@@ -2274,9 +2331,19 @@ final data = event.payloadAs&lt;LoginSuccessPayload&gt;();</code></pre>
                         </tbody>
                     </table>
                 </section>
+                <section id="api-flow-activator" class="slide doc-section">
+                    <h2>OmegaFlowActivator</h2>
+                    <p>Widget que, la primera vez en <code>didChangeDependencies</code>, llama a
+                        <code>OmegaFlowManager.activate</code> o <code>switchTo</code> cuando
+                        <code>useSwitchTo: true</code>. Así cada pantalla dueña de un flow no repite la activación a
+                        mano. <code>flowId</code> puede ser <code>String</code> o <code>OmegaFlowId</code> (p. ej. enum
+                        con <code>OmegaFlowIdEnumWire</code>). Requiere <code>OmegaScope</code> arriba en el árbol.</p>
+                </section>
                 <section id="api-flow-manager" class="slide doc-section">
                     <h2>OmegaFlowManager</h2>
-                    <p>Gestiona todos los flows: registra, activa/pausa, reparte intents a los que están en running.
+                    <p>Gestiona flows: registra, activa/pausa y despacha intents. Primero ejecuta los handlers
+                        registrados con <code>registerIntentHandler</code>; después envía el intent a cada flow en
+                        <code>running</code>, salvo que un handler coincidente haya usado <code>consumeIntent: true</code>.
                         <code>wireNavigator(nav)</code> conecta el canal al navegador.</p>
                     <table class="doc-api-table">
                         <thead>
@@ -2299,8 +2366,17 @@ final data = event.payloadAs&lt;LoginSuccessPayload&gt;();</code></pre>
                                 <td>Activa uno y pausa el resto. Un solo "principal".</td>
                             </tr>
                             <tr>
+                                <td><code>registerIntentHandler({intentName, handler, consumeIntent})</code></td>
+                                <td>Registra un callback por nombre de intent; corre antes que los flows.</td>
+                            </tr>
+                            <tr>
+                                <td><code>clearIntentHandlers()</code></td>
+                                <td>Elimina todos los handlers (p. ej. tests).</td>
+                            </tr>
+                            <tr>
                                 <td><code>handleIntent(OmegaIntent)</code></td>
-                                <td>Envía el intent a todos los flows en running.</td>
+                                <td>Ejecuta handlers coincidentes; luego envía el intent a los flows en running si no
+                                    se consumió.</td>
                             </tr>
                             <tr>
                                 <td><code>getFlow(id)</code></td>
@@ -2316,6 +2392,13 @@ final data = event.payloadAs&lt;LoginSuccessPayload&gt;();</code></pre>
                             </tr>
                         </tbody>
                     </table>
+                </section>
+                <section id="api-flow-agent-id" class="slide doc-section">
+                    <h2>OmegaFlowId y OmegaAgentId</h2>
+                    <p>Contratos para tipar ids de flows y agentes (análogo a nombres de intent/evento). Un enum puede
+                        implementar <code>OmegaFlowId</code> / <code>OmegaAgentId</code> y, cuando aplica,
+                        <code>OmegaFlowIdEnumWire</code> para alinear el wire con el enum. Ejemplo en el repo:
+                        <code>example/lib/omega/app_runtime_ids.dart</code>.</p>
                 </section>
                 <section id="api-flow-state" class="slide doc-section">
                     <h2>OmegaFlowState</h2>
@@ -2353,7 +2436,10 @@ final data = event.payloadAs&lt;LoginSuccessPayload&gt;();</code></pre>
                 <section id="api-scope" class="slide doc-section">
                     <h2>OmegaScope</h2>
                     <p>InheritedWidget que expone <code>channel</code> y <code>flowManager</code> (y opcionalmente
-                        <code>initialFlowId</code>). Cualquier hijo usa <code>OmegaScope.of(context)</code>.</p>
+                        <code>initialFlowId</code> para que el primer frame active ese flow). Cualquier hijo usa
+                        <code>OmegaScope.of(context)</code>. Para activar el flow al mostrar una pantalla concreta,
+                        envuelve el cuerpo de la ruta con <code>OmegaFlowActivator</code> en lugar de llamar a
+                        <code>activate</code>/<code>switchTo</code> a mano en cada vista.</p>
                 </section>
                 <section id="api-builder" class="slide doc-section">
                     <h2>OmegaBuilder</h2>
@@ -2379,21 +2465,30 @@ final data = event.payloadAs&lt;LoginSuccessPayload&gt;();</code></pre>
                     <p><strong>OmegaInspector:</strong> panel overlay con últimos eventos del canal y snapshot de flows. Solo en debug (<code>kDebugMode</code>).</p>
                     <p><strong>OmegaInspectorLauncher:</strong> botón que en web abre el inspector en ventana nueva (BroadcastChannel); en desktop/móvil abre el overlay en diálogo. En release no se muestra.</p>
                     <p><strong>OmegaInspectorReceiver:</strong> en la ventana con <code>?omega_inspector=1</code> muestra el inspector (datos por BroadcastChannel). En release muestra mensaje "solo en debug".</p>
-                    <p><strong>OmegaInspectorServer:</strong> en desktop/móvil y solo en debug, arranca un servidor HTTP; abre la URL que imprime la consola (ej. <code>http://localhost:9292</code>) para ver el inspector en el navegador. En web es no-op.</p>
+                    <p><strong>OmegaInspectorServer:</strong> en VM (desktop/móvil) y solo en debug, registra la extensión
+                        <code>ext.omega.inspector.getState</code> en el Dart VM Service, mantiene eventos recientes del
+                        canal y el snapshot del <code>FlowManager</code>, e imprime una URL del inspector online (p. ej.
+                        <code>http://yefersonsegura.com/projects/omega/inspector.html#&lt;VM-URL&gt;</code>) para abrirla en
+                        el navegador del PC; no levanta un servidor HTTP local en el puerto 9292. En web es stub (no-op):
+                        usa <code>OmegaInspectorLauncher</code>.</p>
                 </section>
 
                 <!-- ========== API REFERENCE: BOOTSTRAP ========== -->
                 <section id="api-config" class="slide doc-section">
                     <h2>OmegaConfig</h2>
                     <p>Configuración de arranque: <code>agents</code>, <code>flows</code>, <code>routes</code>,
-                        <code>initialFlowId</code> (opcional). Se pasa a OmegaRuntime.bootstrap.</p>
+                        <code>initialFlowId</code> (opcional) e <code>intentHandlerRegistrars</code> (opcional): lista
+                        de funciones <code>void f(OmegaFlowManager, OmegaChannel)</code> para registrar handlers con
+                        <code>registerIntentHandler</code> / <code>Omega.handle</code> junto a tus flows. Se pasa a
+                        <code>OmegaRuntime.bootstrap</code>.</p>
                 </section>
                 <section id="api-runtime" class="slide doc-section">
                     <h2>OmegaRuntime</h2>
                     <p><code>OmegaRuntime.bootstrap(createOmegaConfig)</code> crea el canal, construye el config,
                         registra agentes en el protocolo, flows en el manager, rutas en el navegador, conecta navegador
-                        al canal y devuelve el runtime. La app usa channel, flowManager, navigator e initialFlowId para
-                        montar OmegaScope y MaterialApp.</p>
+                        al canal con <code>wireNavigator</code>, ejecuta cada entrada de
+                        <code>config.intentHandlerRegistrars</code> y devuelve el runtime. La app usa channel,
+                        flowManager, navigator e <code>initialFlowId</code> para montar OmegaScope y MaterialApp.</p>
                 </section>
 
                 <!-- ========== PERSISTENCE & TESTING ========== -->
@@ -2778,6 +2873,10 @@ if (s != null) flowManager.restoreFromSnapshot(OmegaAppSnapshot.fromJson(jsonDec
                     'api-flow': 'OmegaFlow',
                     'api-scope': 'OmegaScope',
                     'api-config': 'OmegaConfig',
+                    'api-dotted-wire': 'Wire dotted (camelCase)',
+                    'api-intent-handlers': 'Intent handlers',
+                    'api-flow-activator': 'OmegaFlowActivator',
+                    'api-flow-agent-id': 'OmegaFlowId / OmegaAgentId',
                     'api-persistence': 'Persistencia',
                     'api-testing': 'Testing',
                     'next': 'Conclusión'
@@ -2818,6 +2917,10 @@ if (s != null) flowManager.restoreFromSnapshot(OmegaAppSnapshot.fromJson(jsonDec
                     'api-flow': 'OmegaFlow',
                     'api-scope': 'OmegaScope',
                     'api-config': 'OmegaConfig',
+                    'api-dotted-wire': 'Dotted wire (camelCase)',
+                    'api-intent-handlers': 'Intent handlers',
+                    'api-flow-activator': 'OmegaFlowActivator',
+                    'api-flow-agent-id': 'OmegaFlowId / OmegaAgentId',
                     'api-persistence': 'Persistence',
                     'api-testing': 'Testing',
                     'next': 'Conclusion'

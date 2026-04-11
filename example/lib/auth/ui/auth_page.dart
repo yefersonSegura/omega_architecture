@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 
+import '../../omega/app_runtime_ids.dart';
 import '../../omega/app_semantics.dart';
 import '../auth_agent.dart';
 import '../auth_flow.dart';
@@ -17,8 +20,8 @@ class OmegaLoginPage extends StatefulWidget {
 }
 
 class _OmegaLoginPageState extends State<OmegaLoginPage> {
-  late AuthFlow flow;
-  late OmegaFlowManager flowManager;
+  late final AuthFlow flow;
+  StreamSubscription<OmegaFlowExpression>? _flowExprSub;
 
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
@@ -29,12 +32,12 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_flowExprSub != null) return;
 
-    flowManager = OmegaScope.of(context).flowManager;
-
-    flowManager.activate("authFlow");
+    final flowManager = OmegaScope.of(context).flowManager;
     flow = flowManager.getFlow("authFlow") as AuthFlow;
-    flow.expressions.listen((exp) {
+    _flowExprSub = flow.expressions.listen((exp) {
+      if (!mounted) return;
       setState(() {
         // UI state is driven by the flow only for semantic milestones.
         // Loading/error are rendered from AuthAgent viewState via OmegaAgentBuilder.
@@ -46,6 +49,14 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
     });
   }
 
+  @override
+  void dispose() {
+    _flowExprSub?.cancel();
+    emailCtrl.dispose();
+    passCtrl.dispose();
+    super.dispose();
+  }
+
   void _login() {
     final intent = OmegaIntent.fromName(
       AppIntent.authLogin,
@@ -54,16 +65,19 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
         password: passCtrl.text.trim(),
       ),
     );
-    flowManager.handleIntent(intent);
+    OmegaScope.of(context).flowManager.handleIntent(intent);
   }
 
   @override
   Widget build(BuildContext context) {
     final body = uiState == "success" ? _buildSuccess() : _buildLoginForm();
 
-    return Scaffold(
-      appBar: AppBar(title: const Text("Omega Login")),
-      body: body,
+    return OmegaFlowActivator(
+      flowId: AppFlowId.authFlow,
+      child: Scaffold(
+        appBar: AppBar(title: const Text("Omega Login")),
+        body: body,
+      ),
     );
   }
 
@@ -128,7 +142,7 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
           const SizedBox(height: 40),
           ElevatedButton(
             onPressed: () {
-              flowManager.handleIntent(
+              OmegaScope.of(context).flowManager.handleIntent(
                 OmegaIntent.fromName(AppIntent.authLogout),
               );
             },

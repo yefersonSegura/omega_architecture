@@ -1,13 +1,15 @@
 import 'package:omega_architecture/omega_architecture.dart';
 
+import '../omega/app_runtime_ids.dart';
 import '../omega/app_semantics.dart';
 import 'auth_events.dart';
 
 class AuthFlow extends OmegaFlow {
-  AuthFlow(OmegaEventBus channel) : super(id: "authFlow", channel: channel);
+  AuthFlow(OmegaEventBus channel)
+      : super(id: AppFlowId.authFlow.id, channel: channel);
 
   static final _contract = OmegaFlowContract.fromTyped(
-    flowId: 'authFlow',
+    flowId: AppFlowId.authFlow.id,
     listenedEvents: [
       AppEvent.authLoginStarted,
       AppEvent.authLoginSuccess,

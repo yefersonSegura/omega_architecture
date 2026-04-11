@@ -3,6 +3,14 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 
+enum _TestIntent implements OmegaIntentName {
+  testAction('test.action');
+
+  const _TestIntent(this.name);
+  @override
+  final String name;
+}
+
 class DummyFlow extends OmegaFlow {
   DummyFlow(OmegaChannel channel) : super(id: "dummy", channel: channel);
 
@@ -26,7 +34,7 @@ void main() {
     manager.registerFlow(flow);
     manager.activate("dummy");
 
-    manager.handleIntent(OmegaIntent(id: "i1", name: "test.action"));
+    manager.handleIntent(OmegaIntent.fromName(_TestIntent.testAction));
 
     expect(flow.lastIntentAction, "test.action");
 
@@ -137,6 +145,87 @@ void main() {
     expect(flow.memory["count"], 42);
     expect(manager.activeFlowId, "dummy");
     expect(flow.state, OmegaFlowState.running);
+
+    manager.dispose();
+    channel.dispose();
+  });
+
+  test("registerIntentHandler runs before flows; consumeIntent skips flow", () {
+    final channel = OmegaChannel();
+    final manager = OmegaFlowManager(channel: channel);
+    final flow = DummyFlow(channel);
+    manager.registerFlow(flow);
+    manager.activate("dummy");
+
+    var handlerCalls = 0;
+    manager.registerIntentHandler(
+      intentName: _TestIntent.testAction.name,
+      consumeIntent: true,
+      handler: (intent, ctx) {
+        handlerCalls++;
+        expect(ctx.intent.name, _TestIntent.testAction.name);
+        expect(identical(ctx.channel, channel), isTrue);
+      },
+    );
+
+    manager.handleIntent(OmegaIntent.fromName(_TestIntent.testAction));
+
+    expect(handlerCalls, 1);
+    expect(flow.lastIntentAction, isNull);
+
+    manager.dispose();
+    channel.dispose();
+  });
+
+  test("registerIntentHandler without consumeIntent still delivers to flow", () {
+    final channel = OmegaChannel();
+    final manager = OmegaFlowManager(channel: channel);
+    final flow = DummyFlow(channel);
+    manager.registerFlow(flow);
+    manager.activate("dummy");
+
+    manager.registerIntentHandler(
+      intentName: _TestIntent.testAction.name,
+      consumeIntent: false,
+      handler: (intent, ctx) {},
+    );
+
+    manager.handleIntent(OmegaIntent.fromName(_TestIntent.testAction));
+
+    expect(flow.lastIntentAction, _TestIntent.testAction.name);
+
+    manager.dispose();
+    channel.dispose();
+  });
+
+  test("Omega.handle registers same as registerIntentHandler", () {
+    final channel = OmegaChannel();
+    final manager = OmegaFlowManager(channel: channel);
+    final flow = DummyFlow(channel);
+    manager.registerFlow(flow);
+    manager.activate("dummy");
+
+    var n = 0;
+    Omega.handle(manager, _TestIntent.testAction, (intent, ctx) {
+      n++;
+    }, consumeIntent: true);
+
+    manager.handleIntent(OmegaIntent.fromName(_TestIntent.testAction));
+    expect(n, 1);
+    expect(flow.lastIntentAction, isNull);
+
+    manager.dispose();
+    channel.dispose();
+  });
+
+  test("OmegaIntentReducer updates state", () {
+    final channel = OmegaChannel();
+    final manager = OmegaFlowManager(channel: channel);
+    final reducer = OmegaIntentReducer<int>(0, manager);
+    reducer.on(_TestIntent.testAction, (prev, intent) => prev + 1);
+
+    manager.handleIntent(OmegaIntent.fromName(_TestIntent.testAction));
+    expect(reducer.state, 1);
 
     manager.dispose();
     channel.dispose();

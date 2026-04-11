@@ -295,6 +295,8 @@ flowManager.activate("cartFlow");
 flowManager.handleIntent(OmegaIntent.fromName(AppIntent.authLogin, payload: creds));
 ```
 
+**Handlers ligeros (menos boilerplate):** Antes de los flows, el manager puede ejecutar callbacks registrados con `registerIntentHandler` (mismo `intentName` que el intent). Si alguno coincide con `consumeIntent: true`, el intent **no** se envía a los flows (útil para lógica trivial o efectos laterales). Equivalente corto: `Omega.handle(flowManager, AppIntent.xxx, (intent, ctx) { ... }, consumeIntent: true)`. Puedes agrupar el registro en `createOmegaConfig` con `intentHandlerRegistrars: [MiModulo.attach]` (tipo `OmegaIntentHandlerRegistrar`); [OmegaRuntime.bootstrap] los ejecuta al final, junto al resto de la config, sin tocar `main`. Para un único estado que se actualiza como un reducer (`state + 1`), usa `OmegaIntentReducer<T>(initial, flowManager)` y `reducer.on(AppIntent.increment, (s, intent) => s + 1)`. Si no quieres repetir `miIntent('cadena.larga')` en el enum: con `OmegaIntentNameDottedCamel` basta un identificador camelCase por caso y el alambre lleva puntos (`ordersCreate` → `orders.create`). Con `OmegaIntentNameEnumWire` el alambre es exactamente el `Enum.name` (sin puntos). Lo mismo para eventos: `OmegaEventNameDottedCamel` / `OmegaEventNameEnumWire`. Para recorridos de dominio y contratos, sigue prefiriendo un `OmegaFlow` completo.
+
 ---
 
 ### OmegaScope (inyección en Flutter)
@@ -318,6 +320,39 @@ final scope = OmegaScope.of(context);
 scope.channel.emit(...);
 scope.flowManager.handleIntent(...);
 ```
+
+---
+
+### OmegaFlowActivator (activar el flow de una pantalla sin boilerplate)
+
+**Qué hace:** En el primer `didChangeDependencies` del subárbol llama a `flowManager.activate` / `switchTo` con el id resuelto. El parámetro `flowId` admite un `String` o un [OmegaFlowId] (p. ej. enum con [OmegaFlowIdEnumWire], mismo estilo que [OmegaIntentName]).
+
+**Ejemplo:** mismo id que `super(id: AppFlowId.authFlow.id, ...)` en el flow:
+
+```dart
+@override
+Widget build(BuildContext context) {
+  return OmegaFlowActivator(
+    flowId: AppFlowId.authFlow,
+    child: Scaffold(
+      appBar: AppBar(title: const Text('Login')),
+      body: ...,
+    ),
+  );
+}
+```
+
+Sigue usando `OmegaScope.of(context).flowManager.handleIntent(...)` donde lo necesites.
+
+---
+
+### Intent handlers: qué elegir (DX)
+
+- **Recorrido de negocio con pasos, memoria del flow y expresiones UI** → un [OmegaFlow] completo + contrato.
+- **Un solo callback por intent** (efecto lateral o lógica mínima) → [OmegaFlowManager.registerIntentHandler] o [Omega.handle].
+- **Estado escalar tipo reducer** (`n + 1`) → [OmegaIntentReducer].
+- **Varias etapas legibles** (validar → ejecutar async → éxito / error) → [OmegaIntentHandlerPipeline] (`withPayload` → opcional `validate` → `execute` → `onSuccess` / `onError` / `onPayloadMissing` → `register`). No añade `ctx.state` ni DI al paquete: cierras sobre tus servicios en los lambdas.
+- **Solo emitir señales al bus** → [OmegaChannel.emit] / `emitTyped`; los agentes reaccionan a eventos, no a `handleIntent` salvo que también lo modeles en un flow.
 
 ---
 
@@ -350,6 +385,64 @@ OmegaAgentBuilder<AuthAgent, AuthViewState>(
   },
 )
 ```
+
+### OmegaAgentScope, OmegaScopedAgentBuilder y OmegaFlowExpressionBuilder (desacoplar la pantalla del agente)
+
+**Problema que resuelven:** no hace falta poner `required CartAgent cartAgent` en **toda** la página si solo una parte del árbol necesita el agente o el estado reactivo. También puedes escuchar **expresiones del flujo** (`emitExpression`) sin montar tú el `StreamBuilder` a mano.
+
+**OmegaAgentScope** — expone un `OmegaAgent` a los descendientes (típicamente en el `builder` de la ruta en `omega_setup.dart`).
+
+**OmegaScopedAgentBuilder** — es un `OmegaAgentBuilder` que lee el agente del `OmegaAgentScope` (no recibe `agent:` en el constructor).
+
+**OmegaFlowExpressionBuilder** — escucha `flow.expressions` por **id de flujo**; usa `OmegaFlow.lastExpression` como dato inicial del `StreamBuilder` (el stream es broadcast y no repite el último valor).
+
+**Ejemplo — ruta sin pasar el agente al `StatefulWidget` raíz:**
+
+```dart
+// omega_setup.dart (fragmento)
+final cartAgent = CartAgent(channel);
+
+OmegaRoute(
+  id: 'shop',
+  builder: (context) => OmegaAgentScope(
+    agent: cartAgent,
+    child: const ShopDemoPage(), // sin required CartAgent
+  ),
+)
+```
+
+**Ejemplo — panel que solo necesita el estado del agente:**
+
+```dart
+// shop_demo_page.dart (dentro del build o un hijo)
+OmegaScopedAgentBuilder<CartAgent, CartUiState>(
+  builder: (context, cart) {
+    if (cart.isLoading) return const LinearProgressIndicator();
+    return Text('Items: ${cart.items.length}');
+  },
+)
+```
+
+**Ejemplo — reaccionar a lo que emite el flujo tras un `handleIntent`:**
+
+```dart
+OmegaFlowExpressionBuilder(
+  flowId: 'cartFlow', // mismo string que super(id: 'cartFlow', ...)
+  builder: (context, exp) {
+    if (exp == null) return const SizedBox.shrink();
+    if (exp.type == 'error') {
+      return Text(exp.payload?.toString() ?? 'Error');
+    }
+    if (exp.type == 'success') {
+      final data = exp.payloadAs<CheckoutResult>();
+      return Text('OK: ${data?.orderId ?? ''}');
+    }
+    return const CircularProgressIndicator();
+  },
+)
+```
+
+**Obtener el agente sin builder:** `OmegaAgentScope.omegaAgentAs<CartAgent>(context)` o `maybeOmegaAgentAs` si es opcional.
 
 ---
 
@@ -454,12 +547,16 @@ La consola imprimirá algo como `Omega Inspector: http://localhost:9292`. Abre e
 
 ## Ejemplo completo
 
-El proyecto incluye un **example** (carpeta `example/`) con login, navegación a home con payload tipado, rutas tipadas y uso de nombres tipados (AppEvent, AppIntent) y payloadAs. Archivos clave:
+El proyecto incluye un **example** (carpeta `example/`) con login, navegación a home con payload tipado, rutas tipadas y uso de nombres tipados (`AppEvent`, `AppIntent`) y `payloadAs`. Los intents/eventos globales del example usan **solo camelCase** en el enum y [OmegaIntentNameDottedCamel] / [OmegaEventNameDottedCamel] (sin `const x('a.b')` por caso). Archivos clave:
 
+- `example/lib/omega/app_semantics.dart` — Definición de `AppEvent` / `AppIntent` con mixins punteados.
+- `example/lib/omega/app_runtime_ids.dart` — `AppFlowId` / `AppAgentId` tipados para flows y agentes.
 - `example/lib/omega/omega_setup.dart` — Config, agentes, flows, rutas (incluida `OmegaRoute.typed<LoginSuccessPayload>` para home).
 - `example/lib/auth/auth_flow.dart` — Flow que reacciona a intents y eventos y navega con payload. **Implementa contrato** (`OmegaFlowContract`): eventos e intents declarados; en debug Omega avisa si llega algo no declarado.
 - `example/lib/auth/auth_agent.dart` — Agente que hace login y emite éxito/error. **Implementa contrato** (`OmegaAgentContract`). Referencia principal para ver contratos en uso.
-- `example/lib/auth/ui/auth_page.dart` — UI que emite intents y escucha expresiones.
+- `example/lib/main.dart` — `_RootHandler` usa [OmegaFlowActivator] con `useSwitchTo: true` y `initialFlowId` en lugar de `switchTo` manual en el callback.
+- `example/lib/home/home.dart` — [OmegaFlowActivator] para `ordersFlow` antes de `handleIntent` del botón de pedido.
+- `example/lib/auth/ui/auth_page.dart` — UI que emite intents y escucha expresiones; [OmegaFlowActivator] para `authFlow`.
 - `example/lib/home/home.dart` — Pantalla que recibe `LoginSuccessPayload?` por la ruta tipada.
 
 Para ejecutar: `cd example && flutter run`. Para más sobre contratos: [CONTRACTS.md](CONTRACTS.md).
@@ -468,15 +565,17 @@ Para ejecutar: `cd example && flutter run`. Para más sobre contratos: [CONTRACT
 
 ### Versionado de intents (patrón recomendado)
 
-Cuando necesites cambiar la estructura de un intent de forma incompatible (por ejemplo, añadir campos obligatorios), en lugar de modificar el intent original, crea una **nueva versión**:
+Cuando necesites cambiar la estructura de un intent de forma incompatible (por ejemplo, añadir campos obligatorios), en lugar de modificar el intent original, crea una **nueva versión** (miembros distintos en el enum):
 
 ```dart
-enum AppIntent implements OmegaIntentName {
-  authLoginV1('auth.login.v1'),
-  authLoginV2('auth.login.v2'),
-  // ...
+enum AppIntent with OmegaIntentNameDottedCamel implements OmegaIntentName {
+  authLoginV1,
+  authLoginV2,
 }
+// authLoginV1.name == 'auth.login.v1'; authLoginV2.name == 'auth.login.v2'
 ```
+
+Si prefieres fijar el string a mano, sigue siendo válido `const authLoginV1('auth.login.v1')` en un enum con `final String name`.
 
 Un flow puede declarar en su contrato que acepta solo `authLoginV2`, o bien aceptar ambas versiones y adaptar internamente:
 

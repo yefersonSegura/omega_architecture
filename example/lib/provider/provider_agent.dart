@@ -1,9 +1,11 @@
 import 'package:omega_architecture/omega_architecture.dart';
+
+import '../omega/app_runtime_ids.dart';
 import 'provider_behavior.dart';
 
 class ProviderAgent extends OmegaAgent {
   static final _contract = OmegaAgentContract.fromTyped(
-    agentId: 'Provider',
+    agentId: AppAgentId.Provider.id,
     listenedEvents: [],
     acceptedIntents: [],
   );
@@ -12,7 +14,11 @@ class ProviderAgent extends OmegaAgent {
   OmegaAgentContract? get contract => _contract;
 
   ProviderAgent(OmegaEventBus channel)
-      : super(id: "Provider", channel: channel, behavior: ProviderBehavior());
+      : super(
+          id: AppAgentId.Provider.id,
+          channel: channel,
+          behavior: ProviderBehavior(),
+        );
 
   @override
   void onMessage(OmegaAgentMessage msg) {}

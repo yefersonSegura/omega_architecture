@@ -1,13 +1,18 @@
 /// Omega Architecture: a reactive, agent-oriented framework for Flutter.
 ///
 /// Main pieces:
+/// - [OmegaFlowId] / [OmegaAgentId]: typed ids for flows and agents (enums + wire mixins).
 /// - [OmegaChannel] / [OmegaChannelNamespace] / [OmegaEventBus]: event bus; use
 ///   [OmegaChannel.namespace] to scope by module (auth, checkout, etc.). Flows and
 ///   agents take an [OmegaEventBus] (channel or namespace view).
 /// - [OmegaAgent] / [OmegaAgentBehaviorEngine]: agent-side rules and reactions.
-/// - [OmegaFlow] / [OmegaFlowManager]: business flows and orchestration.
-/// - [OmegaScope] / [OmegaBuilder] / [OmegaInspector] / [OmegaInspectorLauncher] /
-///   [OmegaInspectorReceiver] / [OmegaInspectorServer]: Flutter UI and in-browser Inspector.
+/// - [OmegaFlow] / [OmegaFlowManager]: business flows and orchestration; optional
+///   lightweight [OmegaFlowManager.registerIntentHandler] / [Omega.handle] /
+///   [OmegaIntentReducer] / [OmegaIntentHandlerPipeline] for minimal intent-only reactions.
+/// - [OmegaScope] / [OmegaAgentScope] / [OmegaScopedAgentBuilder] /
+///   [OmegaFlowActivator] / [OmegaFlowExpressionBuilder] / [OmegaBuilder] / [OmegaInspector] /
+///   [OmegaInspectorLauncher] / [OmegaInspectorReceiver] / [OmegaInspectorServer]:
+///   Flutter UI and in-browser Inspector.
 /// - [OmegaNavigator] / [OmegaRoute]: intent-driven navigation.
 ///
 /// Bootstrap with [OmegaRuntime.bootstrap] (see `omega/bootstrap`).
@@ -24,6 +29,9 @@ export 'omega/core/channel/omega_channel.dart';
 export 'omega/core/semantics/omega_intent.dart';
 export 'omega/core/semantics/omega_intent_name.dart';
 export 'omega/core/semantics/omega_event_name.dart';
+export 'omega/core/semantics/omega_flow_id.dart';
+export 'omega/core/semantics/omega_agent_id.dart';
+export 'omega/core/semantics/omega_semantics_wire_from_camel.dart';
 export 'omega/core/semantics/omega_typed_event.dart';
 export 'omega/core/events/omega_event.dart';
 export 'omega/core/types/omega_failure.dart';
@@ -55,6 +63,10 @@ export 'omega/offline/omega_offline_queue.dart';
 // FLOWS
 export 'omega/flows/omega_flow.dart';
 export 'omega/flows/omega_flow_manager.dart';
+export 'omega/flows/omega_intent_handler_context.dart';
+export 'omega/flows/omega_intent_handle_facade.dart';
+export 'omega/flows/omega_intent_reducer.dart';
+export 'omega/flows/omega_intent_handler_pipeline.dart';
 export 'omega/flows/omega_flow_state.dart';
 export 'omega/flows/omega_flow_expression.dart';
 export 'omega/flows/omega_flow_context.dart';
@@ -69,8 +81,12 @@ export 'omega/ui/navigation/omega_navigation_entry.dart';
 
 // UI INTEGRATION (FLUTTER)
 export 'omega/ui/flutter/omega_scope.dart';
+export 'omega/ui/flutter/omega_flow_activator.dart';
+export 'omega/ui/flutter/omega_agent_scope.dart';
 export 'omega/ui/flutter/omega_builder.dart';
 export 'omega/ui/flutter/omega_agent_builder.dart';
+export 'omega/ui/flutter/omega_scoped_agent_builder.dart';
+export 'omega/ui/flutter/omega_flow_expression_builder.dart';
 export 'omega/ui/flutter/omega_inspector.dart';
 export 'omega/ui/flutter/omega_inspector_launcher.dart';
 export 'omega/ui/flutter/omega_inspector_receiver.dart';

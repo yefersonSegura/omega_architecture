@@ -1,8 +1,10 @@
 import 'package:omega_architecture/omega_architecture.dart';
 
+import '../omega/app_runtime_ids.dart';
+
 class ProviderFlow extends OmegaFlow {
   static final _contract = OmegaFlowContract.fromTyped(
-    flowId: 'Provider',
+    flowId: AppFlowId.Provider.id,
     listenedEvents: [],
     acceptedIntents: [],
     emittedExpressionTypes: {'idle'},
@@ -11,7 +13,8 @@ class ProviderFlow extends OmegaFlow {
   @override
   OmegaFlowContract? get contract => _contract;
 
-  ProviderFlow(OmegaEventBus channel) : super(id: "Provider", channel: channel);
+  ProviderFlow(OmegaEventBus channel)
+      : super(id: AppFlowId.Provider.id, channel: channel);
 
   @override
   void onStart() {

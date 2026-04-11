@@ -18,6 +18,7 @@ class OmegaScope extends InheritedWidget {
   final OmegaFlowManager flowManager;
 
   /// Id of the flow to activate on startup. On first frame call flowManager.switchTo(initialFlowId).
+  /// For per-screen activation without repeating that in [State.didChangeDependencies], use [OmegaFlowActivator].
   final String? initialFlowId;
 
   const OmegaScope({

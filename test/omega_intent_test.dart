@@ -10,6 +10,14 @@ enum _TestIntentV implements OmegaIntentName {
   final String name;
 }
 
+enum _WireFromEnum with OmegaIntentNameEnumWire implements OmegaIntentName {
+  alphaBeta,
+}
+
+enum _Dotted with OmegaIntentNameDottedCamel implements OmegaIntentName {
+  ordersCreate,
+}
+
 void main() {
   test("OmegaIntent stores name and payload", () {
     final intent = OmegaIntent(
@@ -27,5 +35,15 @@ void main() {
     expect(intent.name, 'auth.login.v2');
     expect(intent.payload, {'x': 1});
     expect(intent.id.startsWith('intent:'), isTrue);
+  });
+
+  test("OmegaIntentNameEnumWire uses Enum.name", () {
+    final intent = OmegaIntent.fromName(_WireFromEnum.alphaBeta);
+    expect(intent.name, 'alphaBeta');
+  });
+
+  test("OmegaIntentNameDottedCamel derives dotted wire", () {
+    final intent = OmegaIntent.fromName(_Dotted.ordersCreate);
+    expect(intent.name, 'orders.create');
   });
 }

@@ -65,12 +65,9 @@ class _RootHandlerState extends State<_RootHandler> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final scope = OmegaScope.of(context);
-      // 1) Activar el flow inicial (ej. authFlow)
-      if (scope.initialFlowId != null) {
-        scope.flowManager.switchTo(scope.initialFlowId!);
-      }
-      // 2) Navegar a la pantalla de login (nombres tipados: AppIntent / AppEvent)
+      // Navegar a login; el flow inicial (p. ej. authFlow) ya lo activa [OmegaFlowActivator] en build.
       final intent = OmegaIntent.fromName(AppIntent.navigateLogin);
       scope.channel.emit(
         OmegaEvent.fromName(AppEvent.navigationIntent, payload: intent),
@@ -80,7 +77,10 @@ class _RootHandlerState extends State<_RootHandler> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final scope = OmegaScope.of(context);
+    final initialId = scope.initialFlowId;
+
+    Widget shell = Scaffold(
       appBar: kDebugMode
           ? AppBar(
               title: const Text('Omega Example'),
@@ -93,6 +93,16 @@ class _RootHandlerState extends State<_RootHandler> {
           : null,
       body: const Center(child: Text("Omega Running")),
     );
+
+    if (initialId != null) {
+      shell = OmegaFlowActivator(
+        flowId: initialId,
+        useSwitchTo: true,
+        child: shell,
+      );
+    }
+
+    return shell;
   }
 }
 

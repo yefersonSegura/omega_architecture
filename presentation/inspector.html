@@ -591,6 +591,14 @@
       });
     }
 
+    function flowLastExpressionLabel(f) {
+      if (!f) return 'idle';
+      if (f.lastExpressionType) return f.lastExpressionType;
+      var le = f.lastExpression;
+      if (le && typeof le === 'object' && le.type) return le.type;
+      return 'idle';
+    }
+
     function renderFlows() {
       if (!snapshot || !snapshot.flows || snapshot.flows.length === 0) {
         flowsEl.innerHTML = '<div class="empty">No flows</div>';
@@ -606,7 +614,7 @@
               '<span class="flow-state-pill">' + (f.state || '') + '</span>' +
             '</div>' +
             '<div class="flow-meta">' +
-              '<span>' + (f.lastExpressionType || 'idle') + '</span>' +
+              '<span>' + flowLastExpressionLabel(f) + '</span>' +
               (isActive ? '<span>active</span>' : '') +
             '</div>' +
           '</div>'

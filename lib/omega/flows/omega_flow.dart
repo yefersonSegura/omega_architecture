@@ -1,6 +1,7 @@
 // lib/omega/flows/omega_flow.dart
 
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
 import 'package:omega_architecture/omega/core/semantics/omega_intent.dart';
@@ -40,6 +41,12 @@ abstract class OmegaFlow {
   ///
   /// **Example:** `flow.expressions.listen((e) => setState(() { uiState = e.type; }));`
   Stream<OmegaFlowExpression> get expressions => _expressions.stream;
+
+  /// Last expression emitted by this flow, if any.
+  ///
+  /// Broadcast streams do not replay; use this for an initial value when wiring
+  /// [StreamBuilder] (see [OmegaFlowExpressionBuilder]).
+  OmegaFlowExpression? get lastExpression => _lastExpression;
 
   /// Flow memory (key/value). Persists while the flow is active; can be restored with [restoreMemory].
   final Map<String, dynamic> memory = {};
@@ -132,7 +139,20 @@ abstract class OmegaFlow {
 
     final context = OmegaFlowContext(event: event, memory: memory);
 
-    onEvent(context);
+    try {
+      onEvent(context);
+    } catch (e, st) {
+      developer.log(
+        'onEvent failed for flow "$id" (event: ${event.name}).',
+        name: 'omega_flow',
+        error: e,
+        stackTrace: st,
+      );
+      assert(() {
+        debugPrint('OmegaFlow[$id] onEvent error: $e\n$st');
+        return true;
+      }());
+    }
   }
 
   /// Implement the reaction to channel events (e.g. "auth.login.success"). Only called when the flow is running.
@@ -157,7 +177,20 @@ abstract class OmegaFlow {
 
     final context = OmegaFlowContext(intent: intent, memory: memory);
 
-    onIntent(context);
+    try {
+      onIntent(context);
+    } catch (e, st) {
+      developer.log(
+        'onIntent failed for flow "$id" (intent: ${intent.name}).',
+        name: 'omega_flow',
+        error: e,
+        stackTrace: st,
+      );
+      assert(() {
+        debugPrint('OmegaFlow[$id] onIntent error: $e\n$st');
+        return true;
+      }());
+    }
   }
 
   /// Implement the reaction to intents (e.g. login, logout). Only called when the flow is running.

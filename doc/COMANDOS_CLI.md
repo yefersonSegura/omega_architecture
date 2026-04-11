@@ -32,8 +32,8 @@ dart run omega_architecture:omega ai --help
 |---------|-------------------|
 | `doc` | Abre la documentación web en el navegador. |
 | `inspector` | Abre el Inspector local (HTML) para conectar al VM Service de la app en ejecución. |
-| `init [--force]` | Crea `lib/omega/omega_setup.dart` (`--force` sobrescribe). |
-| `g ecosystem <Nombre>` | Genera agente, flow, behavior y página; registra en `omega_setup`. |
+| `init [--force]` | Crea `lib/omega/omega_setup.dart`, y si faltan `app_semantics.dart` / `app_runtime_ids.dart` también los crea (`--force` solo sobrescribe `omega_setup`). |
+| `g ecosystem <Nombre>` | Genera agente, flow, behavior y página; **actualiza** `lib/omega/app_runtime_ids.dart` (debe existir: `omega init`); registra en `omega_setup`. |
 | `g agent <Nombre>` | Solo agente + behavior. |
 | `g flow <Nombre>` | Solo flow. |
 | `validate [ruta]` | Valida `omega_setup` (estructura, ids duplicados, rutas vs `*Page`). |
@@ -72,7 +72,7 @@ dart run omega_architecture:omega inspector
 
 ### `init`
 
-Crea `lib/omega/omega_setup.dart` si no existe. Con `--force`, sobrescribe.
+Crea `lib/omega/omega_setup.dart` si no existe. También crea `lib/omega/app_semantics.dart` y `lib/omega/app_runtime_ids.dart` si no están (enums `AppEvent`/`AppIntent` y `AppFlowId`/`AppAgentId` con valores placeholder). Con `--force`, sobrescribe solo `omega_setup.dart`.
 
 ```bash
 dart run omega_architecture:omega init
@@ -81,7 +81,7 @@ dart run omega_architecture:omega init --force
 
 ### Generación: `g ecosystem`, `g agent`, `g flow`
 
-- **ecosystem:** carpeta del módulo con `*_agent`, `*_flow`, `*_behavior`, `ui/*_page.dart` y actualización de imports/registros en `omega_setup.dart`.
+- **ecosystem:** carpeta del módulo con `*_agent`, `*_flow`, `*_behavior`, `ui/*_page.dart`; **fusiona** ids en `lib/omega/app_runtime_ids.dart` (debe existir: ejecutar `omega init` antes) y actualiza imports/registros en `omega_setup.dart`.
 - **agent / flow:** solo el artefacto indicado y la parte correspondiente del setup.
 
 ```bash

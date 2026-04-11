@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:omega_architecture/omega_architecture.dart';
 
+import '../omega/app_runtime_ids.dart';
 import '../omega/app_semantics.dart';
 
 /// Demo flow that simulates an "orders.create" operation which may fail due to
@@ -11,9 +12,9 @@ class OrdersFlow extends OmegaFlow {
   final OmegaOfflineQueue offlineQueue;
 
   static final _contract = OmegaFlowContract.fromTyped(
-    flowId: 'ordersFlow',
+    flowId: AppFlowId.ordersFlow.id,
     listenedEvents: [],
-    acceptedIntents: [AppIntent.createOrder],
+    acceptedIntents: [AppIntent.ordersCreate],
     emittedExpressionTypes: {'idle', 'creating', 'created', 'pendingOffline'},
   );
 
@@ -21,7 +22,7 @@ class OrdersFlow extends OmegaFlow {
   OmegaFlowContract? get contract => _contract;
 
   OrdersFlow(OmegaEventBus channel, this.offlineQueue)
-      : super(id: 'ordersFlow', channel: channel);
+      : super(id: AppFlowId.ordersFlow.id, channel: channel);
 
   @override
   void onStart() {
@@ -38,7 +39,7 @@ class OrdersFlow extends OmegaFlow {
     final intent = ctx.intent;
     if (intent == null) return;
 
-    if (intent.name == AppIntent.createOrder.name) {
+    if (intent.name == AppIntent.ordersCreate.name) {
       _handleCreateOrder(intent);
     }
   }

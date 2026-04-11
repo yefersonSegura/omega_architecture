@@ -26,9 +26,9 @@ class OmegaRuntime {
     this.initialFlowId,
   );
 
-  /// Creates channel, config (with your createConfig), flowManager, protocol, navigator; registers agents, flows and routes; connects navigator to the channel.
+  /// Creates channel, config (with your createConfig), flowManager, protocol, navigator; registers agents, flows and routes; connects navigator to the channel; then runs [OmegaConfig.intentHandlerRegistrars].
   ///
-  /// **Example:** `OmegaRuntime.bootstrap((channel) => OmegaConfig(channel: channel, agents: [AuthAgent(...)], flows: [AuthFlow(channel)], routes: [...], initialFlowId: "authFlow"));`
+  /// **Example:** `OmegaRuntime.bootstrap((channel) => OmegaConfig(agents: [...], flows: [...], routes: [...], initialFlowId: "authFlow"));`
   factory OmegaRuntime.bootstrap(
     OmegaConfig Function(OmegaChannel) createConfig,
   ) {
@@ -54,6 +54,10 @@ class OmegaRuntime {
     }
 
     flowManager.wireNavigator(navigator);
+
+    for (final registrar in config.intentHandlerRegistrars) {
+      registrar(flowManager, channel);
+    }
 
     return OmegaRuntime._(
       channel,

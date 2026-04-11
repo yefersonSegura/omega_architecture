@@ -1,5 +1,6 @@
 import 'package:omega_architecture/omega_architecture.dart';
 
+import '../omega/app_runtime_ids.dart';
 import '../omega/app_semantics.dart';
 import 'auth_behavior.dart';
 import 'auth_events.dart';
@@ -7,15 +8,15 @@ import 'auth_state.dart';
 
 class AuthAgent extends OmegaStatefulAgent<AuthViewState> {
   AuthAgent(OmegaEventBus channel)
-    : super(
-        id: "Auth",
-        channel: channel,
-        behavior: AuthBehavior(),
-        initialState: AuthViewState.empty,
-      );
+      : super(
+          id: AppAgentId.Auth.id,
+          channel: channel,
+          behavior: AuthBehavior(),
+          initialState: AuthViewState.empty,
+        );
 
   static final _contract = OmegaAgentContract.fromTyped(
-    agentId: 'Auth',
+    agentId: AppAgentId.Auth.id,
     listenedEvents: [AppEvent.authLoginRequest, AppEvent.authLogoutRequest],
     acceptedIntents: [AppIntent.authLogin, AppIntent.authLogout],
   );
