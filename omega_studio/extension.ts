@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { spawn } from "child_process";
+import { spawn, type ChildProcess } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
@@ -97,101 +97,6 @@ async function pickParentDirectoryForCreateApp(): Promise<string | undefined> {
     }
 
     return undefined;
-}
-
-/**
- * Comprueba si `folderPath` ya es la raíz de un workspace o queda bajo alguna raíz
- * (el Explorador ya puede mostrar esa ruta y sus hijos).
- */
-function isFolderVisibleInWorkspace(folderPath: string): boolean {
-    const target = path.normalize(folderPath);
-    for (const wf of vscode.workspace.workspaceFolders ?? []) {
-        const root = path.normalize(wf.uri.fsPath);
-        if (target === root) {
-            return true;
-        }
-        const prefix = root.endsWith(path.sep) ? root : root + path.sep;
-        if (target.startsWith(prefix)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-/**
- * Añade la carpeta padre al workspace (multiraíz) sin recargar la ventana. Así, al ejecutar
- * `omega create app` en esa ruta, el Explorador muestra el subdirectorio del proyecto mientras
- * `flutter create` y el CLI van escribiendo archivos (como Flutter: carpeta visible durante el create).
- * No se abre solo el hijo antes: `flutter create` crea esa carpeta y falla si ya existe.
- */
-function ensureCreateAppParentInWorkspace(parentPath: string): "added" | "already" | "failed" {
-    const normalized = path.normalize(parentPath);
-    if (isFolderVisibleInWorkspace(normalized)) {
-        return "already";
-    }
-    const name = path.basename(normalized) || "proyecto";
-    const index = vscode.workspace.workspaceFolders?.length ?? 0;
-    const ok = vscode.workspace.updateWorkspaceFolders(index, 0, {
-        uri: vscode.Uri.file(normalized),
-        name,
-    });
-    return ok ? "added" : "failed";
-}
-
-/**
- * Incorpora la carpeta del proyecto recién creada al workspace **sin** `vscode.openFolder`
- * (recargaría la ventana y mataría el proceso `omega` hijo).
- * Si hay una raíz que coincide exactamente con la carpeta padre, la sustituye por la app
- * (el usuario queda con la carpeta del proyecto como workspace, como al “abrir” el proyecto).
- */
-function openCreatedAppInWorkspace(parentCwd: string, appName: string): void {
-    const projectPath = path.join(parentCwd, appName);
-    const uri = vscode.Uri.file(projectPath);
-    const parentNorm = path.normalize(parentCwd);
-    const folders = vscode.workspace.workspaceFolders;
-    const idx = folders?.findIndex((f) => path.normalize(f.uri.fsPath) === parentNorm);
-    if (idx !== undefined && idx >= 0) {
-        void vscode.workspace.updateWorkspaceFolders(idx, 1, {
-            uri,
-            name: appName,
-        });
-    } else if (!isFolderVisibleInWorkspace(projectPath)) {
-        const n = folders?.length ?? 0;
-        void vscode.workspace.updateWorkspaceFolders(n, 0, {
-            uri,
-            name: appName,
-        });
-    }
-    void vscode.commands.executeCommand("workbench.view.explorer");
-}
-
-/**
- * En cuanto exista el directorio `parentCwd/appName` (p. ej. al terminar la parte de `flutter create`),
- * abre ese proyecto en el editor (workspace) mientras `omega` sigue ejecutándose.
- */
-function watchCreatedAppDirectory(parentCwd: string, appName: string): vscode.Disposable {
-    const projectPath = path.join(parentCwd, appName);
-    let finished = false;
-    const id = setInterval(() => {
-        if (finished) {
-            return;
-        }
-        try {
-            const st = fs.statSync(projectPath);
-            if (!st.isDirectory()) {
-                return;
-            }
-        } catch {
-            return;
-        }
-        finished = true;
-        clearInterval(id);
-        openCreatedAppInWorkspace(parentCwd, appName);
-    }, 120);
-    return new vscode.Disposable(() => {
-        finished = true;
-        clearInterval(id);
-    });
 }
 
 /**
@@ -314,6 +219,159 @@ function appendOutput(data: Buffer | string): void {
     if (text.length > 0) {
         outputChannel.append(text.endsWith("\n") ? text : text + "\n");
     }
+}
+
+function sanitizeAppNameForLog(appName: string): string {
+    const t = appName.trim();
+    return t.replace(/[^\w.-]+/g, "_") || "app";
+}
+
+/**
+ * Proceso `omega` independiente del host de extensiones; la salida va a un archivo para que
+ * sobreviva a `vscode.openFolder` (recarga de ventana).
+ */
+function spawnOmegaDetachedToLog(
+    args: string[],
+    cwdRoot: string,
+    env: NodeJS.ProcessEnv,
+    logPath: string
+): ChildProcess {
+    fs.writeFileSync(logPath, "");
+    const fd = fs.openSync(logPath, "a");
+    const child = spawn("omega", args, {
+        cwd: cwdRoot,
+        shell: true,
+        env,
+        detached: true,
+        stdio: ["ignore", fd, fd],
+        windowsHide: true,
+    });
+    fs.closeSync(fd);
+    child.unref();
+    return child;
+}
+
+/**
+ * `omega create app`: tras `flutter create` el usuario quiere **Abrir carpeta** como Flutter.
+ * `vscode.openFolder` recarga el IDE y mataría un `omega` hijo normal; por eso el CLI va
+ * desacoplado (log en la carpeta padre) y sigue con pub, init, IA, etc. en segundo plano.
+ */
+async function runOmegaCreateApp(
+    args: string[],
+    progressTitle: string,
+    parentCwd: string,
+    appName: string
+): Promise<void> {
+    const logPath = path.join(parentCwd, `.omega-studio-create-${sanitizeAppNameForLog(appName)}.log`);
+    const env = extContext ? await buildOmegaEnv(extContext) : { ...process.env };
+    const child = spawnOmegaDetachedToLog(args, parentCwd, env, logPath);
+    const projectPath = path.join(parentCwd, appName.trim());
+
+    outputChannel.show(true);
+    const quoted = args.map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ");
+    outputChannel.appendLine(
+        `\n$ omega ${quoted}\n(salida → ${logPath}; tras crear Flutter se abre el proyecto)\n`
+    );
+
+    let logTail = 0;
+    const tailInterval = setInterval(() => {
+        try {
+            if (!fs.existsSync(logPath)) {
+                return;
+            }
+            const text = fs.readFileSync(logPath, "utf8");
+            if (text.length > logTail) {
+                appendOutput(text.slice(logTail));
+                logTail = text.length;
+            }
+        } catch {
+            /* aún no escribible */
+        }
+    }, 120);
+
+    await vscode.window.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification,
+            title: progressTitle,
+            cancellable: false,
+        },
+        () =>
+            new Promise<void>((resolve, reject) => {
+                let settled = false;
+                let watchInterval: ReturnType<typeof setInterval> | undefined;
+
+                const stopTailAndWatch = (): void => {
+                    clearInterval(tailInterval);
+                    if (watchInterval !== undefined) {
+                        clearInterval(watchInterval);
+                        watchInterval = undefined;
+                    }
+                };
+
+                const onProjectFolderReady = (): void => {
+                    if (settled) {
+                        return;
+                    }
+                    settled = true;
+                    stopTailAndWatch();
+                    resolve();
+                    void vscode.window.showInformationMessage(
+                        "Abriendo el proyecto. Omega sigue en segundo plano (dependencias, init, generación…)."
+                    );
+                    void vscode.commands.executeCommand(
+                        "vscode.openFolder",
+                        vscode.Uri.file(projectPath),
+                        false
+                    );
+                };
+
+                watchInterval = setInterval(() => {
+                    if (settled) {
+                        return;
+                    }
+                    try {
+                        const st = fs.statSync(projectPath);
+                        if (!st.isDirectory()) {
+                            return;
+                        }
+                    } catch {
+                        return;
+                    }
+                    onProjectFolderReady();
+                }, 120);
+
+                child.on("error", (err) => {
+                    if (settled) {
+                        return;
+                    }
+                    settled = true;
+                    stopTailAndWatch();
+                    const msg =
+                        (err as NodeJS.ErrnoException).code === "ENOENT"
+                            ? "No se encontró el comando «omega» en el PATH. Instálalo o usa «dart run omega_architecture:omega» desde la raíz del paquete."
+                            : String(err);
+                    vscode.window.showErrorMessage(`Omega: ${msg}`);
+                    reject(err);
+                });
+
+                child.on("close", (code) => {
+                    if (settled) {
+                        return;
+                    }
+                    settled = true;
+                    stopTailAndWatch();
+                    if (code === 0) {
+                        void vscode.window.showInformationMessage(`${progressTitle} · terminado`);
+                        resolve();
+                    } else {
+                        vscode.window.showErrorMessage(
+                            `Omega terminó con código ${code}. Revisa: ${logPath}`
+                        );
+                        reject(new Error(`exit ${code}`));
+                    }
+                });
+            })
+    );
 }
 
 async function runOmega(
@@ -696,21 +754,10 @@ export function activate(context: vscode.ExtensionContext): void {
             args.push("--provider-api");
         }
 
-        const ws = ensureCreateAppParentInWorkspace(cwd);
-        if (ws === "failed") {
-            void vscode.window.showWarningMessage(
-                "No se pudo añadir la carpeta padre al workspace; la creación sigue en el canal Omega Studio."
-            );
-        }
-        await vscode.commands.executeCommand("workbench.view.explorer");
-
-        const stopWatch = watchCreatedAppDirectory(cwd, appName.trim());
         try {
-            await runOmega(args, `Omega create app ${appName.trim()}`, cwd);
+            await runOmegaCreateApp(args, `Omega create app ${appName.trim()}`, cwd, appName.trim());
         } catch {
             /* ya notificado */
-        } finally {
-            stopWatch.dispose();
         }
     });
 
