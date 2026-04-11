@@ -1,0 +1,13 @@
+# Dev / build (no van en el VSIX)
+.vscode/**
+**/*.ts
+tsconfig.json
+package-lock.json
+node_modules/**
+
+# Mapas de depuración (opcional; quita si quieres depurar la extensión instalada)
+out/**/*.map
+
+# Herramientas
+.eslintrc*
+eslint.config.*

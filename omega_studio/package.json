@@ -1,14 +1,25 @@
 {
   "name": "omega-studio",
   "displayName": "Omega Studio",
-  "description": "IDE avanzado para arquitectura Omega",
-  "version": "0.0.1",
+  "description": "Integra el CLI Omega (omega_architecture) en el IDE: validate, doctor, init, docs, inspector, generación de ecosistema/agente/flow/app, trazas y flujos IA (coach, redesign) desde la paleta y el explorador.",
+  "publisher": "DenisYefersonSeguraFernandez",
+  "version": "0.0.3",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yefersonSegura/omega_architecture.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yefersonSegura/omega_architecture/issues"
+  },
+  "homepage": "https://github.com/yefersonSegura/omega_architecture#readme",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.75.0"
   },
   "categories": [
     "Programming Languages",
-    "Architecture"
+    "Other"
   ],
   "main": "./out/extension.js",
   "contributes": {
