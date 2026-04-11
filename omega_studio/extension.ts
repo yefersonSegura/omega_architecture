@@ -121,10 +121,12 @@ async function checkAiDoctorOutput(): Promise<{
             () =>
                 new Promise<string>((resolve, reject) => {
                     const chunks: Buffer[] = [];
-                    const child = spawn("omega", ["ai", "doctor"], {
+                    const r = resolveOmegaCli(["ai", "doctor"]);
+                    const child = spawn(r.command, r.args, {
                         cwd,
-                        shell: true,
+                        shell: false,
                         env,
+                        windowsHide: true,
                     });
                     child.stdout?.on("data", (c) => chunks.push(Buffer.from(c)));
                     child.stderr?.on("data", (c) => chunks.push(Buffer.from(c)));
@@ -135,14 +137,18 @@ async function checkAiDoctorOutput(): Promise<{
                 })
         );
         outputChannel.show(true);
-        outputChannel.appendLine("\n$ omega ai doctor\n");
+        const r0 = resolveOmegaCli(["ai", "doctor"]);
+        const doctorLine = [r0.command, ...r0.args]
+            .map((a) => (/\s/.test(a) ? JSON.stringify(a) : a))
+            .join(" ");
+        outputChannel.appendLine(`\n$ ${doctorLine}\n`);
         outputChannel.appendLine(combined);
         const ok = combined.includes("AI base configuration looks good.");
         return { ok, output: combined };
     } catch (err) {
         const msg =
             (err as NodeJS.ErrnoException).code === "ENOENT"
-                ? "No se encontró «omega» en el PATH."
+                ? "No se encontró «dart» ni el ejecutable global de Omega. Instala el SDK de Dart/Flutter, ejecuta «dart pub global activate omega_architecture» y reinicia VS Code."
                 : String(err);
         return { ok: false, output: "", spawnError: msg };
     }
@@ -221,6 +227,62 @@ function appendOutput(data: Buffer | string): void {
     }
 }
 
+/** Directorio `bin` del pub cache de Dart (donde queda `omega` tras `dart pub global activate`). */
+function getDartPubCacheBinDir(): string | undefined {
+    const env = process.env.PUB_CACHE;
+    if (env?.trim()) {
+        return path.join(path.normalize(env.trim()), "bin");
+    }
+    if (process.platform === "win32") {
+        const la = process.env.LOCALAPPDATA;
+        if (la) {
+            return path.join(la, "Pub", "Cache", "bin");
+        }
+    }
+    return path.join(os.homedir(), ".pub-cache", "bin");
+}
+
+/** Ruta al shim global `omega` / `omega.bat` si existe. */
+function findOmegaExecutablePath(): string | undefined {
+    const bin = getDartPubCacheBinDir();
+    if (!bin) {
+        return undefined;
+    }
+    const names =
+        process.platform === "win32"
+            ? ["omega.bat", "omega.cmd", "omega.exe", "omega"]
+            : ["omega"];
+    for (const n of names) {
+        const p = path.join(bin, n);
+        try {
+            if (fs.statSync(p).isFile()) {
+                return p;
+            }
+        } catch {
+            /* siguiente candidato */
+        }
+    }
+    return undefined;
+}
+
+type OmegaResolved = { command: string; args: string[] };
+
+/**
+ * Resuelve cómo invocar el CLI sin depender de que VS Code herede el mismo PATH que la terminal
+ * (`shell: false` no encuentra `omega` en Windows si no es `omega.bat`).
+ * 1) Ejecutable en pub-cache/bin 2) `dart pub global run omega_architecture:omega`.
+ */
+function resolveOmegaCli(omegaArgs: string[]): OmegaResolved {
+    const direct = findOmegaExecutablePath();
+    if (direct) {
+        return { command: direct, args: omegaArgs };
+    }
+    return {
+        command: "dart",
+        args: ["pub", "global", "run", "omega_architecture:omega", ...omegaArgs],
+    };
+}
+
 function sanitizeAppNameForLog(appName: string): string {
     const t = appName.trim();
     return t.replace(/[^\w.-]+/g, "_") || "app";
@@ -241,9 +303,10 @@ function spawnOmegaDetachedToLog(
     env: NodeJS.ProcessEnv,
     logPath: string
 ): ChildProcess {
+    const r = resolveOmegaCli(args);
     fs.writeFileSync(logPath, "");
     const fd = fs.openSync(logPath, "a");
-    const child = spawn("omega", args, {
+    const child = spawn(r.command, r.args, {
         cwd: cwdRoot,
         shell: false,
         env,
@@ -273,9 +336,10 @@ async function runOmegaCreateApp(
     const projectPath = path.join(parentCwd, appName.trim());
 
     outputChannel.show(true);
-    const quoted = args.map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ");
+    const r = resolveOmegaCli(args);
+    const displayCmd = [r.command, ...r.args].map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ");
     outputChannel.appendLine(
-        `\n$ omega ${quoted}\n(salida → ${logPath}; tras crear Flutter se abre el proyecto)\n`
+        `\n$ ${displayCmd}\n(salida → ${logPath}; tras crear Flutter se abre el proyecto)\n`
     );
 
     let logTail = 0;
@@ -353,7 +417,7 @@ async function runOmegaCreateApp(
                     stopTailAndWatch();
                     const msg =
                         (err as NodeJS.ErrnoException).code === "ENOENT"
-                            ? "No se encontró el comando «omega» en el PATH. Instálalo o usa «dart run omega_architecture:omega» desde la raíz del paquete."
+                            ? "No se encontró «dart» o el ejecutable global de Omega. Instala Dart/Flutter, ejecuta «dart pub global activate omega_architecture» y reinicia VS Code."
                             : String(err);
                     vscode.window.showErrorMessage(`Omega: ${msg}`);
                     reject(err);
@@ -397,8 +461,11 @@ async function runOmega(
         : { ...process.env };
 
     outputChannel.show(true);
-    const quoted = args.map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ");
-    outputChannel.appendLine(`\n$ omega ${quoted}\n`);
+    const r = resolveOmegaCli(args);
+    const displayCmd = [r.command, ...r.args]
+        .map((a) => (/\s/.test(a) ? JSON.stringify(a) : a))
+        .join(" ");
+    outputChannel.appendLine(`\n$ ${displayCmd}\n`);
 
     await vscode.window.withProgress(
         {
@@ -408,10 +475,11 @@ async function runOmega(
         },
         () =>
             new Promise<void>((resolve, reject) => {
-                const child = spawn("omega", args, {
+                const child = spawn(r.command, r.args, {
                     cwd: root,
-                    shell: true,
+                    shell: false,
                     env,
+                    windowsHide: true,
                 });
 
                 let stderr = "";
@@ -425,7 +493,7 @@ async function runOmega(
                 child.on("error", (err) => {
                     const msg =
                         (err as NodeJS.ErrnoException).code === "ENOENT"
-                            ? "No se encontró el comando «omega» en el PATH. Instálalo o usa «dart run omega_architecture:omega» desde la raíz del paquete."
+                            ? "No se encontró «dart» o el ejecutable global de Omega. Instala Dart/Flutter, ejecuta «dart pub global activate omega_architecture», comprueba el PATH y reinicia VS Code."
                             : String(err);
                     vscode.window.showErrorMessage(`Omega: ${msg}`);
                     reject(err);
