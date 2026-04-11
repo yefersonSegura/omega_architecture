@@ -1,3 +1,7 @@
+## 1.0.2
+
+- **[OmegaFlowManager.getFlowFlexible]:** resolves a flow when the id matches a registered key ignoring ASCII case (e.g. route `UserInterface` vs enum wire `userInterface`). **[OmegaFlowExpressionBuilder]** uses it so [OmegaFlow.uiScopeAgent] / expressions still apply when ids differ only by casing. **[OmegaFlowManager.registeredFlowIds]** for debugging. Debug logs when no flow matches or when `uiScopeAgent` is null but subtree may need scope.
+
 ## 1.0.1
 
 - **[OmegaFlow.uiScopeAgent]:** optional getter (default `null`). When a flow subclass returns its primary UI [OmegaAgent], **[OmegaFlowExpressionBuilder]** wraps the `builder` result in **[OmegaAgentScope]** so **[OmegaScopedAgentBuilder]** resolves the agent without wrapping the whole route. Override in flows that own one agent for the screen (same instance the flow uses).

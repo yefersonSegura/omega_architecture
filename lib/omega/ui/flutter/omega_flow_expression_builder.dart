@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../flows/omega_flow.dart';
@@ -10,7 +11,11 @@ import 'omega_scope.dart';
 ///
 /// Requires [OmegaScope] above this context. The flow must be registered and
 /// usually [OmegaFlowManager.activate] / [switchTo] should have been called so
-/// [getFlow] returns the instance.
+/// [OmegaFlowManager.getFlowFlexible] finds the instance.
+///
+/// [flowId] should match the flow’s registered id; if you use `navigate.UserInterface`
+/// but the flow uses [OmegaFlowIdEnumWire] `userInterface`, ids still resolve via
+/// [OmegaFlowManager.getFlowFlexible].
 ///
 /// Uses [OmegaFlow.lastExpression] as [StreamBuilder.initialData] because the
 /// expressions stream is broadcast and does not replay the last value.
@@ -41,7 +46,21 @@ class OmegaFlowExpressionBuilder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final flow = OmegaScope.of(context).flowManager.getFlow(flowId);
+    final fm = OmegaScope.of(context).flowManager;
+    final flow = fm.getFlowFlexible(flowId);
+    if (kDebugMode && flow == null) {
+      debugPrint(
+        'OmegaFlowExpressionBuilder: no flow for flowId="$flowId". '
+        'Registered: ${fm.registeredFlowIds.toList()}. '
+        'Align [flowId] with [OmegaFlow.id] (or override [OmegaFlow.uiScopeAgent] on the flow).',
+      );
+    }
+    if (kDebugMode && flow != null && flow.uiScopeAgent == null) {
+      debugPrint(
+        'OmegaFlowExpressionBuilder: flow "${flow.id}" has null [OmegaFlow.uiScopeAgent]. '
+        '[OmegaScopedAgentBuilder] below needs that override (or wrap with [OmegaAgentScope]).',
+      );
+    }
     if (flow == null) {
       return _maybeScope(null, builder(context, null));
     }

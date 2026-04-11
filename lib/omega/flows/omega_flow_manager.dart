@@ -52,12 +52,32 @@ class OmegaFlowManager {
     _flows[flow.id] = flow;
   }
 
+  /// Ids of all registered flows (same strings as [OmegaFlow.id]). Useful for debugging.
+  Iterable<String> get registeredFlowIds => _flows.keys;
+
   // -----------------------------------------------------------
   // Get Flow
   // -----------------------------------------------------------
 
   /// Returns the flow registered with [id]. Use so the UI can listen to its [expressions] (e.g. flow.expressions.listen(...)).
   OmegaFlow? getFlow(String id) => _flows[id];
+
+  /// Like [getFlow], but also finds a flow when [id] matches a registered key
+  /// ignoring ASCII case (e.g. route `UserInterface` vs [OmegaFlowIdEnumWire] `userInterface`).
+  ///
+  /// Prefer using the **same** string for [OmegaFlow] `super(id: ...)`, [OmegaFlowExpressionBuilder]
+  /// `flowId`, and `navigate.{id}`; this method avoids the common mismatch only.
+  OmegaFlow? getFlowFlexible(String id) {
+    final direct = _flows[id];
+    if (direct != null) return direct;
+    final lower = id.toLowerCase();
+    for (final e in _flows.entries) {
+      if (e.key.toLowerCase() == lower) {
+        return e.value;
+      }
+    }
+    return null;
+  }
 
   // -----------------------------------------------------------
   // Snapshot (current state)
