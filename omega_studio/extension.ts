@@ -100,6 +100,45 @@ async function pickParentDirectoryForCreateApp(): Promise<string | undefined> {
 }
 
 /**
+ * Comprueba si `folderPath` ya es la raíz de un workspace o queda bajo alguna raíz
+ * (el Explorador ya puede mostrar esa ruta y sus hijos).
+ */
+function isFolderVisibleInWorkspace(folderPath: string): boolean {
+    const target = path.normalize(folderPath);
+    for (const wf of vscode.workspace.workspaceFolders ?? []) {
+        const root = path.normalize(wf.uri.fsPath);
+        if (target === root) {
+            return true;
+        }
+        const prefix = root.endsWith(path.sep) ? root : root + path.sep;
+        if (target.startsWith(prefix)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Añade la carpeta padre al workspace (multiraíz) sin recargar la ventana. Así, al ejecutar
+ * `omega create app` en esa ruta, el Explorador muestra el subdirectorio del proyecto mientras
+ * `flutter create` y el CLI van escribiendo archivos (como Flutter: carpeta visible durante el create).
+ * No se abre solo el hijo antes: `flutter create` crea esa carpeta y falla si ya existe.
+ */
+function ensureCreateAppParentInWorkspace(parentPath: string): "added" | "already" | "failed" {
+    const normalized = path.normalize(parentPath);
+    if (isFolderVisibleInWorkspace(normalized)) {
+        return "already";
+    }
+    const name = path.basename(normalized) || "proyecto";
+    const index = vscode.workspace.workspaceFolders?.length ?? 0;
+    const ok = vscode.workspace.updateWorkspaceFolders(index, 0, {
+        uri: vscode.Uri.file(normalized),
+        name,
+    });
+    return ok ? "added" : "failed";
+}
+
+/**
  * Ejecuta `omega ai doctor` y devuelve si la salida indica configuración válida.
  */
 async function checkAiDoctorOutput(): Promise<{
@@ -600,6 +639,14 @@ export function activate(context: vscode.ExtensionContext): void {
             args.push("--kickstart", kickstart);
             args.push("--provider-api");
         }
+
+        const ws = ensureCreateAppParentInWorkspace(cwd);
+        if (ws === "failed") {
+            void vscode.window.showWarningMessage(
+                "No se pudo añadir la carpeta padre al workspace; la creación sigue en el canal Omega Studio."
+            );
+        }
+        await vscode.commands.executeCommand("workbench.view.explorer");
 
         try {
             await runOmega(args, `Omega create app ${appName.trim()}`, cwd);
