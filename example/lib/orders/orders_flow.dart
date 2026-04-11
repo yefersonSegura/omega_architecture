@@ -4,12 +4,23 @@ import 'package:omega_architecture/omega_architecture.dart';
 
 import '../omega/app_runtime_ids.dart';
 import '../omega/app_semantics.dart';
+import 'orders_agent.dart';
 
 /// Demo flow that simulates an "orders.create" operation which may fail due to
 /// connectivity. On failure it enqueues the intent in [OmegaOfflineQueue] and
 /// emits a "pendingOffline" expression.
 class OrdersFlow extends OmegaFlow {
+  OrdersFlow({
+    required OmegaEventBus channel,
+    required this.agent,
+    required this.offlineQueue,
+  }) : super(id: AppFlowId.ordersFlow.id, channel: channel);
+
+  final OrdersAgent agent;
   final OmegaOfflineQueue offlineQueue;
+
+  @override
+  OmegaAgent? get uiScopeAgent => agent;
 
   static final _contract = OmegaFlowContract.fromTyped(
     flowId: AppFlowId.ordersFlow.id,
@@ -20,9 +31,6 @@ class OrdersFlow extends OmegaFlow {
 
   @override
   OmegaFlowContract? get contract => _contract;
-
-  OrdersFlow(OmegaEventBus channel, this.offlineQueue)
-      : super(id: AppFlowId.ordersFlow.id, channel: channel);
 
   @override
   void onStart() {

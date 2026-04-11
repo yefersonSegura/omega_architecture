@@ -2,11 +2,17 @@ import 'package:omega_architecture/omega_architecture.dart';
 
 import '../omega/app_runtime_ids.dart';
 import '../omega/app_semantics.dart';
+import 'auth_agent.dart';
 import 'auth_events.dart';
 
 class AuthFlow extends OmegaFlow {
-  AuthFlow(OmegaEventBus channel)
+  AuthFlow({required OmegaEventBus channel, required this.agent})
       : super(id: AppFlowId.authFlow.id, channel: channel);
+
+  final AuthAgent agent;
+
+  @override
+  OmegaAgent? get uiScopeAgent => agent;
 
   static final _contract = OmegaFlowContract.fromTyped(
     flowId: AppFlowId.authFlow.id,

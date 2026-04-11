@@ -1,6 +1,7 @@
 import 'package:omega_architecture/omega_architecture.dart';
 
 import '../omega/app_runtime_ids.dart';
+import 'provider_agent.dart';
 
 class ProviderFlow extends OmegaFlow {
   static final _contract = OmegaFlowContract.fromTyped(
@@ -13,8 +14,13 @@ class ProviderFlow extends OmegaFlow {
   @override
   OmegaFlowContract? get contract => _contract;
 
-  ProviderFlow(OmegaEventBus channel)
+  ProviderFlow({required OmegaEventBus channel, required this.agent})
       : super(id: AppFlowId.Provider.id, channel: channel);
+
+  final ProviderAgent agent;
+
+  @override
+  OmegaAgent? get uiScopeAgent => agent;
 
   @override
   void onStart() {

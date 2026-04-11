@@ -15,4 +15,5 @@ enum AppFlowId with OmegaFlowIdEnumWire implements OmegaFlowId {
 enum AppAgentId with OmegaAgentIdEnumWire implements OmegaAgentId {
   Auth,
   Provider,
+  orders,
 }

@@ -1,17 +1,15 @@
 import 'package:omega_architecture/omega_architecture.dart';
 
-// Si un flujo usa `required this.agent` / [OmegaFlow.uiScopeAgent] y la página usa
-// OmegaFlowExpressionBuilder + OmegaScopedAgentBuilder sin OmegaAgentScope en la ruta:
-//   final myModuleAgent = MyModuleAgent(channel);
-//   agents: <OmegaAgent>[..., myModuleAgent],
-//   flows: <OmegaFlow>[..., MyModuleFlow(channel: channel, agent: myModuleAgent)],
-// `omega g ecosystem` / registro en setup añaden import de *_agent.dart y una sola instancia.
+// En el example, cada flujo recibe su agente (`required this.agent`) y expone
+// [OmegaFlow.uiScopeAgent] para OmegaFlowExpressionBuilder + OmegaScopedAgentBuilder.
+// Una sola instancia por módulo: final xAgent = XAgent(ns); agents + flows + rutas.
 
 import '../auth/auth_agent.dart';
 import '../auth/auth_flow.dart';
 import '../auth/auth_events.dart';
 import '../auth/ui/auth_page.dart';
 import '../home/home.dart';
+import '../orders/orders_agent.dart';
 import '../orders/orders_flow.dart';
 import '../provider/provider_agent.dart';
 import '../provider/provider_flow.dart';
@@ -24,13 +22,19 @@ OmegaConfig createOmegaConfig(OmegaChannel channel) {
   final providerNs = channel.namespace('provider');
   final ordersNs = channel.namespace('orders');
   final authAgent = AuthAgent(authNs);
+  final providerAgent = ProviderAgent(providerNs);
+  final ordersAgent = OrdersAgent(ordersNs);
 
   return OmegaConfig(
-    agents: <OmegaAgent>[ProviderAgent(providerNs), authAgent],
+    agents: <OmegaAgent>[providerAgent, authAgent, ordersAgent],
     flows: <OmegaFlow>[
-      ProviderFlow(providerNs),
-      AuthFlow(authNs),
-      OrdersFlow(ordersNs, offlineQueue),
+      ProviderFlow(channel: providerNs, agent: providerAgent),
+      AuthFlow(channel: authNs, agent: authAgent),
+      OrdersFlow(
+        channel: ordersNs,
+        agent: ordersAgent,
+        offlineQueue: offlineQueue,
+      ),
     ],
     routes: [
       OmegaRoute(

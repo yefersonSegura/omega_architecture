@@ -1,3 +1,7 @@
+## 1.0.4
+
+- **Example:** `AuthFlow`, `ProviderFlow` and `OrdersFlow` take `{required channel, required agent}` (and `OrdersFlow` also `offlineQueue`); each overrides [OmegaFlow.uiScopeAgent]. Added `OrdersAgent` + `orders_behavior.dart` and `AppAgentId.orders`. `omega_setup` wires one instance per agent into `agents:` and into the matching flow.
+
 ## 1.0.3
 
 - **CLI `registerInOmegaSetup`:** If `*_flow.dart` declares `required this.agent` or `required ModuleAgent agent`, the setup now adds a single `final moduleAgent = ModuleAgent(channel)`, includes it in `agents:`, and registers `ModuleFlow(channel: channel, agent: moduleAgent)` (same variable). Heal recipe notes the same. Example `omega_setup.dart` documents the pattern.
