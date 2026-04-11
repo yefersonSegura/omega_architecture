@@ -122,11 +122,12 @@ async function checkAiDoctorOutput(): Promise<{
                 new Promise<string>((resolve, reject) => {
                     const chunks: Buffer[] = [];
                     const r = resolveOmegaCli(["ai", "doctor"]);
+                    const sh = omegaSpawnShellOptions(r.command);
                     const child = spawn(r.command, r.args, {
                         cwd,
-                        shell: false,
+                        shell: sh.shell,
                         env,
-                        windowsHide: true,
+                        windowsHide: sh.windowsHide,
                     });
                     child.stdout?.on("data", (c) => chunks.push(Buffer.from(c)));
                     child.stderr?.on("data", (c) => chunks.push(Buffer.from(c)));
@@ -268,19 +269,30 @@ function findOmegaExecutablePath(): string | undefined {
 type OmegaResolved = { command: string; args: string[] };
 
 /**
- * Resuelve cómo invocar el CLI sin depender de que VS Code herede el mismo PATH que la terminal
- * (`shell: false` no encuentra `omega` en Windows si no es `omega.bat`).
- * 1) Ejecutable en pub-cache/bin 2) `dart pub global run omega_architecture:omega`.
+ * En Windows, los shims del pub cache son `.bat` / `.cmd`. Node **no** puede ejecutarlos bien con
+ * `spawn` y `shell: false` (el proceso falla o no arranca). Por eso usamos `dart pub global run …`
+ * (ejecutable real). En Unix el script `omega` sin extensión sí va con `shell: false`.
  */
 function resolveOmegaCli(omegaArgs: string[]): OmegaResolved {
     const direct = findOmegaExecutablePath();
     if (direct) {
-        return { command: direct, args: omegaArgs };
+        const isWinBatch =
+            process.platform === "win32" && /\.(bat|cmd)$/i.test(direct);
+        if (!isWinBatch) {
+            return { command: direct, args: omegaArgs };
+        }
     }
     return {
         command: "dart",
         args: ["pub", "global", "run", "omega_architecture:omega", ...omegaArgs],
     };
+}
+
+/** Opciones de spawn: los `.bat` requieren `shell: true` en Windows si se invocan directamente. */
+function omegaSpawnShellOptions(command: string): { shell: boolean; windowsHide: boolean } {
+    const needShell =
+        process.platform === "win32" && /\.(bat|cmd)$/i.test(command);
+    return { shell: needShell, windowsHide: true };
 }
 
 function sanitizeAppNameForLog(appName: string): string {
@@ -304,15 +316,16 @@ function spawnOmegaDetachedToLog(
     logPath: string
 ): ChildProcess {
     const r = resolveOmegaCli(args);
+    const sh = omegaSpawnShellOptions(r.command);
     fs.writeFileSync(logPath, "");
     const fd = fs.openSync(logPath, "a");
     const child = spawn(r.command, r.args, {
         cwd: cwdRoot,
-        shell: false,
+        shell: sh.shell,
         env,
         detached: true,
         stdio: ["ignore", fd, fd],
-        windowsHide: true,
+        windowsHide: sh.windowsHide,
     });
     fs.closeSync(fd);
     child.unref();
@@ -475,11 +488,12 @@ async function runOmega(
         },
         () =>
             new Promise<void>((resolve, reject) => {
+                const sh = omegaSpawnShellOptions(r.command);
                 const child = spawn(r.command, r.args, {
                     cwd: root,
-                    shell: false,
+                    shell: sh.shell,
                     env,
-                    windowsHide: true,
+                    windowsHide: sh.windowsHide,
                 });
 
                 let stderr = "";
@@ -825,6 +839,18 @@ export function activate(context: vscode.ExtensionContext): void {
         if (withAi && kickstart) {
             args.push("--kickstart", kickstart);
             args.push("--provider-api");
+        }
+
+        const wouldCreate = path.join(cwd, appName.trim());
+        try {
+            if (fs.existsSync(wouldCreate)) {
+                vscode.window.showErrorMessage(
+                    `Ya existe la carpeta «${appName.trim()}» en esa ruta. Elimínala o elige otro nombre.`
+                );
+                return;
+            }
+        } catch {
+            /* continuar */
         }
 
         try {
