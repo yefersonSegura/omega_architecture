@@ -3,7 +3,7 @@
   "displayName": "Omega Studio",
   "description": "Integra el CLI Omega (omega_architecture) en el IDE: validate, doctor, init, docs, inspector, generación de ecosistema/agente/flow/app, trazas y flujos IA (coach, redesign) desde la paleta y el explorador.",
   "publisher": "DenisYefersonSeguraFernandez",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "license": "MIT",
   "repository": {
     "type": "git",

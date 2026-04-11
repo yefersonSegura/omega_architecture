@@ -14,6 +14,12 @@ import { OmegaMenuTreeProvider } from "./omega_tree";
 let outputChannel: vscode.OutputChannel;
 let extContext: vscode.ExtensionContext;
 
+/** Si spawn da ENOENT: el proceso del editor casi nunca hereda el PATH de la terminal. */
+const MSG_SPAWN_DART_FLUTTER_MISSING =
+    "No se encontró «dart» ni «flutter». El editor suele usar otro PATH que la terminal. " +
+    "Configura en Ajustes «Dart: Flutter SDK» o «Dart: Sdk Path», o la variable FLUTTER_ROOT. " +
+    "Ejecuta «dart pub global activate omega_architecture» y reinicia Cursor/VS Code.";
+
 function getWorkspaceRoot(): string | undefined {
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 }
@@ -149,7 +155,7 @@ async function checkAiDoctorOutput(): Promise<{
     } catch (err) {
         const msg =
             (err as NodeJS.ErrnoException).code === "ENOENT"
-                ? "No se encontró «dart» ni el ejecutable global de Omega. Instala el SDK de Dart/Flutter, ejecuta «dart pub global activate omega_architecture» y reinicia VS Code."
+                ? MSG_SPAWN_DART_FLUTTER_MISSING
                 : String(err);
         return { ok: false, output: "", spawnError: msg };
     }
@@ -228,6 +234,165 @@ function appendOutput(data: Buffer | string): void {
     }
 }
 
+/** Recorre PATH buscando un nombre de archivo ejecutable. */
+function findExecutableInPath(fileNames: string[]): string | undefined {
+    const raw = process.env.PATH ?? process.env.Path;
+    if (!raw) {
+        return undefined;
+    }
+    for (const dir of raw.split(path.delimiter)) {
+        const d = dir.trim();
+        if (!d) {
+            continue;
+        }
+        for (const name of fileNames) {
+            const full = path.join(d, name);
+            try {
+                if (fs.statSync(full).isFile()) {
+                    return full;
+                }
+            } catch {
+                /* siguiente */
+            }
+        }
+    }
+    return undefined;
+}
+
+/**
+ * SDK de Dart/Flutter que el usuario configuró en la extensión Dart de VS Code / Cursor
+ * (el proceso del editor a menudo **no** hereda el mismo PATH que la terminal).
+ */
+function findDartFromDartExtensionSettings(): string | undefined {
+    try {
+        const cfg = vscode.workspace.getConfiguration("dart");
+        const flutterSdk = cfg.get<string>("flutterSdkPath");
+        if (flutterSdk?.trim()) {
+            const bin = path.join(flutterSdk.trim(), "bin");
+            const names =
+                process.platform === "win32"
+                    ? ["dart.exe", "dart.bat", "dart.cmd"]
+                    : ["dart"];
+            for (const n of names) {
+                const p = path.join(bin, n);
+                try {
+                    if (fs.statSync(p).isFile()) {
+                        return p;
+                    }
+                } catch {
+                    /* next */
+                }
+            }
+        }
+        const dartSdk = cfg.get<string>("sdkPath");
+        if (dartSdk?.trim()) {
+            const bin = path.join(dartSdk.trim(), "bin");
+            const names =
+                process.platform === "win32"
+                    ? ["dart.exe", "dart.bat", "dart.cmd"]
+                    : ["dart"];
+            for (const n of names) {
+                const p = path.join(bin, n);
+                try {
+                    if (fs.statSync(p).isFile()) {
+                        return p;
+                    }
+                } catch {
+                    /* next */
+                }
+            }
+        }
+    } catch {
+        /* sin workspace */
+    }
+    return undefined;
+}
+
+function findDartFromFlutterRootEnv(): string | undefined {
+    const root = process.env.FLUTTER_ROOT?.trim();
+    if (!root) {
+        return undefined;
+    }
+    const bin = path.join(root, "bin");
+    const names =
+        process.platform === "win32" ? ["dart.exe", "dart.bat", "dart.cmd"] : ["dart"];
+    for (const n of names) {
+        const p = path.join(bin, n);
+        try {
+            if (fs.statSync(p).isFile()) {
+                return p;
+            }
+        } catch {
+            /* next */
+        }
+    }
+    return undefined;
+}
+
+/**
+ * Ruta al `dart` del SDK (mismo que usa la terminal si está bien configurada).
+ */
+function findDartExecutablePath(): string | undefined {
+    const fromSettings = findDartFromDartExtensionSettings();
+    if (fromSettings) {
+        return fromSettings;
+    }
+    const fromEnv = findDartFromFlutterRootEnv();
+    if (fromEnv) {
+        return fromEnv;
+    }
+    return findExecutableInPath(
+        process.platform === "win32" ? ["dart.exe", "dart.bat", "dart.cmd"] : ["dart"]
+    );
+}
+
+function findFlutterExecutablePath(): string | undefined {
+    try {
+        const cfg = vscode.workspace.getConfiguration("dart");
+        const flutterSdk = cfg.get<string>("flutterSdkPath");
+        if (flutterSdk?.trim()) {
+            const bin = path.join(flutterSdk.trim(), "bin");
+            const names =
+                process.platform === "win32"
+                    ? ["flutter.bat", "flutter.cmd", "flutter.exe"]
+                    : ["flutter"];
+            for (const n of names) {
+                const p = path.join(bin, n);
+                try {
+                    if (fs.statSync(p).isFile()) {
+                        return p;
+                    }
+                } catch {
+                    /* next */
+                }
+            }
+        }
+    } catch {
+        /* */
+    }
+    const root = process.env.FLUTTER_ROOT?.trim();
+    if (root) {
+        const bin = path.join(root, "bin");
+        const names =
+            process.platform === "win32"
+                ? ["flutter.bat", "flutter.cmd", "flutter.exe"]
+                : ["flutter"];
+        for (const n of names) {
+            const p = path.join(bin, n);
+            try {
+                if (fs.statSync(p).isFile()) {
+                    return p;
+                }
+            } catch {
+                /* next */
+            }
+        }
+    }
+    return findExecutableInPath(
+        process.platform === "win32" ? ["flutter.bat", "flutter.cmd", "flutter.exe"] : ["flutter"]
+    );
+}
+
 /** Directorio `bin` del pub cache de Dart (donde queda `omega` tras `dart pub global activate`). */
 function getDartPubCacheBinDir(): string | undefined {
     const env = process.env.PUB_CACHE;
@@ -268,10 +433,18 @@ function findOmegaExecutablePath(): string | undefined {
 
 type OmegaResolved = { command: string; args: string[] };
 
+function globalRunOmegaArgs(omegaArgs: string[]): string[] {
+    return ["pub", "global", "run", "omega_architecture:omega", ...omegaArgs];
+}
+
 /**
  * En Windows, los shims del pub cache son `.bat` / `.cmd`. Node **no** puede ejecutarlos bien con
  * `spawn` y `shell: false` (el proceso falla o no arranca). Por eso usamos `dart pub global run …`
  * (ejecutable real). En Unix el script `omega` sin extensión sí va con `shell: false`.
+ *
+ * El proceso del editor suele **no** tener el mismo PATH que la terminal: resolvemos `dart` con
+ * ajustes de la extensión Dart (`flutterSdkPath` / `sdkPath`), `FLUTTER_ROOT`, PATH y, si hace
+ * falta, `flutter pub global run …`.
  */
 function resolveOmegaCli(omegaArgs: string[]): OmegaResolved {
     const direct = findOmegaExecutablePath();
@@ -282,10 +455,16 @@ function resolveOmegaCli(omegaArgs: string[]): OmegaResolved {
             return { command: direct, args: omegaArgs };
         }
     }
-    return {
-        command: "dart",
-        args: ["pub", "global", "run", "omega_architecture:omega", ...omegaArgs],
-    };
+    const gr = globalRunOmegaArgs(omegaArgs);
+    const dartPath = findDartExecutablePath();
+    if (dartPath) {
+        return { command: dartPath, args: gr };
+    }
+    const flutterPath = findFlutterExecutablePath();
+    if (flutterPath) {
+        return { command: flutterPath, args: gr };
+    }
+    return { command: "dart", args: gr };
 }
 
 /** Opciones de spawn: los `.bat` requieren `shell: true` en Windows si se invocan directamente. */
@@ -430,7 +609,7 @@ async function runOmegaCreateApp(
                     stopTailAndWatch();
                     const msg =
                         (err as NodeJS.ErrnoException).code === "ENOENT"
-                            ? "No se encontró «dart» o el ejecutable global de Omega. Instala Dart/Flutter, ejecuta «dart pub global activate omega_architecture» y reinicia VS Code."
+                            ? MSG_SPAWN_DART_FLUTTER_MISSING
                             : String(err);
                     vscode.window.showErrorMessage(`Omega: ${msg}`);
                     reject(err);
@@ -507,7 +686,7 @@ async function runOmega(
                 child.on("error", (err) => {
                     const msg =
                         (err as NodeJS.ErrnoException).code === "ENOENT"
-                            ? "No se encontró «dart» o el ejecutable global de Omega. Instala Dart/Flutter, ejecuta «dart pub global activate omega_architecture», comprueba el PATH y reinicia VS Code."
+                            ? MSG_SPAWN_DART_FLUTTER_MISSING
                             : String(err);
                     vscode.window.showErrorMessage(`Omega: ${msg}`);
                     reject(err);
