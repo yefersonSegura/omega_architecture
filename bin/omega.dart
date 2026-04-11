@@ -1268,6 +1268,7 @@ void main() {
 HEAL RECIPE — analyzer says missing required named parameter `agent` (usually in lib/omega/omega_setup.dart):
 - A *Page widget constructor has `required SomeAgent agent`. You MUST NOT use `const ThatPage()` or `ThatPage()` without arguments.
 - In createOmegaConfig(OmegaChannel channel): (1) import the agent Dart file; (2) add `final myModuleAgent = MyModuleAgent(channel);` or `MyModuleAgent(channel: channel);` if ctor uses named channel (read *_agent.dart); (3) put `myModuleAgent` in `agents: <OmegaAgent>[..., myModuleAgent]` once; (4) set route `builder: (context) => ThatPage(agent: myModuleAgent)` (same variable reference). Match Page class name ↔ Agent class name (e.g. ProductCatalogPage ↔ ProductCatalogAgent).
+- If *Module*Flow has `required this.agent` / passes agent to [OmegaFlow.uiScopeAgent]: use the SAME `myModuleAgent` variable in `flows: [..., MyModuleFlow(channel: channel, agent: myModuleAgent)]` — do not omit `myModuleAgent` from the `agents:` list.
 """
         : "";
 
@@ -2152,6 +2153,21 @@ bool _omegaPageDartRequiresAgentField(String pageSource) {
   return false;
 }
 
+/// True when [*Module*Flow] takes the module agent in its constructor (`required this.agent`
+/// or `required ModuleAgent agent`) so [omega_setup] must use one shared variable in
+/// `agents:` and `ModuleFlow(channel: channel, agent: thatVar)`.
+bool _omegaFlowDartRequiresSharedAgent(String flowSource, String pascal) {
+  if (flowSource.isEmpty) return false;
+  if (!flowSource.contains('class ${pascal}Flow')) return false;
+  if (RegExp(r'required\s+this\.agent\b').hasMatch(flowSource)) return true;
+  if (RegExp(
+        r'required\s+' + RegExp.escape('${pascal}Agent') + r'\s+agent\b',
+      ).hasMatch(flowSource)) {
+    return true;
+  }
+  return false;
+}
+
 /// When [Page] gained `required agent` after the first [registerInOmegaSetup] pass
 /// (e.g. AI overwrote the scaffold), rewrite `const FooPage()` / `FooPage()` routes.
 String _omegaUpgradeOmegaRouteForAgent(
@@ -2229,9 +2245,8 @@ bool _omegaSetupHasAgentChannelConstruction(String content, String pascal) {
 
 bool _omegaSetupHasFlowChannelConstruction(String content, String pascal) {
   final name = "${pascal}Flow";
-  return RegExp(
-    r"\b" + RegExp.escape(name) + r"\s*\(\s*(?:channel\s*:\s*)?channel\s*\)",
-  ).hasMatch(content);
+  // Any constructor call, including UserInterfaceFlow(channel: channel, agent: x).
+  return RegExp(r"\b" + RegExp.escape(name) + r"\s*\(").hasMatch(content);
 }
 
 void registerInOmegaSetup(
@@ -2282,14 +2297,19 @@ void registerInOmegaSetup(
   }
   var flowChannelArgs = "channel";
   final flowFileForCtor = File(flowPath);
+  var flowNeedsSharedAgent = false;
   if (flowFileForCtor.existsSync()) {
     try {
-      flowChannelArgs = _omegaEventBusArgListForClass(
-        flowFileForCtor.readAsStringSync(),
-        "${pascal}Flow",
-      );
+      final flowSrc = flowFileForCtor.readAsStringSync();
+      flowNeedsSharedAgent = _omegaFlowDartRequiresSharedAgent(flowSrc, pascal);
+      flowChannelArgs = _omegaEventBusArgListForClass(flowSrc, "${pascal}Flow");
     } catch (_) {}
   }
+  if (flowNeedsSharedAgent) {
+    flowChannelArgs = "channel: channel, agent: $agentVar";
+  }
+  final registerAgentEffective =
+      registerAgent || (registerFlow && flowNeedsSharedAgent);
 
   final String agentImport;
   final String flowImport;
@@ -2320,7 +2340,7 @@ void registerInOmegaSetup(
     "import\\s+['\"].*${RegExp.escape("${nameLower}_page.dart")}['\"];\\s*",
   );
   // Quita todas las líneas de import de este módulo (IA / doble register pueden duplicar).
-  if (registerAgent) {
+  if (registerAgentEffective) {
     while (agentPattern.hasMatch(content)) {
       content = content.replaceFirst(agentPattern, "");
     }
@@ -2335,7 +2355,7 @@ void registerInOmegaSetup(
   }
 
   final newImports = <String>[];
-  if (registerAgent) newImports.add(agentImport);
+  if (registerAgentEffective) newImports.add(agentImport);
   if (registerFlow) {
     newImports.add(flowImport);
     // Añadimos el import de la página para la ruta
@@ -2356,7 +2376,7 @@ void registerInOmegaSetup(
     content = '${newImports.join("\n")}\n$content';
   }
 
-  if (registerAgent && pageNeedsAgent) {
+  if (registerAgentEffective && (pageNeedsAgent || flowNeedsSharedAgent)) {
     final decl = "  final $agentVar = ${pascal}Agent($agentChannelArgs);";
     if (!content.contains(decl)) {
       final anchor = content.indexOf("OmegaConfig createOmegaConfig");
@@ -2371,7 +2391,7 @@ void registerInOmegaSetup(
   }
 
   // First pass may have added `PascalAgent(channel),` before the page required agent.
-  if (registerAgent && pageNeedsAgent) {
+  if (registerAgentEffective && (pageNeedsAgent || flowNeedsSharedAgent)) {
     final inlineRe = RegExp(
       r"\n(\s*)" + RegExp.escape(pascal) + r"Agent\s*\([^)]*\)\s*,",
     );
@@ -2383,14 +2403,14 @@ void registerInOmegaSetup(
     }
   }
 
-  if (pageNeedsAgent && registerFlow && !registerAgent) {
+  if ((pageNeedsAgent || flowNeedsSharedAgent) && registerFlow && !registerAgent) {
     stdout.writeln(
-      "⚠️ ${_tr(en: "$pascal page expects a required agent — register the agent in omega_setup (agents + final $agentVar) and pass agent: $agentVar on the route.", es: "La página $pascal requiere un agente — registra el agente en omega_setup (agents + final $agentVar) y pasa agent: $agentVar en la ruta.")}",
+      "⚠️ ${_tr(en: "$pascal needs a shared agent in omega_setup — add import + final $agentVar + list it in agents: and pass it to ${pascal}Flow(..., agent: $agentVar). Page may also need agent: $agentVar on the route.", es: "$pascal requiere el mismo agente en omega_setup: import + final $agentVar + en agents: y ${pascal}Flow(..., agent: $agentVar). La página puede necesitar agent: $agentVar en la ruta.")}",
     );
   }
 
-  if (registerAgent) {
-    if (pageNeedsAgent) {
+  if (registerAgentEffective) {
+    if (pageNeedsAgent || flowNeedsSharedAgent) {
       if (!content.contains("$agentVar,")) {
         if (content.contains("agents: <OmegaAgent>[")) {
           content = content.replaceFirst(
@@ -2404,7 +2424,8 @@ void registerInOmegaSetup(
           );
         }
       }
-    } else if (!_omegaSetupHasAgentChannelConstruction(content, pascal)) {
+    } else if (!_omegaSetupHasAgentChannelConstruction(content, pascal) &&
+        !flowNeedsSharedAgent) {
       if (content.contains("agents: <OmegaAgent>[")) {
         content = content.replaceFirst(
           "agents: <OmegaAgent>[",
@@ -2444,7 +2465,7 @@ void registerInOmegaSetup(
 
     // Registrar ruta por defecto para el nuevo módulo
     if (!content.contains("OmegaRoute(id: '$pascal'")) {
-      final routeEntry = pageNeedsAgent && registerAgent
+      final routeEntry = pageNeedsAgent && registerAgentEffective
           ? "      OmegaRoute(id: '$pascal', builder: (context) => ${pascal}Page(agent: $agentVar)),"
           : "      OmegaRoute(id: '$pascal', builder: (context) => const ${pascal}Page()),";
       if (content.contains("routes: <OmegaRoute>[")) {
@@ -2468,7 +2489,7 @@ void registerInOmegaSetup(
     }
   }
 
-  if (registerAgent && pageNeedsAgent) {
+  if (registerAgentEffective && pageNeedsAgent) {
     content = _omegaUpgradeOmegaRouteForAgent(content, pascal, agentVar);
   }
 
@@ -2477,7 +2498,7 @@ void registerInOmegaSetup(
   setupFile.writeAsStringSync(content);
 
   final what = [
-    if (registerAgent) "agent",
+    if (registerAgentEffective) "agent",
     if (registerFlow) "flow",
   ].join(", ");
   stdout.writeln("Registered $pascal ($what) in omega_setup.dart");

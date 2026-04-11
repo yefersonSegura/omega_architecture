@@ -1,5 +1,11 @@
 import 'package:omega_architecture/omega_architecture.dart';
-import 'package:omega_architecture/omega/bootstrap/omega_config.dart';
+
+// Si un flujo usa `required this.agent` / [OmegaFlow.uiScopeAgent] y la página usa
+// OmegaFlowExpressionBuilder + OmegaScopedAgentBuilder sin OmegaAgentScope en la ruta:
+//   final myModuleAgent = MyModuleAgent(channel);
+//   agents: <OmegaAgent>[..., myModuleAgent],
+//   flows: <OmegaFlow>[..., MyModuleFlow(channel: channel, agent: myModuleAgent)],
+// `omega g ecosystem` / registro en setup añaden import de *_agent.dart y una sola instancia.
 
 import '../auth/auth_agent.dart';
 import '../auth/auth_flow.dart';

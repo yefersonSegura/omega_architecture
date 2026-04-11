@@ -1,3 +1,7 @@
+## 1.0.3
+
+- **CLI `registerInOmegaSetup`:** If `*_flow.dart` declares `required this.agent` or `required ModuleAgent agent`, the setup now adds a single `final moduleAgent = ModuleAgent(channel)`, includes it in `agents:`, and registers `ModuleFlow(channel: channel, agent: moduleAgent)` (same variable). Heal recipe notes the same. Example `omega_setup.dart` documents the pattern.
+
 ## 1.0.2
 
 - **[OmegaFlowManager.getFlowFlexible]:** resolves a flow when the id matches a registered key ignoring ASCII case (e.g. route `UserInterface` vs enum wire `userInterface`). **[OmegaFlowExpressionBuilder]** uses it so [OmegaFlow.uiScopeAgent] / expressions still apply when ids differ only by casing. **[OmegaFlowManager.registeredFlowIds]** for debugging. Debug logs when no flow matches or when `uiScopeAgent` is null but subtree may need scope.
