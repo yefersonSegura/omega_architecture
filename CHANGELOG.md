@@ -1,3 +1,7 @@
+## 1.0.5
+
+- **CLI / IA (`bin/omega.dart`):** MASTER CHECKLIST y plantilla `omega g ecosystem` documentan dependencias **extra** en el flujo (p. ej. `offlineQueue`, repos): no son agentes; se crean una vez en `createOmegaConfig` y se pasan nombradas al constructor; el ecosistema generado por defecto solo añade `channel` + `agent`.
+
 ## 1.0.4
 
 - **Example:** `AuthFlow`, `ProviderFlow` and `OrdersFlow` take `{required channel, required agent}` (and `OrdersFlow` also `offlineQueue`); each overrides [OmegaFlow.uiScopeAgent]. Added `OrdersAgent` + `orders_behavior.dart` and `AppAgentId.orders`. `omega_setup` wires one instance per agent into `agents:` and into the matching flow.
