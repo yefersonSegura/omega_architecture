@@ -229,6 +229,11 @@ function sanitizeAppNameForLog(appName: string): string {
 /**
  * Proceso `omega` independiente del host de extensiones; la salida va a un archivo para que
  * sobreviva a `vscode.openFolder` (recarga de ventana).
+ *
+ * En Windows, `shell: true` + `detached` suele abrir una **consola aparte** (nueva ventana de cmd).
+ * Con `shell: false` se ejecuta `omega` / `omega.cmd` del PATH sin esa ventana; `windowsHide`
+ * refuerza que no aparezca consola. La salida la ves en el **canal Omega Studio** (mismo VS Code),
+ * no en un terminal externo.
  */
 function spawnOmegaDetachedToLog(
     args: string[],
@@ -240,7 +245,7 @@ function spawnOmegaDetachedToLog(
     const fd = fs.openSync(logPath, "a");
     const child = spawn("omega", args, {
         cwd: cwdRoot,
-        shell: true,
+        shell: false,
         env,
         detached: true,
         stdio: ["ignore", fd, fd],
