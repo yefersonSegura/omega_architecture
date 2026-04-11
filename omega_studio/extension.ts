@@ -1,10 +1,217 @@
 import * as vscode from "vscode";
 import { spawn } from "child_process";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
+import {
+    buildOmegaEnv,
+    formatAiConfigurationSummary,
+    runConfigureAiWizard,
+} from "./ai_env";
+import { OMEGA_ACTIONS } from "./omega_actions";
+import { OmegaMenuTreeProvider } from "./omega_tree";
 
 let outputChannel: vscode.OutputChannel;
+let extContext: vscode.ExtensionContext;
 
 function getWorkspaceRoot(): string | undefined {
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+}
+
+/** CWD para spawn: proyecto abierto o home (omega ai doctor solo usa env). */
+function getOmegaSpawnCwd(): string {
+    return getWorkspaceRoot() ?? os.homedir();
+}
+
+/** Carpeta padre donde `flutter create` / `omega create app` generará el subproyecto. */
+async function pickParentDirectoryForCreateApp(): Promise<string | undefined> {
+    const choice = await vscode.window.showQuickPick(
+        [
+            {
+                label: "$(folder-opened) Examinar…",
+                description: "Elegir carpeta con el diálogo del sistema",
+            },
+            {
+                label: "$(edit) Escribir ruta",
+                description: "Carpeta padre que ya existe (ruta absoluta o relativa)",
+            },
+            {
+                label: "$(new-folder) Crear carpeta",
+                description: "Indica la ruta; se crean carpetas intermedias si no existen",
+            },
+        ],
+        { title: "Carpeta padre del nuevo proyecto Flutter", placeHolder: "Examinar, escribir o crear" }
+    );
+    if (!choice) {
+        return undefined;
+    }
+
+    if (choice.label.includes("Examinar")) {
+        const uris = await vscode.window.showOpenDialog({
+            canSelectFiles: false,
+            canSelectFolders: true,
+            canSelectMany: false,
+            openLabel: "Carpeta padre",
+        });
+        return uris?.[0]?.fsPath;
+    }
+
+    if (choice.label.includes("Escribir ruta")) {
+        const raw = await vscode.window.showInputBox({
+            prompt: "Ruta de la carpeta padre (debe existir)",
+            placeHolder: "Ej: C:\\dev o /home/user/proyectos",
+        });
+        if (!raw?.trim()) {
+            return undefined;
+        }
+        const abs = path.resolve(raw.trim().replace(/^["']|["']$/g, ""));
+        try {
+            const st = fs.statSync(abs);
+            if (!st.isDirectory()) {
+                vscode.window.showErrorMessage("La ruta no es una carpeta.");
+                return undefined;
+            }
+        } catch {
+            vscode.window.showErrorMessage("La carpeta no existe. Usa «Crear carpeta» o revisa la ruta.");
+            return undefined;
+        }
+        return abs;
+    }
+
+    if (choice.label.includes("Crear carpeta")) {
+        const raw = await vscode.window.showInputBox({
+            prompt: "Ruta completa de la carpeta padre (se creará con sus padres si hace falta)",
+            placeHolder: "Ej: C:\\dev\\clientes\\nuevo",
+        });
+        if (!raw?.trim()) {
+            return undefined;
+        }
+        const abs = path.resolve(raw.trim().replace(/^["']|["']$/g, ""));
+        try {
+            fs.mkdirSync(abs, { recursive: true });
+        } catch (e) {
+            vscode.window.showErrorMessage(`No se pudo crear la carpeta: ${String(e)}`);
+            return undefined;
+        }
+        return abs;
+    }
+
+    return undefined;
+}
+
+/**
+ * Ejecuta `omega ai doctor` y devuelve si la salida indica configuración válida.
+ */
+async function checkAiDoctorOutput(): Promise<{
+    ok: boolean;
+    output: string;
+    spawnError?: string;
+}> {
+    const cwd = getOmegaSpawnCwd();
+    const env = extContext
+        ? await buildOmegaEnv(extContext)
+        : { ...process.env };
+    try {
+        const combined = await vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: "Omega: comprobando configuración de IA (omega ai doctor)…",
+                cancellable: false,
+            },
+            () =>
+                new Promise<string>((resolve, reject) => {
+                    const chunks: Buffer[] = [];
+                    const child = spawn("omega", ["ai", "doctor"], {
+                        cwd,
+                        shell: true,
+                        env,
+                    });
+                    child.stdout?.on("data", (c) => chunks.push(Buffer.from(c)));
+                    child.stderr?.on("data", (c) => chunks.push(Buffer.from(c)));
+                    child.on("error", reject);
+                    child.on("close", () =>
+                        resolve(Buffer.concat(chunks).toString("utf8"))
+                    );
+                })
+        );
+        outputChannel.show(true);
+        outputChannel.appendLine("\n$ omega ai doctor\n");
+        outputChannel.appendLine(combined);
+        const ok = combined.includes("AI base configuration looks good.");
+        return { ok, output: combined };
+    } catch (err) {
+        const msg =
+            (err as NodeJS.ErrnoException).code === "ENOENT"
+                ? "No se encontró «omega» en el PATH."
+                : String(err);
+        return { ok: false, output: "", spawnError: msg };
+    }
+}
+
+/**
+ * Comprueba IA; si falla, muestra error (comandos genéricos con --provider-api).
+ */
+async function assertAiProviderReady(): Promise<boolean> {
+    const { ok, spawnError } = await checkAiDoctorOutput();
+    if (spawnError) {
+        vscode.window.showErrorMessage(`Omega: ${spawnError}`);
+        return false;
+    }
+    if (ok) {
+        return true;
+    }
+    await vscode.window.showErrorMessage(
+        "La configuración de IA no está lista. Define OMEGA_AI_ENABLED=true, proveedor (p. ej. openai|gemini) y la clave API. Revisa el canal «Omega Studio» o ejecuta el comando «IA: doctor».",
+        { modal: false }
+    );
+    return false;
+}
+
+/**
+ * Para **crear app con IA** (`--provider-api` y/o kickstart con API): si `omega ai doctor`
+ * no pasa, ofrece abrir el asistente de credenciales y vuelve a comprobar.
+ */
+async function ensureAiReadyForCreateApp(): Promise<boolean> {
+    let { ok, spawnError } = await checkAiDoctorOutput();
+    if (spawnError) {
+        vscode.window.showErrorMessage(`Omega: ${spawnError}`);
+        return false;
+    }
+    if (ok) {
+        return true;
+    }
+
+    const choice = await vscode.window.showWarningMessage(
+        "Para crear la app con IA hace falta una configuración válida (OMEGA_AI_ENABLED, proveedor, clave API). ¿Quieres abrir el asistente para completar las credenciales?",
+        { modal: false },
+        "Configurar credenciales…",
+        "Cancelar"
+    );
+    if (choice !== "Configurar credenciales…" || !extContext) {
+        await vscode.window.showInformationMessage(
+            "Puedes configurar IA después con el comando «Omega: IA — configurar OMEGA_AI_*…»."
+        );
+        return false;
+    }
+
+    await runConfigureAiWizard(extContext);
+
+    const second = await checkAiDoctorOutput();
+    if (second.spawnError) {
+        vscode.window.showErrorMessage(`Omega: ${second.spawnError}`);
+        return false;
+    }
+    if (second.ok) {
+        void vscode.window.showInformationMessage(
+            "Configuración de IA lista. Continuando con la creación de la app."
+        );
+        return true;
+    }
+
+    await vscode.window.showErrorMessage(
+        "Tras configurar, «omega ai doctor» sigue sin indicar éxito. Revisa el canal Omega Studio o las variables del sistema."
+    );
+    return false;
 }
 
 function appendOutput(data: Buffer | string): void {
@@ -27,6 +234,10 @@ async function runOmega(
         throw new Error("no workspace");
     }
 
+    const env = extContext
+        ? await buildOmegaEnv(extContext)
+        : { ...process.env };
+
     outputChannel.show(true);
     const quoted = args.map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ");
     outputChannel.appendLine(`\n$ omega ${quoted}\n`);
@@ -42,7 +253,7 @@ async function runOmega(
                 const child = spawn("omega", args, {
                     cwd: root,
                     shell: true,
-                    env: process.env,
+                    env,
                 });
 
                 let stderr = "";
@@ -110,8 +321,37 @@ async function pickJsonFile(title: string): Promise<string | undefined> {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+    extContext = context;
     outputChannel = vscode.window.createOutputChannel("Omega Studio");
     context.subscriptions.push(outputChannel);
+
+    const configureAi = vscode.commands.registerCommand("omega.configureAi", async () => {
+        await runConfigureAiWizard(context);
+    });
+
+    const showAiConfiguration = vscode.commands.registerCommand(
+        "omega.showAiConfiguration",
+        async () => {
+            const text = await formatAiConfigurationSummary(context);
+            outputChannel.show(true);
+            outputChannel.appendLine("\n" + text + "\n");
+            await vscode.window.showInformationMessage(
+                "Configuración listada en el canal «Omega Studio».",
+                "Abrir canal"
+            ).then((sel) => {
+                if (sel === "Abrir canal") {
+                    outputChannel.show(true);
+                }
+            });
+        }
+    );
+
+    context.subscriptions.push(configureAi, showAiConfiguration);
+
+    const omegaTree = new OmegaMenuTreeProvider();
+    context.subscriptions.push(
+        vscode.window.registerTreeDataProvider("omega.sidebarMenu", omegaTree)
+    );
 
     const generateModule = vscode.commands.registerCommand(
         "omega.generateModule",
@@ -129,6 +369,9 @@ export function activate(context: vscode.ExtensionContext): void {
             if (!description) return;
 
             const { template, providerApi } = await pickCoachOptions();
+            if (providerApi && !(await assertAiProviderReady())) {
+                return;
+            }
             const feature = `${moduleName}: ${description}`;
             const args = ["ai", "coach", "module", feature, "--template", template];
             if (providerApi) args.push("--provider-api");
@@ -166,6 +409,9 @@ export function activate(context: vscode.ExtensionContext): void {
             if (!instruction) return;
 
             const { template, providerApi } = await pickCoachOptions();
+            if (providerApi && !(await assertAiProviderReady())) {
+                return;
+            }
             const feature = `${moduleName}: ${instruction}`;
             const args = ["ai", "coach", "redesign", feature, "--template", template];
             if (providerApi) args.push("--provider-api");
@@ -286,44 +532,73 @@ export function activate(context: vscode.ExtensionContext): void {
     );
 
     const createApp = vscode.commands.registerCommand("omega.createApp", async () => {
+        const cwd = await pickParentDirectoryForCreateApp();
+        if (!cwd) {
+            vscode.window.showWarningMessage(
+                "Creación cancelada: indica la carpeta padre del proyecto."
+            );
+            return;
+        }
+
         const appName = await vscode.window.showInputBox({
-            prompt: "Nombre de la app Flutter",
+            prompt: "Nombre del proyecto Flutter (carpeta y paquete dentro de la carpeta padre)",
             placeHolder: "my_omega_app",
         });
-        if (!appName?.trim()) return;
-
-        const kickstart = await vscode.window.showInputBox({
-            prompt: 'Kickstart opcional (descripción para IA), vacío para omitir',
-            placeHolder: 'login, perfil y ajustes',
-        });
-
-        const useApi = await vscode.window.showQuickPick(
-            [
-                { label: "No", description: "Sin --provider-api" },
-                { label: "Sí", description: "Añadir --provider-api" },
-            ],
-            { title: "¿Usar API del proveedor en create app?" }
-        );
-        if (!useApi) return;
-
-        const args = ["create", "app", appName.trim()];
-        if (kickstart?.trim()) {
-            args.push("--kickstart", kickstart.trim());
-        }
-        if (useApi.label === "Sí") {
-            args.push("--provider-api");
-        }
-
-        const parent = await vscode.window.showOpenDialog({
-            canSelectFiles: false,
-            canSelectFolders: true,
-            canSelectMany: false,
-            openLabel: "Carpeta padre donde crear el proyecto",
-        });
-        const cwd = parent?.[0]?.fsPath;
-        if (!cwd) {
-            vscode.window.showWarningMessage("Create app cancelado: elige la carpeta padre.");
+        if (!appName?.trim()) {
             return;
+        }
+
+        const mode = await vscode.window.showQuickPick(
+            [
+                {
+                    label: "Sin IA",
+                    description:
+                        "Mínimo: flutter create + dependencia + omega init (sin módulos ni kickstart)",
+                },
+                {
+                    label: "Con IA",
+                    description: "Kickstart con generación asistida (--kickstart + --provider-api)",
+                },
+            ],
+            {
+                title: "¿Generar el proyecto con IA?",
+                placeHolder: "Sin IA o Con IA",
+            }
+        );
+        if (!mode) {
+            return;
+        }
+
+        const withAi = mode.label === "Con IA";
+        if (withAi && !(await ensureAiReadyForCreateApp())) {
+            return;
+        }
+
+        let kickstart: string | undefined;
+        if (withAi) {
+            const ks = await vscode.window.showInputBox({
+                prompt: "Kickstart: describe el producto para la IA (pantallas, módulos, flujo)",
+                placeHolder:
+                    "Ej: login con email, home con lista de pedidos, perfil y ajustes",
+            });
+            if (ks === undefined) {
+                return;
+            }
+            kickstart = ks.trim();
+            if (!kickstart) {
+                vscode.window.showWarningMessage(
+                    "Con IA hace falta el kickstart; vuelve a intentar o elige «Sin IA»."
+                );
+                return;
+            }
+        }
+
+        // Sin IA: solo `omega create app <nombre>` → CLI: flutter create, pub add omega, init,
+        // main Omega mínimo; no --kickstart, no --provider-api, no generación de módulos por IA.
+        const args = ["create", "app", appName.trim()];
+        if (withAi && kickstart) {
+            args.push("--kickstart", kickstart);
+            args.push("--provider-api");
         }
 
         try {
@@ -387,6 +662,10 @@ export function activate(context: vscode.ExtensionContext): void {
             );
             if (!useApi) return;
 
+            if (useApi.label === "Sí" && !(await assertAiProviderReady())) {
+                return;
+            }
+
             const args = ["ai", "explain", file];
             if (useApi.label === "Sí") {
                 args.push("--provider-api");
@@ -407,6 +686,9 @@ export function activate(context: vscode.ExtensionContext): void {
         if (!feature?.trim()) return;
 
         const { template, providerApi } = await pickCoachOptions();
+        if (providerApi && !(await assertAiProviderReady())) {
+            return;
+        }
         const args = ["ai", "coach", "start", feature.trim(), "--template", template];
         if (providerApi) args.push("--provider-api");
 
@@ -425,6 +707,9 @@ export function activate(context: vscode.ExtensionContext): void {
         if (!feature?.trim()) return;
 
         const { template, providerApi } = await pickCoachOptions();
+        if (providerApi && !(await assertAiProviderReady())) {
+            return;
+        }
         const args = ["ai", "coach", "audit", feature.trim(), "--template", template];
         if (providerApi) args.push("--provider-api");
 
@@ -435,28 +720,11 @@ export function activate(context: vscode.ExtensionContext): void {
         }
     });
 
-    type PickEntry = { label: string; description: string; command: string };
-
-    const pickEntries: PickEntry[] = [
-        { label: "Validar (validate)", description: "omega validate", command: "omega.runValidate" },
-        { label: "Doctor", description: "omega doctor [ruta]", command: "omega.runDoctor" },
-        { label: "Init omega_setup", description: "omega init [--force]", command: "omega.runInit" },
-        { label: "Abrir documentación (doc)", description: "omega doc", command: "omega.openDoc" },
-        { label: "Inspector local", description: "omega inspector", command: "omega.openInspector" },
-        { label: "Generar ecosistema", description: "omega g ecosystem <Nombre>", command: "omega.generateEcosystem" },
-        { label: "Generar agente", description: "omega g agent <Nombre>", command: "omega.generateAgent" },
-        { label: "Generar flow", description: "omega g flow <Nombre>", command: "omega.generateFlow" },
-        { label: "Crear app Flutter", description: "omega create app …", command: "omega.createApp" },
-        { label: "Trace: ver resumen", description: "omega trace view <archivo>", command: "omega.traceView" },
-        { label: "Trace: validar", description: "omega trace validate <archivo>", command: "omega.traceValidate" },
-        { label: "IA: doctor", description: "omega ai doctor", command: "omega.runAiDoctor" },
-        { label: "IA: variables de entorno", description: "omega ai env", command: "omega.runAiEnv" },
-        { label: "IA: explain trace", description: "omega ai explain <archivo>", command: "omega.aiExplainTrace" },
-        { label: "IA: coach start", description: "omega ai coach start …", command: "omega.aiCoachStart" },
-        { label: "IA: coach audit", description: "omega ai coach audit …", command: "omega.aiCoachAudit" },
-        { label: "IA: módulo con diseño", description: "omega ai coach module …", command: "omega.generateModule" },
-        { label: "IA: rediseñar página", description: "omega ai coach redesign …", command: "omega.editUiWithAi" },
-    ];
+    const pickEntries = OMEGA_ACTIONS.map((a) => ({
+        label: a.label,
+        description: a.description,
+        command: a.command,
+    }));
 
     const pickCommand = vscode.commands.registerCommand("omega.pickCommand", async () => {
         const picked = await vscode.window.showQuickPick(pickEntries, {

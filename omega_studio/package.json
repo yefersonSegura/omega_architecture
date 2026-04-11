@@ -3,7 +3,7 @@
   "displayName": "Omega Studio",
   "description": "Integra el CLI Omega (omega_architecture) en el IDE: validate, doctor, init, docs, inspector, generación de ecosistema/agente/flow/app, trazas y flujos IA (coach, redesign) desde la paleta y el explorador.",
   "publisher": "DenisYefersonSeguraFernandez",
-  "version": "0.0.4",
+  "version": "0.0.13",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -51,7 +51,7 @@
       },
       {
         "command": "omega.openInspector",
-        "title": "Abrir inspector local",
+        "title": "Abrir inspector Omega (navegador)",
         "category": "Omega"
       },
       {
@@ -82,6 +82,16 @@
       {
         "command": "omega.traceValidate",
         "title": "Trace: validar (trace validate)",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.configureAi",
+        "title": "IA: configurar OMEGA_AI_*…",
+        "category": "Omega"
+      },
+      {
+        "command": "omega.showAiConfiguration",
+        "title": "IA: ver configuración guardada",
         "category": "Omega"
       },
       {
@@ -143,6 +153,61 @@
           "group": "omega@0"
         }
       ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "omega-sidebar",
+          "title": "Omega",
+          "icon": "media/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "omega-sidebar": [
+        {
+          "id": "omega.sidebarMenu",
+          "name": "Comandos",
+          "visibility": "visible"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Omega Studio",
+      "properties": {
+        "omegaStudio.ai.injectEnvironment": {
+          "type": "boolean",
+          "default": true,
+          "description": "Si está activado, al ejecutar «omega» desde esta extensión se aplican omegaStudio.ai.* y las claves guardadas en el almacén seguro (OMEGA_AI_*)."
+        },
+        "omegaStudio.ai.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "OMEGA_AI_ENABLED al inyectar el entorno."
+        },
+        "omegaStudio.ai.provider": {
+          "type": "string",
+          "enum": [
+            "none",
+            "openai",
+            "gemini",
+            "ollama",
+            "anthropic"
+          ],
+          "default": "none",
+          "description": "OMEGA_AI_PROVIDER al inyectar el entorno."
+        },
+        "omegaStudio.ai.model": {
+          "type": "string",
+          "default": "",
+          "description": "OMEGA_AI_MODEL (vacío = no enviar variable)."
+        },
+        "omegaStudio.ai.baseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "OMEGA_AI_BASE_URL opcional (OpenAI-compatible)."
+        }
+      }
     }
   },
   "devDependencies": {
