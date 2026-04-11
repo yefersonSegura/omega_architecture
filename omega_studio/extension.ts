@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { spawn, type ChildProcess } from "child_process";
+import { spawn } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
@@ -438,33 +438,29 @@ function globalRunOmegaArgs(omegaArgs: string[]): string[] {
 }
 
 /**
- * En Windows, los shims del pub cache son `.bat` / `.cmd`. Node **no** puede ejecutarlos bien con
- * `spawn` y `shell: false` (el proceso falla o no arranca). Por eso usamos `dart pub global run …`
- * (ejecutable real). En Unix el script `omega` sin extensión sí va con `shell: false`.
+ * 1) Shim global en `pub-cache/bin` (`omega`, `omega.bat`, …): es la forma correcta; invoca el
+ * snapshot con el SDK que tocaba al activar el paquete.
+ * 2) Si no hay shim: `flutter pub global run omega_architecture:omega …` — hace falta **Flutter**;
+ * `dart pub global run` falla con «requires the Flutter SDK» (p. ej. código 65).
+ * 3) Último recurso: `dart pub global run` solo si no hay `flutter` en PATH (poco habitual).
  *
- * El proceso del editor suele **no** tener el mismo PATH que la terminal: resolvemos `dart` con
- * ajustes de la extensión Dart (`flutterSdkPath` / `sdkPath`), `FLUTTER_ROOT`, PATH y, si hace
- * falta, `flutter pub global run …`.
+ * En Windows, `.bat` / `.cmd` usan `shell: true` (ver `omegaSpawnShellOptions`).
  */
 function resolveOmegaCli(omegaArgs: string[]): OmegaResolved {
     const direct = findOmegaExecutablePath();
     if (direct) {
-        const isWinBatch =
-            process.platform === "win32" && /\.(bat|cmd)$/i.test(direct);
-        if (!isWinBatch) {
-            return { command: direct, args: omegaArgs };
-        }
+        return { command: direct, args: omegaArgs };
     }
     const gr = globalRunOmegaArgs(omegaArgs);
-    const dartPath = findDartExecutablePath();
-    if (dartPath) {
-        return { command: dartPath, args: gr };
-    }
     const flutterPath = findFlutterExecutablePath();
     if (flutterPath) {
         return { command: flutterPath, args: gr };
     }
-    return { command: "dart", args: gr };
+    const dartPath = findDartExecutablePath();
+    if (dartPath) {
+        return { command: dartPath, args: gr };
+    }
+    return { command: "flutter", args: gr };
 }
 
 /** Opciones de spawn: los `.bat` requieren `shell: true` en Windows si se invocan directamente. */
@@ -472,167 +468,6 @@ function omegaSpawnShellOptions(command: string): { shell: boolean; windowsHide:
     const needShell =
         process.platform === "win32" && /\.(bat|cmd)$/i.test(command);
     return { shell: needShell, windowsHide: true };
-}
-
-function sanitizeAppNameForLog(appName: string): string {
-    const t = appName.trim();
-    return t.replace(/[^\w.-]+/g, "_") || "app";
-}
-
-/**
- * Proceso `omega` independiente del host de extensiones; la salida va a un archivo para que
- * sobreviva a `vscode.openFolder` (recarga de ventana).
- *
- * En Windows, `shell: true` + `detached` suele abrir una **consola aparte** (nueva ventana de cmd).
- * Con `shell: false` se ejecuta `omega` / `omega.cmd` del PATH sin esa ventana; `windowsHide`
- * refuerza que no aparezca consola. La salida la ves en el **canal Omega Studio** (mismo VS Code),
- * no en un terminal externo.
- */
-function spawnOmegaDetachedToLog(
-    args: string[],
-    cwdRoot: string,
-    env: NodeJS.ProcessEnv,
-    logPath: string
-): ChildProcess {
-    const r = resolveOmegaCli(args);
-    const sh = omegaSpawnShellOptions(r.command);
-    fs.writeFileSync(logPath, "");
-    const fd = fs.openSync(logPath, "a");
-    const child = spawn(r.command, r.args, {
-        cwd: cwdRoot,
-        shell: sh.shell,
-        env,
-        detached: true,
-        stdio: ["ignore", fd, fd],
-        windowsHide: sh.windowsHide,
-    });
-    fs.closeSync(fd);
-    child.unref();
-    return child;
-}
-
-/**
- * `omega create app`: tras `flutter create` el usuario quiere **Abrir carpeta** como Flutter.
- * `vscode.openFolder` recarga el IDE y mataría un `omega` hijo normal; por eso el CLI va
- * desacoplado (log en la carpeta padre) y sigue con pub, init, IA, etc. en segundo plano.
- */
-async function runOmegaCreateApp(
-    args: string[],
-    progressTitle: string,
-    parentCwd: string,
-    appName: string
-): Promise<void> {
-    const logPath = path.join(parentCwd, `.omega-studio-create-${sanitizeAppNameForLog(appName)}.log`);
-    const env = extContext ? await buildOmegaEnv(extContext) : { ...process.env };
-    const child = spawnOmegaDetachedToLog(args, parentCwd, env, logPath);
-    const projectPath = path.join(parentCwd, appName.trim());
-
-    outputChannel.show(true);
-    const r = resolveOmegaCli(args);
-    const displayCmd = [r.command, ...r.args].map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ");
-    outputChannel.appendLine(
-        `\n$ ${displayCmd}\n(salida → ${logPath}; tras crear Flutter se abre el proyecto)\n`
-    );
-
-    let logTail = 0;
-    const tailInterval = setInterval(() => {
-        try {
-            if (!fs.existsSync(logPath)) {
-                return;
-            }
-            const text = fs.readFileSync(logPath, "utf8");
-            if (text.length > logTail) {
-                appendOutput(text.slice(logTail));
-                logTail = text.length;
-            }
-        } catch {
-            /* aún no escribible */
-        }
-    }, 120);
-
-    await vscode.window.withProgress(
-        {
-            location: vscode.ProgressLocation.Notification,
-            title: progressTitle,
-            cancellable: false,
-        },
-        () =>
-            new Promise<void>((resolve, reject) => {
-                let settled = false;
-                let watchInterval: ReturnType<typeof setInterval> | undefined;
-
-                const stopTailAndWatch = (): void => {
-                    clearInterval(tailInterval);
-                    if (watchInterval !== undefined) {
-                        clearInterval(watchInterval);
-                        watchInterval = undefined;
-                    }
-                };
-
-                const onProjectFolderReady = (): void => {
-                    if (settled) {
-                        return;
-                    }
-                    settled = true;
-                    stopTailAndWatch();
-                    resolve();
-                    void vscode.window.showInformationMessage(
-                        "Abriendo el proyecto. Omega sigue en segundo plano (dependencias, init, generación…)."
-                    );
-                    void vscode.commands.executeCommand(
-                        "vscode.openFolder",
-                        vscode.Uri.file(projectPath),
-                        false
-                    );
-                };
-
-                watchInterval = setInterval(() => {
-                    if (settled) {
-                        return;
-                    }
-                    try {
-                        const st = fs.statSync(projectPath);
-                        if (!st.isDirectory()) {
-                            return;
-                        }
-                    } catch {
-                        return;
-                    }
-                    onProjectFolderReady();
-                }, 120);
-
-                child.on("error", (err) => {
-                    if (settled) {
-                        return;
-                    }
-                    settled = true;
-                    stopTailAndWatch();
-                    const msg =
-                        (err as NodeJS.ErrnoException).code === "ENOENT"
-                            ? MSG_SPAWN_DART_FLUTTER_MISSING
-                            : String(err);
-                    vscode.window.showErrorMessage(`Omega: ${msg}`);
-                    reject(err);
-                });
-
-                child.on("close", (code) => {
-                    if (settled) {
-                        return;
-                    }
-                    settled = true;
-                    stopTailAndWatch();
-                    if (code === 0) {
-                        void vscode.window.showInformationMessage(`${progressTitle} · terminado`);
-                        resolve();
-                    } else {
-                        vscode.window.showErrorMessage(
-                            `Omega terminó con código ${code}. Revisa: ${logPath}`
-                        );
-                        reject(new Error(`exit ${code}`));
-                    }
-                });
-            })
-    );
 }
 
 async function runOmega(
@@ -1033,9 +868,14 @@ export function activate(context: vscode.ExtensionContext): void {
         }
 
         try {
-            await runOmegaCreateApp(args, `Omega create app ${appName.trim()}`, cwd, appName.trim());
+            await runOmega(args, `Omega create app ${appName.trim()}`, cwd);
+            await vscode.commands.executeCommand(
+                "vscode.openFolder",
+                vscode.Uri.file(wouldCreate),
+                false
+            );
         } catch {
-            /* ya notificado */
+            /* ya notificado en runOmega */
         }
     });
 
