@@ -6,6 +6,7 @@ import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import 'package:omega_architecture/omega/core/semantics/omega_intent.dart';
 
+import '../agents/omega_agent.dart';
 import '../contracts/omega_flow_contract.dart';
 import '../core/channel/omega_channel.dart'; // OmegaEventBus, OmegaChannel
 import '../core/events/omega_event.dart';
@@ -64,6 +65,12 @@ abstract class OmegaFlow {
   /// Override in subclasses to declare contracts. Default is null (no validation).
   /// Cached on first access so prefer returning a const or stable instance.
   OmegaFlowContract? get contract => null;
+
+  /// When non-null, [OmegaFlowExpressionBuilder] wraps its subtree in [OmegaAgentScope] so
+  /// [OmegaScopedAgentBuilder] resolves the agent without an extra widget parameter.
+  ///
+  /// Override in flows that own a single primary [OmegaAgent] for their UI (same instance the flow uses).
+  OmegaAgent? get uiScopeAgent => null;
 
   OmegaFlowContract? _contractCache;
   bool _contractCacheComputed = false;

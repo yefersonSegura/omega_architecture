@@ -1,3 +1,7 @@
+## 1.0.1
+
+- **[OmegaFlow.uiScopeAgent]:** optional getter (default `null`). When a flow subclass returns its primary UI [OmegaAgent], **[OmegaFlowExpressionBuilder]** wraps the `builder` result in **[OmegaAgentScope]** so **[OmegaScopedAgentBuilder]** resolves the agent without wrapping the whole route. Override in flows that own one agent for the screen (same instance the flow uses).
+
 ## 1.0.0
 
 - **`omega init`:** Also creates `lib/omega/app_runtime_ids.dart` (enums `AppFlowId` / `AppAgentId` with placeholder members) when missing, same as `app_semantics.dart`. **`omega g ecosystem`:** Requires that file (run `omega init` first); merges new ids and generates flow/agent with `AppFlowId.<id>.id` / `AppAgentId.<id>.id` (invalid CLI name chars become `_` in the enum wire).

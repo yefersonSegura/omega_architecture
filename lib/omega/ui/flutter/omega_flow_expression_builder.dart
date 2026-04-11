@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 
+import '../../flows/omega_flow.dart';
 import '../../flows/omega_flow_expression.dart';
+import 'omega_agent_scope.dart';
 import 'omega_scope.dart';
 
 /// Listens to [OmegaFlow.expressions] for [flowId] and rebuilds when a new
@@ -12,6 +14,9 @@ import 'omega_scope.dart';
 ///
 /// Uses [OmegaFlow.lastExpression] as [StreamBuilder.initialData] because the
 /// expressions stream is broadcast and does not replay the last value.
+///
+/// When the flow overrides [OmegaFlow.uiScopeAgent], the [builder] result is wrapped in
+/// [OmegaAgentScope] so [OmegaScopedAgentBuilder] works inside without wrapping the route.
 class OmegaFlowExpressionBuilder extends StatelessWidget {
   const OmegaFlowExpressionBuilder({
     super.key,
@@ -28,17 +33,23 @@ class OmegaFlowExpressionBuilder extends StatelessWidget {
     OmegaFlowExpression? expression,
   ) builder;
 
+  Widget _maybeScope(OmegaFlow? flow, Widget child) {
+    final a = flow?.uiScopeAgent;
+    if (a == null) return child;
+    return OmegaAgentScope(agent: a, child: child);
+  }
+
   @override
   Widget build(BuildContext context) {
     final flow = OmegaScope.of(context).flowManager.getFlow(flowId);
     if (flow == null) {
-      return builder(context, null);
+      return _maybeScope(null, builder(context, null));
     }
     return StreamBuilder<OmegaFlowExpression>(
       stream: flow.expressions,
       initialData: flow.lastExpression,
       builder: (context, snapshot) {
-        return builder(context, snapshot.data);
+        return _maybeScope(flow, builder(context, snapshot.data));
       },
     );
   }
