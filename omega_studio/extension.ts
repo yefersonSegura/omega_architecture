@@ -139,6 +139,62 @@ function ensureCreateAppParentInWorkspace(parentPath: string): "added" | "alread
 }
 
 /**
+ * Incorpora la carpeta del proyecto recién creada al workspace **sin** `vscode.openFolder`
+ * (recargaría la ventana y mataría el proceso `omega` hijo).
+ * Si hay una raíz que coincide exactamente con la carpeta padre, la sustituye por la app
+ * (el usuario queda con la carpeta del proyecto como workspace, como al “abrir” el proyecto).
+ */
+function openCreatedAppInWorkspace(parentCwd: string, appName: string): void {
+    const projectPath = path.join(parentCwd, appName);
+    const uri = vscode.Uri.file(projectPath);
+    const parentNorm = path.normalize(parentCwd);
+    const folders = vscode.workspace.workspaceFolders;
+    const idx = folders?.findIndex((f) => path.normalize(f.uri.fsPath) === parentNorm);
+    if (idx !== undefined && idx >= 0) {
+        void vscode.workspace.updateWorkspaceFolders(idx, 1, {
+            uri,
+            name: appName,
+        });
+    } else if (!isFolderVisibleInWorkspace(projectPath)) {
+        const n = folders?.length ?? 0;
+        void vscode.workspace.updateWorkspaceFolders(n, 0, {
+            uri,
+            name: appName,
+        });
+    }
+    void vscode.commands.executeCommand("workbench.view.explorer");
+}
+
+/**
+ * En cuanto exista el directorio `parentCwd/appName` (p. ej. al terminar la parte de `flutter create`),
+ * abre ese proyecto en el editor (workspace) mientras `omega` sigue ejecutándose.
+ */
+function watchCreatedAppDirectory(parentCwd: string, appName: string): vscode.Disposable {
+    const projectPath = path.join(parentCwd, appName);
+    let finished = false;
+    const id = setInterval(() => {
+        if (finished) {
+            return;
+        }
+        try {
+            const st = fs.statSync(projectPath);
+            if (!st.isDirectory()) {
+                return;
+            }
+        } catch {
+            return;
+        }
+        finished = true;
+        clearInterval(id);
+        openCreatedAppInWorkspace(parentCwd, appName);
+    }, 120);
+    return new vscode.Disposable(() => {
+        finished = true;
+        clearInterval(id);
+    });
+}
+
+/**
  * Ejecuta `omega ai doctor` y devuelve si la salida indica configuración válida.
  */
 async function checkAiDoctorOutput(): Promise<{
@@ -648,10 +704,13 @@ export function activate(context: vscode.ExtensionContext): void {
         }
         await vscode.commands.executeCommand("workbench.view.explorer");
 
+        const stopWatch = watchCreatedAppDirectory(cwd, appName.trim());
         try {
             await runOmega(args, `Omega create app ${appName.trim()}`, cwd);
         } catch {
             /* ya notificado */
+        } finally {
+            stopWatch.dispose();
         }
     });
 
