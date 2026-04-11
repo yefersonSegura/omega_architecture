@@ -1713,7 +1713,8 @@ class OmegaGenerateCommand {
   }
 
   static void _createEcosystem(String name) {
-    // Crear en la ruta donde está abierta la terminal (CWD)
+    // Crear en la ruta donde está abierta la terminal (CWD); desde la raíz del proyecto,
+    // ejecuta `cd lib` antes si quieres el módulo bajo lib/ (Omega Studio hace eso por ti).
     final baseDir = Directory.current.absolute.path;
     String root;
     try {
@@ -1871,7 +1872,6 @@ class OmegaGenerateCommand {
   }
 
   static void _createAgentOnly(String name) {
-    // Crear en la ruta donde está abierta la terminal (CWD)
     final baseDir = Directory.current.absolute.path;
     String root;
     try {
@@ -1911,7 +1911,6 @@ class OmegaGenerateCommand {
   }
 
   static void _createFlowOnly(String name) {
-    // Crear en la ruta donde está abierta la terminal (CWD)
     final baseDir = Directory.current.absolute.path;
     String root;
     try {

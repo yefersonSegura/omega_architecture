@@ -24,6 +24,26 @@ function getWorkspaceRoot(): string | undefined {
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 }
 
+/**
+ * CWD para `omega g ecosystem|agent|flow`. El CLI siempre genera respecto al CWD; en el IDE
+ * usamos `lib/` para que los módulos queden junto al resto del código Dart.
+ */
+function getOmegaGeneratorCwd(): string | undefined {
+    const root = getWorkspaceRoot();
+    if (!root) {
+        return undefined;
+    }
+    const libDir = path.join(root, "lib");
+    try {
+        if (fs.existsSync(libDir) && fs.statSync(libDir).isDirectory()) {
+            return libDir;
+        }
+    } catch {
+        /* seguir con root */
+    }
+    return root;
+}
+
 /** CWD para spawn: proyecto abierto o home (omega ai doctor solo usa env). */
 function getOmegaSpawnCwd(): string {
     return getWorkspaceRoot() ?? os.homedir();
@@ -746,7 +766,11 @@ export function activate(context: vscode.ExtensionContext): void {
             });
             if (!name?.trim()) return;
             try {
-                await runOmega(["g", "ecosystem", name.trim()], `Omega g ecosystem ${name.trim()}`);
+                await runOmega(
+                    ["g", "ecosystem", name.trim()],
+                    `Omega g ecosystem ${name.trim()}`,
+                    getOmegaGeneratorCwd()
+                );
             } catch {
                 /* ya notificado */
             }
@@ -762,7 +786,11 @@ export function activate(context: vscode.ExtensionContext): void {
             });
             if (!name?.trim()) return;
             try {
-                await runOmega(["g", "agent", name.trim()], `Omega g agent ${name.trim()}`);
+                await runOmega(
+                    ["g", "agent", name.trim()],
+                    `Omega g agent ${name.trim()}`,
+                    getOmegaGeneratorCwd()
+                );
             } catch {
                 /* ya notificado */
             }
@@ -778,7 +806,11 @@ export function activate(context: vscode.ExtensionContext): void {
             });
             if (!name?.trim()) return;
             try {
-                await runOmega(["g", "flow", name.trim()], `Omega g flow ${name.trim()}`);
+                await runOmega(
+                    ["g", "flow", name.trim()],
+                    `Omega g flow ${name.trim()}`,
+                    getOmegaGeneratorCwd()
+                );
             } catch {
                 /* ya notificado */
             }
