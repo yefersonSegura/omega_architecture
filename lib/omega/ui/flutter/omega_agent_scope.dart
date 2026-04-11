@@ -30,7 +30,13 @@ class OmegaAgentScope extends InheritedWidget {
   /// Nearest [OmegaAgentScope]'s agent (must not be null).
   static OmegaAgent omegaAgentOf(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<OmegaAgentScope>();
-    assert(scope != null, 'OmegaAgentScope not found above this context');
+    assert(
+      scope != null,
+      'OmegaAgentScope not found above this context. '
+      'If you use OmegaScopedAgentBuilder under OmegaFlowExpressionBuilder, override '
+      'OmegaFlow.uiScopeAgent on your flow (same agent instance), or wrap the route with '
+      'OmegaAgentScope in omega_setup. See doc/GUIA.md (OmegaFlowExpressionBuilder).',
+    );
     return scope!.agent;
   }
 

@@ -396,6 +396,20 @@ OmegaAgentBuilder<AuthAgent, AuthViewState>(
 
 **OmegaFlowExpressionBuilder** — escucha `flow.expressions` por **id de flujo**; usa `OmegaFlow.lastExpression` como dato inicial del `StreamBuilder` (el stream es broadcast y no repite el último valor).
 
+**Si combinas con `OmegaScopedAgentBuilder`:** el flujo debe sobrescribir `OmegaAgent? get uiScopeAgent => …` devolviendo **el mismo** `OmegaAgent` que el flujo usa para esa pantalla. Así el builder envuelve el subárbol con `OmegaAgentScope` automáticamente. Si no lo haces, tendrás que envolver la ruta con `OmegaAgentScope` en `omega_setup` o usar `OmegaAgentBuilder(agent: …)`.
+
+```dart
+// user_interface_flow.dart (ejemplo)
+class UserInterfaceFlow extends OmegaFlow {
+  UserInterfaceFlow({required super.id, required super.channel, required this.agent});
+
+  final UserInterfaceAgent agent;
+
+  @override
+  OmegaAgent? get uiScopeAgent => agent;
+}
+```
+
 **Ejemplo — ruta sin pasar el agente al `StatefulWidget` raíz:**
 
 ```dart
