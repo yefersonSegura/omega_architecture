@@ -6,8 +6,8 @@ import 'auth_agent.dart';
 import 'auth_events.dart';
 
 class AuthFlow extends OmegaFlow {
-  AuthFlow({required OmegaEventBus channel, required this.agent})
-      : super(id: AppFlowId.authFlow.id, channel: channel);
+  AuthFlow({required super.channel, required this.agent})
+      : super(id: AppFlowId.authFlow.id);
 
   final AuthAgent agent;
 

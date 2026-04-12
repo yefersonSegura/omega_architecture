@@ -394,10 +394,10 @@ void printHelp() {
     "  g ecosystem <Name>    Generate agent, flow, behavior and page in the current directory",
   );
   stdout.writeln(
-    "  g agent <Name>       Generate only agent + behavior in current directory",
+    "  g agent <Name>       Agent + behavior; updates AppAgentId in app_runtime_ids.dart",
   );
   stdout.writeln(
-    "  g flow <Name>        Generate only flow in current directory",
+    "  g flow <Name>        Flow only; updates AppFlowId in app_runtime_ids.dart (needs *_agent.dart)",
   );
   stdout.writeln(
     "  validate             Check omega_setup.dart (structure, duplicate ids, routes vs *Page agent)",
@@ -430,9 +430,11 @@ void printHelp() {
     "  omega g ecosystem Auth    # auth_agent, auth_flow, auth_behavior, auth_page",
   );
   stdout.writeln(
-    "  omega g agent Orders      # orders_agent, orders_behavior only",
+    "  omega g agent Orders      # + AppAgentId.Orders in app_runtime_ids.dart",
   );
-  stdout.writeln("  omega g flow Orders       # orders_flow only");
+  stdout.writeln(
+    "  omega g flow Orders       # + AppFlowId.Orders (agent must exist)",
+  );
   stdout.writeln("  omega validate");
   stdout.writeln("  omega trace view trace.json    # summarize trace file");
   stdout.writeln("  omega trace validate trace.json # validate and exit 0/1");
@@ -1454,8 +1456,8 @@ ${OmegaAiCommand._omegaAiCompleteArtifactGuide}
 ${OmegaAiCommand._omegaAiScreenEntryDataLoad}
 - OmegaConfig createOmegaConfig(OmegaChannel channel) with agents: <OmegaAgent>[], flows: <OmegaFlow>[], routes: <OmegaRoute>[], initialFlowId optional, intentHandlerRegistrars optional (void Function(OmegaFlowManager, OmegaChannel) tear-offs e.g. MyModule.attach — bootstrap runs them after wireNavigator)
 - OmegaRuntime.bootstrap((OmegaChannel c) => createOmegaConfig(c))
-- Agents: extend OmegaAgent or OmegaStatefulAgent<T>; super(id:, channel:, behavior:) — channel is OmegaEventBus (pass OmegaChannel or namespace). OmegaAgent.emit(String name, {payload}) — first arg is a string; use MyModuleEvent.requested.name, NOT emit(MyModuleEvent.requested) nor invented enum cases.
-- Flows: extend OmegaFlow or OmegaWorkflowFlow; super(id:, channel:). Optional `OmegaAgent? get uiScopeAgent` when UI uses OmegaFlowExpressionBuilder + OmegaScopedAgentBuilder without route-level OmegaAgentScope — flow ctor receives `agent` from createOmegaConfig (same variable as in agents: list). OmegaWorkflowFlow.failStep(code, {String? message}) — second argument must be named message:, not positional.
+- Agents: extend OmegaAgent or OmegaStatefulAgent<T>; super(id:, channel:, behavior:) — channel is OmegaEventBus (pass OmegaChannel or namespace). When the app has `lib/omega/app_runtime_ids.dart`, use `id: AppAgentId.<Module>.id` + import `package:<app>/omega/app_runtime_ids.dart`. OmegaAgent.emit(String name, {payload}) — first arg is a string; use MyModuleEvent.requested.name, NOT emit(MyModuleEvent.requested) nor invented enum cases.
+- Flows: extend OmegaFlow or OmegaWorkflowFlow; super(id:, channel:). Prefer `AppFlowId.<Module>.id` when `app_runtime_ids.dart` exists. Optional `OmegaAgent? get uiScopeAgent` when UI uses OmegaFlowExpressionBuilder + OmegaScopedAgentBuilder without route-level OmegaAgentScope — flow ctor receives `agent` from createOmegaConfig (same variable as in agents: list). OmegaWorkflowFlow.failStep(code, {String? message}) — second argument must be named message:, not positional.
 - Behavior: extend OmegaAgentBehaviorEngine; use one or more addRule(OmegaAgentBehaviorRule(...)) OR override evaluate(OmegaAgentBehaviorContext ctx)
 - Enums: (1) Classic `implements OmegaIntentName` with `const X(this.name); @override final String name;` when you need exact wire strings. (2) Optional `enum FooIntent with OmegaIntentNameDottedCamel implements OmegaIntentName { ordersCreate, ... }` — wire is derived from camelCase (`ordersCreate` → `orders.create`); same idea for events with `OmegaEventNameDottedCamel`. Flow/agent contracts and `ctx.intent?.name` / `ctx.event?.name` MUST match the resolved `.name` (string) from the enum mixin.
 - NEVER instantiate OmegaEventName(...) or OmegaIntentName(...) — they are abstract. Only enum values (e.g. AppEvent.navigationIntent, AppIntent.navigateRegister) may be passed to OmegaEvent.fromName / OmegaIntent.fromName.
@@ -1479,7 +1481,7 @@ Return only JSON. No markdown fences.
 """;
 
     const healSystem =
-        "You output only valid JSON objects mapping path strings to full file contents. You fix Dart analyzer errors for Flutter + omega_architecture package. Follow the MASTER CHECKLIST BY FILE in the user message: keep FLOW_ID aligned across flow/page/route; behavior OmegaAgentReaction ids must match agent onAction string cases; flow contracts must list intents/events/expression types actually used. In omega_setup.dart add imports for every Flow/Agent/Page; flows list must use constructor calls like MyFlow(channel), never bare MyFlow without parentheses (missing import or missing () causes undefined symbol). Never emit duplicate identical import lines in any file (common mistake — each URI once). Add package:omega_architecture (and flutter/material where needed) when Omega types are missing. If PROJECT PUBSPEC lists equatable, intl, camera, image_picker, etc. (including after CLI pub add), you may import them; otherwise remove broken third-party imports and rewrite with plain Dart. When *ViewState or *Event types are missing, define them in the module *_events.dart* and emit via channel.emitTyped, not as methods on the agent. Never introduce OmegaViewState. In onAction, switch cases use string literals, never case Enum.value.name. Replace undefined viewStateStream with stateStream on OmegaStatefulAgent.";
+        "You output only valid JSON objects mapping path strings to full file contents. You fix Dart analyzer errors for Flutter + omega_architecture package. Follow the MASTER CHECKLIST BY FILE in the user message: keep FLOW_ID aligned across flow/page/route; behavior OmegaAgentReaction ids must match agent onAction string cases; flow contracts must list intents/events/expression types actually used. When lib/omega/app_runtime_ids.dart exists, keep AppFlowId/AppAgentId enum members in sync with super(id: ...) on flows/agents (add missing enum values or fix references). In omega_setup.dart add imports for every Flow/Agent/Page; flows list must use constructor calls like MyFlow(channel), never bare MyFlow without parentheses (missing import or missing () causes undefined symbol). Never emit duplicate identical import lines in any file (common mistake — each URI once). Add package:omega_architecture (and flutter/material where needed) when Omega types are missing. If PROJECT PUBSPEC lists equatable, intl, camera, image_picker, etc. (including after CLI pub add), you may import them; otherwise remove broken third-party imports and rewrite with plain Dart. When *ViewState or *Event types are missing, define them in the module *_events.dart* and emit via channel.emitTyped, not as methods on the agent. Never introduce OmegaViewState. In onAction, switch cases use string literals, never case Enum.value.name. Replace undefined viewStateStream with stateStream on OmegaStatefulAgent.";
 
     final rawContent = await _OmegaAiRemote.completeChat(
       system: healSystem,
@@ -1689,8 +1691,12 @@ class OmegaGenerateCommand {
       stdout.writeln("Usage: omega g <ecosystem|agent|flow> <Name>");
       stdout.writeln("");
       stdout.writeln("  ecosystem <Name>  Agent, flow, behavior and page");
-      stdout.writeln("  agent <Name>      Agent + behavior only");
-      stdout.writeln("  flow <Name>      Flow only");
+      stdout.writeln(
+        "  agent <Name>      Agent + behavior; merges AppAgentId in app_runtime_ids.dart",
+      );
+      stdout.writeln(
+        "  flow <Name>       Flow only; merges AppFlowId (requires existing *_agent.dart)",
+      );
       return;
     }
 
@@ -1754,7 +1760,7 @@ class OmegaGenerateCommand {
     Directory(ecoPath).createSync(recursive: true);
     Directory("$ecoPath/ui").createSync(recursive: true);
 
-    _mergeAppRuntimeIds(root, rtMember);
+    _mergeAppRuntimeIds(root, rtMember, includeFlow: true, includeAgent: true);
 
     final createdFiles = <String>[
       idsFile.path,
@@ -1829,7 +1835,11 @@ class OmegaGenerateCommand {
   }
 
   /// Inserts [member] as a new enum value if missing (body between `{` and matching `}`).
-  static String _upsertEnumMember(String content, String enumHeader, String member) {
+  static String _upsertEnumMember(
+    String content,
+    String enumHeader,
+    String member,
+  ) {
     final start = content.indexOf(enumHeader);
     if (start == -1) {
       return content;
@@ -1856,19 +1866,29 @@ class OmegaGenerateCommand {
   }
 
   /// Appends [member] to [AppFlowId] / [AppAgentId] in `lib/omega/app_runtime_ids.dart` (from `omega init`).
-  static void _mergeAppRuntimeIds(String projectRoot, String member) {
+  /// Use [includeFlow] / [includeAgent] for `g flow` / `g agent` (single-enum updates).
+  static void _mergeAppRuntimeIds(
+    String projectRoot,
+    String member, {
+    bool includeFlow = true,
+    bool includeAgent = true,
+  }) {
     final f = File("$projectRoot/lib/omega/app_runtime_ids.dart");
     var text = f.readAsStringSync();
-    text = _upsertEnumMember(
-      text,
-      'enum AppFlowId with OmegaFlowIdEnumWire implements OmegaFlowId {',
-      member,
-    );
-    text = _upsertEnumMember(
-      text,
-      'enum AppAgentId with OmegaAgentIdEnumWire implements OmegaAgentId {',
-      member,
-    );
+    if (includeFlow) {
+      text = _upsertEnumMember(
+        text,
+        'enum AppFlowId with OmegaFlowIdEnumWire implements OmegaFlowId {',
+        member,
+      );
+    }
+    if (includeAgent) {
+      text = _upsertEnumMember(
+        text,
+        'enum AppAgentId with OmegaAgentIdEnumWire implements OmegaAgentId {',
+        member,
+      );
+    }
     f.writeAsStringSync(text);
   }
 
@@ -1890,11 +1910,22 @@ class OmegaGenerateCommand {
       stdout.writeln("  Run from app root: omega init");
       return;
     }
+    final idsFile = File("$root/lib/omega/app_runtime_ids.dart");
+    if (!idsFile.existsSync()) {
+      _err("app_runtime_ids.dart not found.");
+      stdout.writeln("  Expected: ${_absPath(idsFile.path)}");
+      stdout.writeln("  Run from app root: omega init");
+      return;
+    }
+    final pkg = getPackageName(root);
+    final rtMember = _runtimeIdEnumMember(name);
     final ecoPath = "$baseDir/${name.toLowerCase()}";
     stdout.writeln("Creating in current directory: ${_absPath(baseDir)}");
     Directory(ecoPath).createSync(recursive: true);
+    _mergeAppRuntimeIds(root, rtMember, includeFlow: false, includeAgent: true);
     final created = <String>[
-      _createAgent(name, ecoPath),
+      idsFile.path,
+      _createAgent(name, ecoPath, packageName: pkg, runtimeMember: rtMember),
       _createBehavior(name, ecoPath),
     ];
     registerInOmegaSetup(
@@ -1909,6 +1940,7 @@ class OmegaGenerateCommand {
     }
     stdout.writeln("Agent $name created.");
     stdout.writeln("  Path: ${_absPath(ecoPath)}");
+    stdout.writeln("  Updated: ${_absPath(idsFile.path)}");
   }
 
   static void _createFlowOnly(String name) {
@@ -1929,10 +1961,25 @@ class OmegaGenerateCommand {
       stdout.writeln("  Run from app root: omega init");
       return;
     }
+    final idsFile = File("$root/lib/omega/app_runtime_ids.dart");
+    if (!idsFile.existsSync()) {
+      _err("app_runtime_ids.dart not found.");
+      stdout.writeln("  Expected: ${_absPath(idsFile.path)}");
+      stdout.writeln("  Run from app root: omega init");
+      return;
+    }
+    final pkg = getPackageName(root);
+    final rtMember = _runtimeIdEnumMember(name);
     final ecoPath = "$baseDir/${name.toLowerCase()}";
     stdout.writeln("Creating in current directory: ${_absPath(baseDir)}");
     Directory(ecoPath).createSync(recursive: true);
-    final path = _createFlow(name, ecoPath);
+    _mergeAppRuntimeIds(root, rtMember, includeFlow: true, includeAgent: false);
+    final path = _createFlow(
+      name,
+      ecoPath,
+      packageName: pkg,
+      runtimeMember: rtMember,
+    );
     registerInOmegaSetup(
       name,
       ecoPath,
@@ -1940,9 +1987,11 @@ class OmegaGenerateCommand {
       registerAgent: false,
       registerFlow: true,
     );
+    _formatFile(idsFile.path);
     _formatFile(path);
     stdout.writeln("Flow $name created.");
     stdout.writeln("  Path: ${_absPath(ecoPath)}");
+    stdout.writeln("  Updated: ${_absPath(idsFile.path)}");
   }
 
   static String _createAgent(
@@ -1953,7 +2002,8 @@ class OmegaGenerateCommand {
   }) {
     final pascal = toPascalCase(name);
     final file = File("$base/${name.toLowerCase()}_agent.dart");
-    final typed = packageName != null &&
+    final typed =
+        packageName != null &&
         packageName.isNotEmpty &&
         runtimeMember != null &&
         runtimeMember.isNotEmpty;
@@ -1995,7 +2045,8 @@ $idLine
   }) {
     final pascal = toPascalCase(name);
     final file = File("$base/${name.toLowerCase()}_flow.dart");
-    final typed = packageName != null &&
+    final typed =
+        packageName != null &&
         packageName.isNotEmpty &&
         runtimeMember != null &&
         runtimeMember.isNotEmpty;
@@ -2003,16 +2054,22 @@ $idLine
         ? "import 'package:$packageName/omega/app_runtime_ids.dart';\n"
         : '';
     final superLine = typed
-        ? '      : super(id: AppFlowId.$runtimeMember.id, channel: channel);'
-        : '      : super(id: "$name", channel: channel);';
+        ? '      : super(id: AppFlowId.$runtimeMember.id);'
+        : '      : super(id: "$name");';
 
     file.writeAsStringSync('''
 import 'package:omega_architecture/omega_architecture.dart';
-$idsImport
+${idsImport}import '${name.toLowerCase()}_agent.dart';
+
 class ${pascal}Flow extends OmegaFlow {
 
-  ${pascal}Flow(OmegaChannel channel)
+  ${pascal}Flow({required super.channel, required this.agent})
 $superLine
+
+  final ${pascal}Agent agent;
+
+  @override
+  OmegaAgent? get uiScopeAgent => agent;
 
   @override
   void onStart() {
@@ -2161,8 +2218,8 @@ bool _omegaFlowDartRequiresSharedAgent(String flowSource, String pascal) {
   if (!flowSource.contains('class ${pascal}Flow')) return false;
   if (RegExp(r'required\s+this\.agent\b').hasMatch(flowSource)) return true;
   if (RegExp(
-        r'required\s+' + RegExp.escape('${pascal}Agent') + r'\s+agent\b',
-      ).hasMatch(flowSource)) {
+    r'required\s+' + RegExp.escape('${pascal}Agent') + r'\s+agent\b',
+  ).hasMatch(flowSource)) {
     return true;
   }
   return false;
@@ -2211,6 +2268,40 @@ String _omegaDedupeDuplicateImportLines(String content) {
     out.add(line);
   }
   return out.join("\n");
+}
+
+/// Collapses 2+ blank lines between consecutive `final … = …Agent(...);` lines in
+/// omega_setup (avoids huge gaps when [registerInOmegaSetup] prepends a new final).
+String _omegaNormalizeOmegaSetupAgentFinalSpacing(String content) {
+  var s = content;
+  s = s.replaceAllMapped(
+    RegExp(
+      r'(\b\w+Agent\s*\([^)]*\)\s*;\s*)\n{2,}(\s*final\s+\w+\s*=\s*\w+Agent\s*\()',
+      multiLine: true,
+    ),
+    (m) => '${m[1]}\n${m[2]}',
+  );
+  return s;
+}
+
+/// Inserts a `final …Agent` line after `{` of `createOmegaConfig` without an extra
+/// blank line before existing `final` lines (fixes `\n$decl\n\n  final` duplication).
+String _omegaInsertCreateOmegaConfigAgentDecl(String content, String decl) {
+  final anchor = content.indexOf("OmegaConfig createOmegaConfig");
+  if (anchor < 0) return content;
+  final brace = content.indexOf("{", anchor);
+  if (brace < 0) return content;
+  var tail = content.substring(brace + 1);
+  // Collapse leading newlines before the first `final` so we don't get `\n$decl\n\n  final`.
+  while (tail.startsWith('\n')) {
+    final after = tail.substring(1);
+    if (!after.trimLeft().startsWith('final ')) break;
+    tail = after;
+  }
+  if (tail.trimLeft().startsWith('final ') && !tail.startsWith('\n')) {
+    tail = '\n$tail';
+  }
+  return "${content.substring(0, brace + 1)}\n$decl\n$tail";
 }
 
 /// First constructor `ClassName(` after `class ClassName`: if the parameter list
@@ -2379,14 +2470,7 @@ void registerInOmegaSetup(
   if (registerAgentEffective && (pageNeedsAgent || flowNeedsSharedAgent)) {
     final decl = "  final $agentVar = ${pascal}Agent($agentChannelArgs);";
     if (!content.contains(decl)) {
-      final anchor = content.indexOf("OmegaConfig createOmegaConfig");
-      if (anchor >= 0) {
-        final brace = content.indexOf("{", anchor);
-        if (brace >= 0) {
-          content =
-              "${content.substring(0, brace + 1)}\n$decl\n${content.substring(brace + 1)}";
-        }
-      }
+      content = _omegaInsertCreateOmegaConfigAgentDecl(content, decl);
     }
   }
 
@@ -2403,7 +2487,9 @@ void registerInOmegaSetup(
     }
   }
 
-  if ((pageNeedsAgent || flowNeedsSharedAgent) && registerFlow && !registerAgent) {
+  if ((pageNeedsAgent || flowNeedsSharedAgent) &&
+      registerFlow &&
+      !registerAgent) {
     stdout.writeln(
       "⚠️ ${_tr(en: "$pascal needs a shared agent in omega_setup — add import + final $agentVar + list it in agents: and pass it to ${pascal}Flow(..., agent: $agentVar). Page may also need agent: $agentVar on the route.", es: "$pascal requiere el mismo agente en omega_setup: import + final $agentVar + en agents: y ${pascal}Flow(..., agent: $agentVar). La página puede necesitar agent: $agentVar en la ruta.")}",
     );
@@ -2494,8 +2580,10 @@ void registerInOmegaSetup(
   }
 
   content = _omegaDedupeDuplicateImportLines(content);
+  content = _omegaNormalizeOmegaSetupAgentFinalSpacing(content);
 
   setupFile.writeAsStringSync(content);
+  _formatFile(setupFile.path);
 
   final what = [
     if (registerAgentEffective) "agent",
@@ -3246,7 +3334,16 @@ OmegaAgentMessage (only in *_agent.dart* onMessage): compare msg.action. There i
 OMEGA — MASTER CHECKLIST BY FILE (read as a contract between five artifacts + omega_setup):
 
 GLOBAL INVARIANT — ONE MODULE ID FOR THE FLOW/ROUTE:
-- Pick one flow id used everywhere (string or `enum AppFlowId with OmegaFlowIdEnumWire` + `.id` / pass enum to [OmegaFlowActivator]). MUST match: (1) Flow `super(id: ...)`, (2) Page `getFlow(...)`, [OmegaFlowActivator](flowId:), (3) `OmegaRoute(id: ...)`. Same idea for agents with [OmegaAgentId]. Wrong ids ⇒ "Flow not registered" or silent no-op.
+- Pick one flow id used everywhere (string or `enum AppFlowId with OmegaFlowIdEnumWire` + `.id` / pass enum to [OmegaFlowActivator]). MUST match: (1) Flow `super(id: ...)`, (2) Page `getFlow(...)` / [OmegaFlowManager.getFlowFlexible], [OmegaFlowActivator](flowId:), (3) `OmegaRoute(id: ...)`. Same idea for agents with [OmegaAgentId]. Wrong ids ⇒ "Flow not registered" or silent no-op.
+- **Typed ids (`lib/omega/app_runtime_ids.dart`):** After `omega init`, apps have `AppFlowId` / `AppAgentId` enums (see [OmegaFlowIdEnumWire] / [OmegaAgentIdEnumWire]). Prefer `super(id: AppFlowId.MyModule.id)` / `super(id: AppAgentId.MyModule.id)` with `import 'package:<pubspec_name>/omega/app_runtime_ids.dart';` — wire string must match the enum member. **CLI:** `omega g ecosystem <Name>` merges **both** enums; `omega g agent <Name>` merges **AppAgentId** only; `omega g flow <Name>` merges **AppFlowId** only (agent file must already exist). If you emit JSON for an app that already has this file, add the new `MyModule` member to **both** enums when you add a full module, or only the relevant enum for agent-only / flow-only stubs — never leave `AppAgentId.Foo` in code without `Foo` listed in the enum body.
+
+━━ 0) lib/omega/app_runtime_ids.dart — TYPED FLOW/AGENT WIRE IDS (when present) ━━
+- Purpose: single source of truth for `super(id: ...)` strings on flows and agents; keeps [OmegaFlowExpressionBuilder] / [getFlowFlexible] aligned with analyzer-friendly enums.
+- Typical imports in feature files: `import 'package:<app_package>/omega/app_runtime_ids.dart';` (`<app_package>` = pubspec `name:`).
+- Agent ctor: `: super(id: AppAgentId.<Module>.id, channel: channel, behavior: ...)` (same `<Module>` identifier the CLI would add — PascalCase / sanitized from the module folder name).
+- Flow ctor: `: super(id: AppFlowId.<Module>.id, channel: channel)` (or `required super.channel` pattern — match existing app flows).
+- If the target project has **no** `app_runtime_ids.dart` (legacy), raw strings `super(id: 'MyModule')` are still valid; when the file exists, prefer enums over duplicate string literals.
+- **AI / JSON fixes:** If analyzer reports undefined `AppAgentId.X` or `AppFlowId.X`, either add `X,` to the corresponding enum in `lib/omega/app_runtime_ids.dart` or change the feature file to use a string id that matches an existing enum member — do not mix a typed reference with a missing enum value.
 
 ━━ 1) *_events.dart — NAMES + PAYLOAD TYPES + VIEW MODEL ━━
 Purpose: Declare every wire name the rest of the module may use; no business logic.
@@ -3277,7 +3374,7 @@ Purpose: Run async work; update viewState; emit domain events the flow listens t
 Must include:
 - Imports: omega_architecture, `<lower>_events.dart`, `<lower>_behavior.dart`.
 - `class <Module>Agent extends OmegaStatefulAgent<<Module>ViewState>` (or OmegaAgent if no typed UI state — rare for generated modules).
-- Constructor: `super(id: AGENT_ID, channel: channel, behavior: <Module>Behavior(), initialState: <Module>ViewState.idle)` — AGENT_ID often equals module name string; must match `agents:` entry id semantics in setup.
+- Constructor: `super(id: AGENT_ID, channel: channel, behavior: <Module>Behavior(), initialState: <Module>ViewState.idle)` — Prefer `AppAgentId.<Module>.id` when `lib/omega/app_runtime_ids.dart` exists; otherwise a string literal matching the module id. Must match `agents:` entry id semantics in setup.
 - `@override void onMessage(OmegaAgentMessage msg) {}` or real handling; use `msg.action` not msg.type.
 - `@override void onAction(String action, dynamic payload) { switch (action) { case "id": ... } }` with string cases for every behavior actionId.
 - Use `setViewState(viewState.copyWith(...))` for UI model; never `state.copyWith` for view fields.
@@ -3290,8 +3387,8 @@ Cross-file rules:
 Purpose: Translate intents from handleIntent into channel signals the agent understands; map domain events to OmegaFlowExpression + optional navigation.
 Must include:
 - omega_architecture + `<lower>_events.dart` (+ app_semantics if navigation uses AppEvent/AppIntent) + import `<lower>_agent.dart` when the flow holds `final <Module>Agent agent` for `uiScopeAgent`.
-- `extends OmegaFlow` or `OmegaWorkflowFlow`; `super(id: FLOW_ID, channel: channel)` — FLOW_ID equals page getFlow/activate / OmegaFlowExpressionBuilder `flowId` string (align with `OmegaRoute(id:)` / navigate.* destination; [OmegaFlowManager.getFlowFlexible] matches case-insensitively if needed).
-- **If the page uses `OmegaFlowExpressionBuilder` + `OmegaScopedAgentBuilder` without `OmegaAgentScope` on the route:** constructor takes `{required OmegaEventBus channel, required this.agent}` (or positional agent after channel per style), `final <Module>Agent agent;`, `@override OmegaAgent? get uiScopeAgent => agent;`. The **same** `agent` instance must appear in `OmegaConfig.agents` and in `MyModuleFlow(..., agent: thatVariable)` — never two `MyModuleAgent(channel)` calls.
+- `extends OmegaFlow` or `OmegaWorkflowFlow`; `super(id: FLOW_ID, channel: channel)` — Prefer `AppFlowId.<Module>.id` when `app_runtime_ids.dart` exists; else string FLOW_ID. Must equal page getFlow/activate / OmegaFlowExpressionBuilder `flowId` (align with `OmegaRoute(id:)` / navigate.*; [OmegaFlowManager.getFlowFlexible] matches case-insensitively if needed).
+- **If the page uses `OmegaFlowExpressionBuilder` + `OmegaScopedAgentBuilder` without `OmegaAgentScope` on the route:** constructor takes `{required super.channel, required this.agent}` (forwards [OmegaFlow.channel]), `: super(id: FLOW_ID);`, `final <Module>Agent agent;`, `@override OmegaAgent? get uiScopeAgent => agent;`. The **same** `agent` instance must appear in `OmegaConfig.agents` and in `MyModuleFlow(..., agent: thatVariable)` — never two `MyModuleAgent(channel)` calls.
 - **Extra dependencies (NOT the agent):** colas offline (`OmegaOfflineQueue`), repos, clients HTTP, `ChangeNotifier`, etc. — el flujo los recibe **por constructor** además de `channel` + `agent`; se crean **una vez** en `createOmegaConfig` (`final offlineQueue = OmegaMemoryOfflineQueue();`) y se pasan **nombrados** al flujo: `OrdersFlow(channel: ns, agent: ordersAgent, offlineQueue: offlineQueue)`. No instanciar servicios compartidos dentro del flujo con `new` en cada arranque si deben ser singleton por app. `omega g ecosystem` solo genera `channel` + `agent`; deps extra van en omega_setup **a mano** cuando el dominio las pide.
 - `@override OmegaFlowContract? get contract => OmegaFlowContract(...)` OR `OmegaFlowContract.fromTyped(...)` — lists must include every intent name the page will handleIntent and every event name the flow’s onEvent reads; include all `emitExpression` type strings used (for OmegaWorkflowFlow add 'workflow.step', 'workflow.error').
 - `onIntent`: read `ctx.intent?.name == <Module>Intent.xxx.name`, payload via `payloadAs<T>()`; emit channel events / emitTyped so behavior/agent pick them up.
@@ -3327,7 +3424,7 @@ Forbidden: scope.agentManager; flow.onIntent from widget; OmegaFlowContext in UI
 COHERENCE SELF-TEST (model should mentally verify before answering):
 - [ ] Every behavior actionId has agent switch case string.
 - [ ] Every enum case used in flow/page/agent exists in *_events.dart*.
-- [ ] FLOW_ID identical in Flow, Page, Route.
+- [ ] FLOW_ID identical in Flow, Page, Route; if using AppFlowId/AppAgentId, enum members exist in lib/omega/app_runtime_ids.dart.
 - [ ] Flow contract sets include all emitted expression types and listened event names used in onEvent.
 - [ ] No forbidden APIs (OmegaViewState, case Enum.name in switch, emit(enumWithoutDotName), etc.).
 - [ ] omega_setup imports every Flow/Agent/Page class used; flows/agents lists use constructor calls (`FooFlow(channel: c, agent: fooAgent)` when the flow has `uiScopeAgent`), not bare type names.
@@ -4596,14 +4693,20 @@ class ${moduleName}Agent extends OmegaStatefulAgent<${moduleName}ViewState> {
 
     File(flowPath).writeAsStringSync('''
 import 'package:omega_architecture/omega_architecture.dart';
+import '${lower}_agent.dart';
 import '${lower}_events.dart';
 
 class ${moduleName}Flow extends OmegaWorkflowFlow {
-  ${moduleName}Flow(OmegaEventBus channel)
-      : super(id: '$moduleName', channel: channel) {
+  ${moduleName}Flow({required super.channel, required this.agent})
+      : super(id: '$moduleName') {
     defineStep('start', () => emitExpression('loading'));
     defineStep('done', () => completeWorkflow());
   }
+
+  final ${moduleName}Agent agent;
+
+  @override
+  OmegaAgent? get uiScopeAgent => agent;
 
   @override
   OmegaFlowContract? get contract => OmegaFlowContract(
@@ -4947,7 +5050,9 @@ class _${moduleName}PageState extends State<${moduleName}Page> {
           "example/lib/auth/auth_flow.dart",
           "example/lib/auth/ui/auth_page.dart",
           "example/lib/omega/app_semantics.dart",
+          "example/lib/omega/app_runtime_ids.dart",
           "example/lib/omega/omega_setup.dart",
+          "lib/omega/app_runtime_ids.dart",
         ];
       }
 
@@ -5086,7 +5191,7 @@ Return only one JSON object. No markdown fences. No text outside JSON.
 """;
     } else {
       aiSystemContent =
-          "You are a Senior Flutter Developer writing Dart (Flutter) only. You output exactly one JSON object (json_object mode) with string values only. Include a concise \"reasoning\" (1-5 lines, user’s language). Every code value MUST be valid Dart — never Kotlin, Swift, TypeScript, or pseudocode. You MUST satisfy the MASTER CHECKLIST BY FILE in the user prompt for events, behavior, agent, flow, and page so all five artifacts + setup wiring are coherent (same FLOW_ID, behavior actionIds = agent switch strings, flow contract matches real emits). Every file MUST import 'package:omega_architecture/omega_architecture.dart' where Omega types are used; page also needs flutter/material. The page that references ${moduleName}Agent MUST import '../${lower}_agent.dart'. Do NOT invent OmegaViewState. Behavior: addRule/OmegaAgentBehaviorRule only; agent: onAction with string cases; flow: contract + onIntent/onEvent; page: OmegaScope + kickoff. No prose outside JSON.";
+          "You are a Senior Flutter Developer writing Dart (Flutter) only. You output exactly one JSON object (json_object mode) with string values only. Include a concise \"reasoning\" (1-5 lines, user’s language). Every code value MUST be valid Dart — never Kotlin, Swift, TypeScript, or pseudocode. You MUST satisfy the MASTER CHECKLIST BY FILE in the user prompt for events, behavior, agent, flow, and page so all five artifacts + setup wiring are coherent (same FLOW_ID, behavior actionIds = agent switch strings, flow contract matches real emits). When the app uses lib/omega/app_runtime_ids.dart, wire AppFlowId/AppAgentId in agent and flow files and keep enum bodies updated. Every file MUST import 'package:omega_architecture/omega_architecture.dart' where Omega types are used; page also needs flutter/material. The page that references ${moduleName}Agent MUST import '../${lower}_agent.dart'. Do NOT invent OmegaViewState. Behavior: addRule/OmegaAgentBehaviorRule only; agent: onAction with string cases; flow: contract + onIntent/onEvent; page: OmegaScope + kickoff. No prose outside JSON.";
       prompt =
           """
 Generate COMPLETE and FUNCTIONAL Dart (Flutter) code only — not Kotlin, Swift, TypeScript, or pseudocode — for an Omega Architecture module named '$moduleName' ($lower).
@@ -5094,9 +5199,10 @@ PRIMARY FOCUS / INSTRUCTION: '$description'.
 $contextBlock
 $filesContextBlock
 $packageContextBlock
-REFERENCE (official package patterns; mirror example/lib/omega/omega_setup.dart, example/lib/omega/app_semantics.dart for enums):
+REFERENCE (official package patterns; mirror example/lib/omega/omega_setup.dart, example/lib/omega/app_semantics.dart, example/lib/omega/app_runtime_ids.dart):
 - Agent + behavior ground truth (same repo): example/lib/auth/auth_behavior.dart + example/lib/auth/auth_agent.dart — match their structure before inventing patterns.
-- Flow id: ${moduleName}Flow must use super(id: '$moduleName', channel: channel) so flowManager.getFlow('$moduleName') in ${moduleName}Page resolves. If this module is the app entry flow, OmegaConfig.initialFlowId in omega_setup.dart must be that same string (example: AuthFlow uses id "authFlow" and OmegaConfig.initialFlowId: "authFlow").
+- Typed ids: if the app has `lib/omega/app_runtime_ids.dart`, use `super(id: AppFlowId.$moduleName.id, ...)` / `super(id: AppAgentId.$moduleName.id, ...)` with `import 'package:<pubspec_name>/omega/app_runtime_ids.dart';` and ensure both enums contain a `$moduleName,` entry (user would run `omega g ecosystem $moduleName` to merge; in JSON you may edit that file to add the member). CLI: `omega g ecosystem` updates both enums; `omega g agent` only AppAgentId; `omega g flow` only AppFlowId.
+- Flow id: ${moduleName}Flow must use super(id: ...) consistent with getFlow / OmegaFlowExpressionBuilder (string or AppFlowId.$moduleName.id). If this module is the app entry flow, OmegaConfig.initialFlowId in omega_setup.dart must be that same wire string (example legacy: AuthFlow id "authFlow" and OmegaConfig.initialFlowId: "authFlow").
 - Pages: scope.flowManager.getFlow('$moduleName'); StreamBuilder<OmegaFlowExpression>(stream: flow.expressions, ...).
 - omega_setup.dart (not in this JSON): add imports `../$lower/${lower}_flow.dart`, `../$lower/${lower}_agent.dart`, `../$lower/ui/${lower}_page.dart` (from lib/omega/) or `package:<app>/...`. **One agent instance:** `final $camelAgentVar = ${moduleName}Agent(channel);` in agents:[...]. **Flow:** `${moduleName}Flow(channel: channel, agent: $camelAgentVar)` when the generated flow holds `uiScopeAgent` (required for OmegaFlowExpressionBuilder + OmegaScopedAgentBuilder); otherwise `${moduleName}Flow(channel)` only if the flow has no agent field. NEVER `${moduleName}Agent(channel)` twice (once in agents and again implicitly in Flow). **Extra flow dependencies** (NOT agents): e.g. `OmegaOfflineQueue`, repositories — create once in createOmegaConfig and pass **named** into the flow ctor (see example `OrdersFlow(..., offlineQueue: offlineQueue)`); `omega g ecosystem` does not generate those — add by hand when the spec requires them. If ${moduleName}Page has `required ${moduleName}Agent agent`: pass `$camelAgentVar` to the Page. If the page is const + scoped: `OmegaRoute(id: '$moduleName', builder: (context) => const ${moduleName}Page())` **only** when Flow exposes `uiScopeAgent` with the same `$camelAgentVar`. Typed routes: OmegaRoute.typed<T>(...).
 - Contracts (debug warnings): OmegaWorkflowFlow always emits workflow.step (and failStep emits workflow.error)—include those in emittedExpressionTypes. Flow listenedEventNames must include *.requested if that event is published on the same bus. On a shared global channel, agents should use OmegaAgentContract(listenedEventNames: {}) OR wire agents/flows with channel.namespace('$lower') for isolation.
@@ -5168,10 +5274,11 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
   - import '${lower}_events.dart'; import '${lower}_agent.dart'; when the flow stores the module agent.
   - **Default ecosystem template:** only `channel` + `agent` + `uiScopeAgent`. If the feature needs **other** services (cola offline, API client, repo), add **named** fields to the flow ctor and document them; in omega_setup create each dependency **once** above `OmegaConfig` and pass them into the flow (example: `OrdersFlow(channel: ns, agent: a, offlineQueue: q)`). Those extras are **not** agents and are **not** auto-generated by `omega g ecosystem` — extend the generated flow + omega_setup manually.
   - class ${moduleName}Flow extends OmegaWorkflowFlow {
-      ${moduleName}Flow({required OmegaEventBus channel, required this.agent}) : super(id: '$moduleName', channel: channel) {
+      ${moduleName}Flow({required super.channel, required this.agent}) : super(id: '$moduleName') {
         defineStep('start', () => emitExpression('loading'));
         defineStep('done', () => completeWorkflow());
       }
+      final ${moduleName}Agent agent;
       @override OmegaAgent? get uiScopeAgent => agent;
       @override OmegaFlowContract? get contract => OmegaFlowContract(
         acceptedIntentNames: {${moduleName}Intent.${lower}Start.name, ${moduleName}Intent.${lower}Retry.name},

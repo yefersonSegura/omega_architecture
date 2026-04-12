@@ -14,8 +14,8 @@ class ProviderFlow extends OmegaFlow {
   @override
   OmegaFlowContract? get contract => _contract;
 
-  ProviderFlow({required OmegaEventBus channel, required this.agent})
-      : super(id: AppFlowId.Provider.id, channel: channel);
+  ProviderFlow({required super.channel, required this.agent})
+      : super(id: AppFlowId.Provider.id);
 
   final ProviderAgent agent;
 

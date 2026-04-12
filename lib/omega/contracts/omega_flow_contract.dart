@@ -14,8 +14,8 @@ import '../core/semantics/omega_intent_name.dart';
 /// **Example:**
 /// ```dart
 /// class AuthFlow extends OmegaFlow {
-///   AuthFlow({required OmegaEventBus channel, required this.agent})
-///       : super(id: 'authFlow', channel: channel);
+///   AuthFlow({required super.channel, required this.agent})
+///       : super(id: 'authFlow');
 ///   final AuthAgent agent;
 ///
 ///   @override

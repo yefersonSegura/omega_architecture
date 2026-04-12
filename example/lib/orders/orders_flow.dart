@@ -11,10 +11,10 @@ import 'orders_agent.dart';
 /// emits a "pendingOffline" expression.
 class OrdersFlow extends OmegaFlow {
   OrdersFlow({
-    required OmegaEventBus channel,
+    required super.channel,
     required this.agent,
     required this.offlineQueue,
-  }) : super(id: AppFlowId.ordersFlow.id, channel: channel);
+  }) : super(id: AppFlowId.ordersFlow.id);
 
   final OrdersAgent agent;
   final OmegaOfflineQueue offlineQueue;

@@ -16,7 +16,7 @@ import 'omega_intent_handler_context.dart';
 /// **Why use it:** The UI and agents don't know which flow should receive an intent; the manager
 /// sends it only to flows in [OmegaFlowState.running]. With [wireNavigator] you connect the channel to the navigator.
 ///
-/// **Example:** `manager.registerFlow(AuthFlow(channel: channel, agent: authAgent)); manager.switchTo("authFlow"); manager.handleIntent(intent);`
+/// **Example:** `manager.registerFlow(AuthFlow(channel: ch, agent: authAgent)); manager.switchTo("authFlow"); manager.handleIntent(intent);`
 class _RegisteredIntentHandler {
   const _RegisteredIntentHandler({
     required this.intentName,
@@ -47,7 +47,7 @@ class OmegaFlowManager {
 
   /// Registers a flow so it can be activated and receive intents. Call at bootstrap (omega_setup).
   ///
-  /// **Example:** `flowManager.registerFlow(AuthFlow(channel: channel, agent: authAgent));`
+  /// **Example:** `flowManager.registerFlow(AuthFlow(channel: ch, agent: authAgent));`
   void registerFlow(OmegaFlow flow) {
     _flows[flow.id] = flow;
   }
