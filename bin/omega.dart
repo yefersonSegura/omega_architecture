@@ -2405,86 +2405,117 @@ bool _omegaSetupHasFlowChannelConstruction(String content, String pascal) {
   return RegExp(r"\b" + RegExp.escape(name) + r"\s*\(").hasMatch(content);
 }
 
-/// Removes duplicate bare agent variable entries (`authAgent,` twice) inside `agents:`.
+/// Normalizes `agents:` list: drops duplicate bare refs (any order), and removes
+/// `FooAgent(channel)` when `final fooAgent = FooAgent` / bare `fooAgent` already covers it.
 String _omegaDedupeOmegaSetupAgentsList(String content) {
-  String dedupeInner(String inner) {
-    var s = inner;
-    for (var i = 0; i < 12; i++) {
-      final next = s.replaceAllMapped(
-        RegExp(r'(\b(\w+)\s*,)(?:\s*\2\s*,)+', multiLine: true),
-        (mm) => mm.group(1)!,
-      );
-      if (next == s) break;
-      s = next;
+  String dedupeInner(String inner, String fullSetup) {
+    final seenBare = <String>{};
+    final out = <String>[];
+    for (final raw in inner.split(',')) {
+      var seg = raw.trim();
+      if (seg.isEmpty) continue;
+      if (RegExp(r'^\w+$').hasMatch(seg)) {
+        if (seenBare.contains(seg)) continue;
+        seenBare.add(seg);
+        out.add(seg);
+        continue;
+      }
+      final ctor = RegExp(r'^(\w+)Agent\s*\(([^)]*)\)\s*$').firstMatch(seg);
+      if (ctor != null) {
+        final pascal = ctor.group(1)!;
+        final varName = _omegaAgentInstanceVarName(pascal);
+        final hasFinal = RegExp(
+          r'\bfinal\s+' + RegExp.escape(varName) + r'\s*=\s*' + RegExp.escape(pascal) + r'Agent\s*\(',
+        ).hasMatch(fullSetup);
+        if (seenBare.contains(varName) || hasFinal) continue;
+      }
+      out.add(seg);
     }
-    return s;
+    if (out.isEmpty) return inner;
+    return '\n      ${out.join(',\n      ')}\n    ';
   }
 
   var out = content.replaceFirstMapped(
     RegExp(r'(agents:\s*<OmegaAgent>\s*\[)([\s\S]*?)(\]\s*[,)])', multiLine: true),
-    (m) => '${m[1]}${dedupeInner(m.group(2)!)}${m[3]}',
+    (m) => '${m[1]}${dedupeInner(m.group(2)!, content)}${m[3]}',
   );
   if (out == content) {
     out = content.replaceFirstMapped(
       RegExp(r'(agents:\s*\[)([\s\S]*?)(\]\s*[,)])', multiLine: true),
-      (m) => '${m[1]}${dedupeInner(m.group(2)!)}${m[3]}',
+      (m) => '${m[1]}${dedupeInner(m.group(2)!, content)}${m[3]}',
     );
   }
   return out;
 }
 
-/// Same heuristics as [OmegaValidateCommand.validateProjectRoot] login/home block.
+/// Stricter than [OmegaValidateCommand.validateProjectRoot] heuristics: only auto-patch cold
+/// start when `navigate.login` can work (**route id `login`**) and the shell is multi-route.
 bool _omegaSetupQualifiesForColdStartAutoPatch(String content) {
   if (RegExp(r'\binitialFlowId\s*:').hasMatch(content) &&
       RegExp(r'\binitialNavigationIntent\s*:').hasMatch(content)) {
     return false;
   }
-  final agentsBlock = RegExp(
-    r'agents:\s*<OmegaAgent>\s*\[([\s\S]*?)\]\s*[,)]',
-    multiLine: true,
-  ).firstMatch(content);
   final routesBlock = RegExp(
     r'routes:\s*<OmegaRoute>\s*\[([\s\S]*?)\]\s*[,)]',
     multiLine: true,
   ).firstMatch(content);
-  final agentCtorReg = RegExp(
-    r"(\w+)Agent\s*\(\s*(?:channel\s*:\s*)?channel\s*[,\)]",
-  );
   final routeIdReg = RegExp(
     r'''OmegaRoute(?:\.typed<[^>]+>)?\(\s*id:\s*['"]([^'"]+)['"]''',
   );
-  final agentNames = <String>[];
   final routeIds = <String>[];
-  var bareAgentRefs = <String>[];
-  if (agentsBlock != null) {
-    final inner = agentsBlock.group(1)!;
-    for (final m in agentCtorReg.allMatches(inner)) {
-      agentNames.add(m.group(1)!);
-    }
-    bareAgentRefs = OmegaValidateCommand._omegaSetupListCommaEntries(inner);
-  }
   if (routesBlock != null) {
     final inner = routesBlock.group(1)!;
     for (final m in routeIdReg.allMatches(inner)) {
       routeIds.add(m.group(1)!);
     }
   }
+  final hasLoginRoute = routeIds.any((id) => id == 'login');
+  if (!hasLoginRoute) return false;
+  if (routeIds.length < 2) return false;
+
   final looksAuthApp =
       content.contains('AuthFlow(') ||
       content.contains('AuthAgent(') ||
-      routeIds.any(
-        (id) =>
-            id.toLowerCase().contains('auth') || id.toLowerCase() == 'login',
-      ) ||
-      agentNames.any((n) => n.toLowerCase() == 'auth');
-  final looksMultiModule = routeIds.length >= 2 ||
-      agentNames.length >= 2 ||
-      bareAgentRefs.length >= 2;
-  return looksAuthApp && looksMultiModule;
+      routeIds.any((id) => id == 'Auth' || id.toLowerCase() == 'auth');
+  return looksAuthApp;
 }
 
-/// Inserts [initialFlowId] + [initialNavigationIntent] when the setup looks like Auth + multi-route but the AI omitted cold start.
-String _omegaPatchOmegaSetupColdStart(String content, String pkg) {
+/// Reads `AuthFlow` / `super(id: …)` when possible so [initialFlowId] matches the real flow.
+String _omegaInferAuthInitialFlowIdExpr(String projectRoot, String setupContent) {
+  if (setupContent.contains('AppFlowId.authFlow')) {
+    return 'AppFlowId.authFlow.id';
+  }
+  final candidates = <String>[
+    _path(projectRoot, ['lib', 'auth', 'auth_flow.dart']),
+    _path(projectRoot, ['lib', 'Auth', 'auth_flow.dart']),
+  ];
+  for (final p in candidates) {
+    final f = File(p);
+    if (!f.existsSync()) continue;
+    try {
+      final text = f.readAsStringSync();
+      final mEnum = RegExp(
+        r'super\s*\(\s*id:\s*(AppFlowId\.\w+\.id)\s*',
+        multiLine: true,
+      ).firstMatch(text);
+      if (mEnum != null) return mEnum.group(1)!;
+      final mStr = RegExp(
+        r"super\s*\(\s*id:\s*'([^']+)'\s*",
+        multiLine: true,
+      ).firstMatch(text);
+      if (mStr != null) return "'${mStr.group(1)}'";
+    } catch (_) {}
+  }
+  return "'authFlow'";
+}
+
+/// Inserts [initialFlowId] + [initialNavigationIntent] when the setup qualifies (see
+/// [_omegaSetupQualifiesForColdStartAutoPatch]) so `AppIntent.navigateLogin` is valid.
+String _omegaPatchOmegaSetupColdStart(
+  String content,
+  String pkg,
+  String projectRoot,
+) {
   if (!_omegaSetupQualifiesForColdStartAutoPatch(content)) return content;
   var s = content;
   final semanticsImportRe = RegExp(
@@ -2496,9 +2527,8 @@ String _omegaPatchOmegaSetupColdStart(String content, String pkg) {
   if (!semanticsImportRe.hasMatch(s) && !semanticsAnyRe.hasMatch(s)) {
     s = "import 'package:$pkg/omega/app_semantics.dart';\n$s";
   }
-  var flowExpr = "'authFlow'";
-  if (s.contains('AppFlowId.authFlow')) {
-    flowExpr = 'AppFlowId.authFlow.id';
+  final flowExpr = _omegaInferAuthInitialFlowIdExpr(projectRoot, s);
+  if (flowExpr.contains('AppFlowId.')) {
     final runtimeImportRe = RegExp(
       "import\\s+['\"]package:${RegExp.escape(pkg)}/omega/app_runtime_ids\\.dart['\"]",
     );
@@ -2771,8 +2801,8 @@ void registerInOmegaSetup(
     content = _omegaUpgradeOmegaRouteForAgent(content, pascal, agentVar);
   }
 
-  content = _omegaPatchOmegaSetupColdStart(content, pkg);
   content = _omegaDedupeOmegaSetupAgentsList(content);
+  content = _omegaPatchOmegaSetupColdStart(content, pkg, projectRoot);
   content = _omegaDedupeDuplicateImportLines(content);
   content = _omegaNormalizeOmegaSetupAgentFinalSpacing(content);
 
