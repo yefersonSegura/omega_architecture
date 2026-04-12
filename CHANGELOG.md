@@ -1,3 +1,8 @@
+## 1.0.3
+
+- **CLI / IA (`bin/omega.dart`):** Reglas y receta de heal para no confundir **`OmegaChannel.emit(OmegaEvent)`** con **`OmegaAgent.emit(String, {payload})`**; reforzar **`OmegaEvent.fromName`** (enum + `payload:` / puente desde `ctx.intent?.payloadAs`).
+- **Documentación:** `OmegaEventBus.emit`, **`OmegaEvent.fromName`** y **`OmegaIntent.fromName`** aclaran firma y anti‑patrones en el paquete.
+
 ## 1.0.2
 
 - **`omega validate`:** Detecta **`OmegaRoute` con `id:` duplicado** dentro de `routes:`; duplicados en **`agents:`** por la misma variable repetida (p. ej. dos veces `orderManagementAgent`) además de dos `FooAgent(channel)`; duplicados en **`flows:`** por tipo (`UserManagementFlow` dos veces). Los chequeos se limitan al cuerpo de cada lista (menos falsos positivos). Prompts MASTER + heal compact reforzados con ejemplo explícito y remisión a `omega validate`.
