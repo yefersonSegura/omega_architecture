@@ -1453,6 +1453,8 @@ HEAL RECIPE — nullable state in UI (`can't be unconditionally accessed` / unch
         """
 You fix a Flutter app that uses the published package omega_architecture (not local lib copies).
 
+${OmegaAiCommand._omegaAiConceptualArchitecture}
+
 ${OmegaAiCommand._omegaAiOmegaSourceOfTruth}
 HEAL: change only what the analyzer and the sources above require — do not refactor toward invented APIs.
 HEAL — phased mindset: prefer the smallest coherent fix per file (imports / missing types / one wiring bug) instead of rewriting large unrelated regions “all at once” unless errors demand it.
@@ -1495,7 +1497,9 @@ OMEGA API (concise — full master checklist omitted here; follow roles + rules 
 ${OmegaAiCommand._omegaAiRolesFlowAgentBehavior}
 ${OmegaAiCommand._omegaAiHealPromptCompactOmega}
 ${OmegaAiCommand._omegaAiOmegaChannelEvents}
+${OmegaAiCommand._omegaAiNavigationChannelEmit}
 ${OmegaAiCommand._omegaAiAgentUiStateListening}
+${OmegaAiCommand._omegaAiFlowActivatorAndFlowManager}
 ${OmegaAiCommand._omegaAiScreenEntryDataLoad}
 - String literals: valid UTF-8; fix mojibake or use plain ASCII mock text where needed.
 
@@ -3224,10 +3228,28 @@ class OmegaDoctorCommand {
   }
 }
 
-/// AI tooling bootstrap (no provider call yet).
-/// Helps users configure environment variables in a safe, optional way.
+/// CLI AI entrypoints (`omega ai doctor|env|coach|…`) and **all remote LLM prompt fragments** used when
+/// generating or healing Dart with OpenAI/Gemini.
+///
+/// **Why so many `static const String` blocks:** each `_omegaAi*` fragment targets one failure mode
+/// (invented `getAgent`, wrong `OmegaIntent.fromName` arguments, Provider-style builders, fake
+/// `OmegaFlowActivator` callbacks). They are composed into user/system prompts in
+/// [_providerGenerateModuleCode], [_providerFixErrors], etc. — keep them **small**, **non-overlapping**,
+/// and aligned with real APIs under `lib/omega/` and `example/lib/`.
+///
+/// **Conceptual layer for the model:** [_omegaAiConceptualArchitecture] explains how scope, channel,
+/// flow manager, and agents relate so the LLM does not improvise “service locator” patterns.
 class OmegaAiCommand {
-  /// Models must follow package exports + attached examples only (no invented Omega APIs).
+  /// **User prompt:** mental model of Omega (scope vs channel vs flows vs agents). Reduces invented APIs.
+  static const String _omegaAiConceptualArchitecture = r'''
+CONCEPT — how Omega is wired (read first; avoids inventing APIs from other frameworks):
+- **OmegaScope** is intentionally minimal: only **`channel`** ([OmegaEventBus]), **`flowManager`** ([OmegaFlowManager]), **`initialFlowId`**. It is **not** a service locator: there is **no** `agentManager`, **no** `getAgent`, **no** `repositories` on scope. Anything else your app needs (HTTP clients, DB, extra repos) lives in **your** classes and is passed through **constructors** from `createOmegaConfig` / routes / flow fields — never “discovered” via a fake scope API.
+- **Two lanes from the UI:** (1) **`flowManager.handleIntent(OmegaIntent.fromName(...))`** — delivers to **running** [OmegaFlow]s and optional intent-handlers; good for **wizard / flow steps** that the flow’s `onIntent` handles. (2) **`channel.emit(OmegaEvent.fromName(...))` / `emitTyped(...)`** — **broadcast**; **agents** (behavior → `onAction`) and **flows** (`onEvent`) listen here; **OmegaNavigator** listens for **`navigation.intent`**. Domain “load list / refresh” tied to `ctx.event` belongs here, not only `handleIntent`.
+- **Where agents come from:** one shared **instance per module** registered in [OmegaConfig] and wired into **flows** (`agent:` ctor) and/or **routes** (`OmegaAgentScope`, or `required this.agent` on the page). Widgets use **`OmegaAgentBuilder(agent: …)`** or **`OmegaScopedAgentBuilder`** (two-arg builder). You **cannot** obtain an agent by string id from `flowManager` or `OmegaScope` — those methods do not exist by design.
+- **Why invention fails:** every method you add in generated code must already exist on a type from **`package:omega_architecture/omega_architecture.dart`**. If you cannot point to it in PACKAGE GROUND TRUTH or that export, **do not emit it** — mirror `example/lib/auth/*` + `omega_setup.dart` instead.
+''';
+
+  /// **User prompt:** hard “only these sources” rule so the model does not invent internal package paths.
   static const String _omegaAiOmegaSourceOfTruth = r'''
 SOURCE OF TRUTH — do not invent:
 - Use ONLY: (1) public API from `package:omega_architecture/omega_architecture.dart`, (2) the Omega rules/checklist/templates in this prompt, (3) PACKAGE GROUND TRUTH (attached example Dart and, if present, package doc excerpts). Never `package:omega_architecture/omega/...` internal paths or types/widgets not shown in those sources.
@@ -3235,7 +3257,7 @@ SOURCE OF TRUTH — do not invent:
 - No extra architecture layers (BLoC/Riverpod/GetX/etc.) in generated Omega module code unless the user explicitly asked. Deliver the smallest coherent solution that compiles and matches the instruction — no speculative packages or features.
 ''';
 
-  /// Appended to provider prompts so UIs aim at production-grade quality, not placeholders.
+  /// **User prompt:** Material 3 / layout quality bar for generated `page` strings (not structural Omega API).
   static const String _omegaAiUiDesignStandards = r'''
 UI DESIGN EXCELLENCE (ship-quality — treat this screen as a real product, not a tutorial):
 - Goal: the best layout you can produce in one file — clear hierarchy, generous spacing, cohesive Material 3, and a credible real-app feel.
@@ -3250,7 +3272,7 @@ UI DESIGN EXCELLENCE (ship-quality — treat this screen as a real product, not 
 - FORBIDDEN: a screen that is only one button and one Text, bare Center(Text), "TODO UI", or Lorem ipsum as main content.
 ''';
 
-  /// Ensures list/catalog screens actually load: handleIntent only reaches running flows; agents often need channel.emit.
+  /// **User prompt:** first-load / empty-list fixes. Conceptually: `handleIntent` ≠ bus; agents see **channel** events.
   static const String _omegaAiScreenEntryDataLoad = r'''
 SCREEN ENTRY — lists, grids, catalogs, dashboard data (must not stay empty until the user taps a button unless the spec says so):
 - [OmegaFlowManager.handleIntent] only delivers to flows in [running] state. Call [flowManager.activate(flowId)] or [switchTo(flowId)] with the SAME id as the Flow’s super(id: ...), OR wrap the screen with [OmegaFlowActivator](flowId: ...) so users need not write activate in [didChangeDependencies].
@@ -3262,7 +3284,16 @@ SCREEN ENTRY — lists, grids, catalogs, dashboard data (must not stay empty unt
 - RIGHT: One clear “on open” path documented in reasoning: which of (A)(B)(C) you used and which enum (.requested vs .start) matches the behavior rules.
 ''';
 
-  /// Typed events (OmegaTypedEvent) are wrapped as OmegaEvent.payload; `event is MyTypedEvent` does not apply on the bus.
+  /// **User prompt:** concrete ctor/method allowlist for activator + manager + scope; models often invent callbacks/`getAgent`.
+  static const String _omegaAiFlowActivatorAndFlowManager = r'''
+OMEGA — OmegaFlowActivator + OmegaFlowManager (exact API from package — never invent parameters or manager methods):
+- **OmegaFlowActivator** (`omega_flow_activator.dart`): constructor allows ONLY `key`, **`flowId`** ([String] or [OmegaFlowId] e.g. `AppFlowId.myModule`), **`child`** ([Widget]), optional **`useSwitchTo`** (bool — default calls [activate]; if true calls [switchTo]). Implementation runs [activate]/[switchTo] once inside [didChangeDependencies]. **FORBIDDEN:** `onActivate`, `onReady`, `onFlowReady`, `builder`, or any callback that receives [OmegaFlowManager] — those parameters **do not exist**. WRONG: `OmegaFlowActivator(flowId: x, onActivate: (fm) { ... }, child: ...)`.
+- **OmegaFlowManager** (`omega_flow_manager.dart`): UI/flow integration uses **`registerFlow`**, **`getFlow`** / **`getFlowFlexible`**, **`activate`**, **`activateExclusive`**, **`switchTo`**, **`handleIntent`**, optional **`registerIntentHandler`** / **`clearIntentHandlers`**, snapshot APIs (`getFlowSnapshot`, `getAppSnapshot`, `restoreFromSnapshot`), **`registeredFlowIds`**, **`activeFlowId`**, **`channel`**. **FORBIDDEN:** **`getAgent`**, **`getAgent<T>`**, **`agents`**, **`findAgent`**, or any API that returns an [OmegaAgent] from the manager — **not in the package**. Agents are registered in [OmegaConfig.agents], held on flow fields, and exposed to widgets via [OmegaAgentScope] / [OmegaFlow.uiScopeAgent] + [OmegaScopedAgentBuilder] or [OmegaAgentBuilder(agent: ...)].
+- **Never** `flowManager.getAgent(...).viewStateStream` or similar. To react to agent loading: use [OmegaScopedAgentBuilder]/[OmegaAgentBuilder] and read `state.isLoading`, or `StreamBuilder` on `agent.stateStream` with `initialData: agent.viewState` when you already have an `agent` reference (see `_omegaAiAgentUiStateListening`).
+- **OmegaScope** (`omega_scope.dart`): ONLY **`channel`**, **`flowManager`**, **`initialFlowId`**. **FORBIDDEN (invented — does not compile):** `scope.agentManager`, **`scope.agentManager.getAgent('ModuleName')`**, `scope.getAgent<T>(...)`, or any “registry” on scope. WRONG: `_buildProfileForm(context, state, scope.agentManager.getAgent('UserManagement') as UserManagementAgent)`. RIGHT: pass `UserManagementAgent` via `required this.agent` on the page + [OmegaAgentBuilder], or [OmegaAgentScope] + [OmegaScopedAgentBuilder], or [OmegaFlowExpressionBuilder] + flow [uiScopeAgent] (see package examples).
+''';
+
+  /// **User prompt:** bus = `OmegaEvent` only; typed payloads via `payloadAs`; explains why `event is MyTypedEvent` fails.
   static const String _omegaAiOmegaChannelEvents = r'''
 OMEGA CHANNEL EVENTS (Stream<OmegaEvent>, flow onEvent ctx.event, agent listeners):
 - Listing / loading / refresh: if your module starts work when an event appears on the bus (e.g. product.catalog.requested, orders.refresh), the button must emit that event: scope.channel.emit(OmegaEvent.fromName(MyEvent.requested)) or emitTyped(MyRequestedEvent(...)). Agents never see handleIntent — they see channel.events. Using only handleIntent when behavior uses ctx.event?.name == MyEvent.requested.name will not load data.
@@ -3283,7 +3314,19 @@ OMEGAEVENT / OMEGAINTENT — required id:
 - Inside an OmegaAgent subclass, prefer emit(someEvent.name, payload: ...) (inherited helper builds OmegaEvent with id) instead of hand-building OmegaEvent( without id.
 ''';
 
-  /// How UI rebuilds from OmegaStatefulAgent — exact builder arity (models often invent Provider-style signatures).
+  /// **User prompt:** navigator listens for `navigation.intent`; inner `OmegaIntent.fromName` must use **enum**, not string wire.
+  static const String _omegaAiNavigationChannelEmit = r'''
+OMEGA — NAVIGATION FROM A BUTTON (channel + OmegaNavigator — copy this shape, do not invent):
+- **Canonical emit (app-wide routes):** import `../omega/app_semantics.dart` or `package:<APP_NAME>/omega/app_semantics.dart` (APP_NAME = pubspec `name:`). Then:
+  `OmegaScope.of(context).channel.emit(OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateHome)));`
+  Replace `navigateHome` with another **`AppIntent` enum constant** you added in `app_semantics.dart` (camelCase member → dotted `navigate.*` wire matching your `OmegaRoute` ids). **Never** pass a raw wire string to `OmegaIntent.fromName`.
+- **Outer event:** MUST resolve to wire name **`navigation.intent`** exactly — use **`AppEvent.navigationIntent`** unless the feature’s own `*Event` enum defines `navigationIntent` with `OmegaEventNameDottedCamel` to the same wire.
+- **Inner intent:** **`OmegaIntent.fromName(AppIntent.someMember)`** — argument is always an **enum value** implementing [OmegaIntentName]. **FORBIDDEN:** `OmegaIntent.fromName('navigate.home')`, `OmegaIntent.fromName("navigate.x")`, `OmegaIntent.fromName(\`navigate.home\`)`, or comments saying “placeholder string” — those are **not valid Dart** for this API and will not type-check.
+- **FORBIDDEN:** `OmegaIntent.fromName(MyIntent.start.name)` or any `.name` as the first argument — pass **`MyIntent.start`** (the enum constant), not a String.
+- **Module outer + app inner:** only if you intentionally wrap with your module’s `*Event.navigationIntent`; inner payload is still `OmegaIntent.fromName(AppIntent....)` with a real `AppIntent` case.
+''';
+
+  /// **User prompt:** `viewState` + streams drive rebuilds; typedef is `(context, state)` — not Provider’s multi-arg builders.
   static const String _omegaAiAgentUiStateListening = r'''
 OMEGA — UI LISTENS TO AGENT STATE (read before any OmegaAgentBuilder / OmegaScopedAgentBuilder):
 - **Where state lives:** [OmegaStatefulAgent] keeps typed UI data in [viewState] (T). The agent updates the UI by calling [setViewState(next)] from [onAction] or async helpers — not by returning widgets.
@@ -3292,9 +3335,10 @@ OMEGA — UI LISTENS TO AGENT STATE (read before any OmegaAgentBuilder / OmegaSc
 - **OmegaScopedAgentBuilder<TAgent, TState>:** uses the **same** two-parameter builder `(context, state)`. It resolves `TAgent` from [OmegaAgentScope] (route) or from [OmegaFlow.uiScopeAgent] when [OmegaFlowExpressionBuilder] wraps the subtree in scope. WRONG (does not match the package): `(context, MyAgent agent, MyViewState viewState)`, `(context, agent, state, child)`, or any Consumer/Selector-style signature copied from Riverpod/Provider.
 - **Advanced (optional):** `StreamBuilder<MyViewState>(stream: agent.stateStream, initialData: agent.viewState, ...)` — remember broadcast streams may not replay; read [viewState] first if you need the current snapshot before the first event.
 - **FORBIDDEN:** inventing `context.watch<SomeAgent>()`, extra builder parameters, or “pass the agent into the builder” — the API is fixed in `omega_agent_builder.dart`; mirror `example/lib/auth/ui/auth_page.dart` for classic [OmegaAgentBuilder] with `widget.agent`.
+- **FORBIDDEN:** `scope.agentManager`, `scope.agentManager.getAgent(...)`, or any agent lookup on [OmegaScope] — [OmegaScope] has **no** agentManager; that API is not in `omega_architecture`.
 ''';
 
-  /// What Flow vs Agent vs Behavior are for (keep responsibilities separate in generated code).
+  /// **User prompt:** separation of concerns — flow orchestrates, behavior maps context→actionId, agent executes async work.
   static const String _omegaAiRolesFlowAgentBehavior = r'''
 OMEGA ROLES — Flow vs Agent vs Behavior (do not merge into one class):
 - Flow (OmegaFlow / OmegaWorkflowFlow): Orchestrates one feature or screen journey. Receives flowManager.handleIntent → onIntent; receives channel events → onEvent. Publishes OmegaFlowExpression for UI (StreamBuilder on flow.expressions). May emit channel events to ask agents or trigger navigation. Think: steps, wizard, “where is this feature in the process”. Registered in OmegaConfig; UI uses flowManager.getFlow(flowId) or getFlowFlexible(flowId) with the same id as super(id: ...) in the flow class. Optional override `OmegaAgent? get uiScopeAgent => ...` when the page uses `OmegaFlowExpressionBuilder` + `OmegaScopedAgentBuilder` without wrapping the route in `OmegaAgentScope` — same agent reference as in `OmegaConfig.agents`. **Other ctor params** (offline queue, repos) are **not** agents: inject from `createOmegaConfig` once; see example `OrdersFlow` + `offlineQueue`.
@@ -3302,7 +3346,7 @@ OMEGA ROLES — Flow vs Agent vs Behavior (do not merge into one class):
 - Behavior (*_behavior.dart*, OmegaAgentBehaviorEngine): Declarative rules only — condition(ctx) → OmegaAgentReaction(actionId, payload). No async, no HTTP, no setViewState. First matching rule wins. The agent implements onAction for each actionId. Keeps the routing table (behavior) separate from execution (agent).
 ''';
 
-  /// OmegaWorkflowFlow API (failStep / emitExpression signatures).
+  /// **User prompt:** workflow steps + `emitExpression`/`failStep` signatures; flow context has no agent shortcuts.
   static const String _omegaAiOmegaWorkflowFlow = r'''
 OMEGA WORKFLOW FLOW (OmegaWorkflowFlow — omega_workflow_flow.dart):
 - Constructor: MUST pass both `id` and `channel` to `super` — e.g. `MyFlow(OmegaEventBus channel) : super(id: 'MyFlow', channel: channel);` OR `MyFlow({required super.channel}) : super(id: 'MyFlow');` (never omit `channel`).
@@ -3317,7 +3361,7 @@ OMEGA WORKFLOW FLOW (OmegaWorkflowFlow — omega_workflow_flow.dart):
 - Contract [emittedExpressionTypes] must include `workflow.step`, `workflow.error`, `workflow.done` plus any custom types you pass to emitExpression (e.g. `idle`, `loading`).
 ''';
 
-  /// Behavior/agent patterns must match example auth module; blocks invented BLoC-style behavior APIs.
+  /// **User prompt:** behavior vs agent split + `emit`/`onAction`/`addRule` details; blocks BLoC-style behavior bodies.
   static const String _omegaAiAgentBehaviorApi = r'''
 OMEGA AGENT + BEHAVIOR — read the real API before coding (same package):
 - Canonical examples: example/lib/auth/auth_behavior.dart (rules) + example/lib/auth/auth_agent.dart (onAction, setViewState, emit). Generated code must follow that split — not a single fixed "requested → loadMock" pattern; that was only an illustration.
@@ -3349,7 +3393,7 @@ FORBIDDEN in behavior (breaks Omega): Stream / async* / yield, handleEvent, muta
 OmegaAgentMessage (only in *_agent.dart* onMessage): compare msg.action. There is NO .type on OmegaAgentMessage.
 ''';
 
-  /// End-to-end checklist so the model wires events ↔ behavior ↔ agent ↔ flow ↔ page ↔ setup consistently.
+  /// **User prompt:** per-file contract (MASTER CHECKLIST); main cross-artifact coherence guard for full modules.
   static const String _omegaAiCompleteArtifactGuide = r'''
 OMEGA — MASTER CHECKLIST BY FILE (read as a contract between five artifacts + omega_setup):
 
@@ -3424,11 +3468,11 @@ Must include:
 - `flutter/material.dart`, `omega_architecture`, `../<lower>_events.dart`; if Page has `required <Module>Agent agent` or OmegaAgentBuilder<<Module>Agent,...> or OmegaScopedAgentBuilder<<Module>Agent,...> then `../<lower>_agent.dart`.
 - Obtain scope: `OmegaScope.of(context)` — only .channel, .flowManager, .initialFlowId.
 - Flow-driven UI: prefer `OmegaFlowExpressionBuilder(flowId: 'FLOW_ID', builder: (context, exp) => ...)` OR `getFlow('FLOW_ID')` + `StreamBuilder<OmegaFlowExpression>(stream: flow!.expressions, ...)` (same FLOW_ID as Flow super(id:)). If the builder nests `OmegaScopedAgentBuilder`, set Flow `uiScopeAgent` + shared agent in omega_setup (see section 4).
-- Entry: wrap route with `OmegaFlowActivator(flowId: 'FLOW_ID', child: ...)` OR once `activate('FLOW_ID')` in didChangeDependencies; then EITHER `handleIntent(OmegaIntent.fromName(<Module>Intent.${lower}Start))` OR `channel.emit(OmegaEvent.fromName(<Module>Event.${lower}Requested))` — must match what behavior/flow listen to (see SCREEN ENTRY rules).
+- Entry: wrap route with `OmegaFlowActivator(flowId: 'FLOW_ID', child: ...)` (only those ctor args + optional `useSwitchTo` — **no** `onActivate` or other callbacks) OR once `activate('FLOW_ID')` in didChangeDependencies; then EITHER `handleIntent(OmegaIntent.fromName(<Module>Intent.${lower}Start))` OR `channel.emit(OmegaEvent.fromName(<Module>Event.${lower}Requested))` — must match what behavior/flow listen to (see SCREEN ENTRY rules).
 - Agent-driven lists: EITHER `OmegaAgentScope` at route + `OmegaScopedAgentBuilder` OR `OmegaFlowExpressionBuilder` + `OmegaScopedAgentBuilder` with Flow `uiScopeAgent` OR classic `OmegaAgentBuilder(..., agent: widget.agent, ...)` — **builder closure: `(BuildContext, TState)` only** (same as typedef `OmegaAgentWidgetBuilder`); never construct a new Agent in build(); never Provider-style `(context, agent, state, child)`.
 - Navigator: `channel.emit(OmegaEvent.fromName(...navigationIntent..., payload: OmegaIntent.fromName(...)))` — not handleIntent alone for navigate.*.
 - Reactive wait: use `agent.stateStream` / `viewStateStream` (same stream); remember broadcast does not replay current viewState.
-Forbidden: scope.agentManager; flow.onIntent from widget; OmegaFlowContext in UI; const Page if non-const agent required.
+Forbidden: `scope.agentManager`, `scope.agentManager.getAgent(...)`, `scope.getAgent` (all invented — [OmegaScope] only has channel, flowManager, initialFlowId); flow.onIntent from widget; OmegaFlowContext in UI; const Page if non-const agent required.
 
 ━━ 6) omega_setup.dart (human wiring after JSON — mention in reasoning) ━━
 ━━ CANONICAL omega_setup.dart (package example — mirror this) ━━
@@ -3459,12 +3503,14 @@ COHERENCE SELF-TEST (model should mentally verify before answering):
 - [ ] If the flow ctor has extra non-agent params (offlineQueue, repo): they are created once in createOmegaConfig and passed named into the flow; not confused with the module agent.
 ''';
 
-  /// Short OMEGA API block for heal prompts only (replaces full master checklist + long duplicate API list).
+  /// **Heal user prompt only:** compact Omega API subset when full checklist is omitted (token budget).
   static const String _omegaAiHealPromptCompactOmega = r'''
 HEAL — OMEGA API (fix analyzer errors; mirror PACKAGE GROUND TRUTH examples):
 - createOmegaConfig: `agents:` / `flows:` use constructor calls only (never bare `MyFlow` without `(...)`). One agent instance per module; reuse the same variable in `MyFlow(channel: c, agent: thatAgent)` when the flow exposes `uiScopeAgent`. No duplicate identical import lines.
 - Typed ids: if `lib/omega/app_runtime_ids.dart` exists, `super(id: AppFlowId.X.id)` / `AppAgentId.X.id` must match an enum member; import `package:<THIS_APP>/omega/app_runtime_ids.dart` with THIS_APP from the APP PUBSPEC block.
 - OmegaScope: only `.channel`, `.flowManager`, `.initialFlowId` — no agentManager. Use `getFlow` + `StreamBuilder`, or pass `agent` into the Page, or `OmegaAgentScope` / `Flow.uiScopeAgent` + shared agent in setup.
+- `OmegaFlowActivator`: only `flowId` + `child` + optional `useSwitchTo` — no `onActivate` / callbacks. `OmegaFlowManager`: no `getAgent` — remove invented manager→agent bridges. `OmegaScope`: no `agentManager` / `getAgent` — use `widget.agent`, `OmegaAgentScope`, or `uiScopeAgent` + `OmegaScopedAgentBuilder`.
+- Navigation: `OmegaIntent.fromName` takes an **AppIntent** / **ModuleIntent enum constant**, never a string like `'navigate.home'`; outer `AppEvent.navigationIntent` (see `_omegaAiNavigationChannelEmit`).
 - handleIntent reaches running flows’ onIntent; agents and behavior react to **channel** events — emit `OmegaEvent.fromName(...)` / `emitTyped` for patterns that use `ctx.event` (lists, navigation). `OmegaIntent.fromName(MyEnum.member)` — enum constant, not String, not `.name`.
 - Do not call `OmegaEventName(...)` / `OmegaIntentName(...)` — abstract; use `fromName` with concrete enums.
 - Behavior `OmegaAgentReaction('actionId', ...)` strings must match `onAction` `switch` cases — **string literals** only, not `case SomeEnum.foo.name`.
@@ -3476,14 +3522,14 @@ HEAL — OMEGA API (fix analyzer errors; mirror PACKAGE GROUND TRUTH examples):
 - JSON values: avoid invalid `\\` + `$` sequences inside JSON strings (breaks decode); CLI may sanitize common cases — still prefer valid JSON.
 ''';
 
-  /// Reduces mojibake in Spanish mock strings from model/JSON pipelines.
+  /// **User prompt:** UTF-8 / encoding hints for string literals inside generated Dart (JSON-safe copy).
   static const String _omegaAiUtf8StringLiterals = r'''
 STRING LITERALS (encoding):
 - Dart source must be valid UTF-8. For Spanish (or other languages), use real accented characters (á é í ó ú ñ ü) OR plain ASCII without accents — never garbage bytes or control characters inside words (e.g. "Básica" or "Basica", not corrupted sequences).
 - If mock catalog copy might corrupt in JSON, prefer short English placeholders for names/descriptions.
 ''';
 
-  /// Stops models from inventing package types (e.g. OmegaViewState) or duplicating app-wide enums in the module file.
+  /// **User prompt fragment:** `*_events.dart` allowlist — ViewState is plain Dart; app enums live in `app_semantics.dart`.
   static String _omegaAiEventsFileAllowlist(String moduleName, String lower) {
     return """
 
@@ -4179,7 +4225,10 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
       if (RegExp(r"OmegaIntent\.fromName\s*\([^)]*\.name\s*\)").hasMatch(t)) {
         return false;
       }
-      if (!t.contains("${moduleName}Intent.")) return false;
+      // Module intents OR shared AppIntent (navigation / app-wide buttons).
+      final hasModuleIntent = t.contains("${moduleName}Intent.");
+      final hasAppIntent = t.contains("AppIntent.");
+      if (!hasModuleIntent && !hasAppIntent) return false;
     }
     if (t.contains("agentManager")) return false;
     if (RegExp(r"\bscope\.getAgent\b").hasMatch(t)) return false;
@@ -5059,7 +5108,7 @@ class _${moduleName}PageState extends State<${moduleName}Page> {
     }
   }
 
-  /// Example sources + optional local docs + optional HTTP docs for the AI prompt.
+  /// Builds the **PACKAGE GROUND TRUTH** attachment: example Dart the model must mimic (not invent APIs).
   static Future<String> _omegaAiBuildPackageGroundTruthBlock({
     required bool pageOnly,
     bool compactForHeal = false,
@@ -5188,6 +5237,8 @@ STEPWISE — build in phases (still ONE JSON reply with all keys, but do not des
 - WRONG: writing the page or flow first and back-filling events; adding flow steps that reference event names not in *_events.dart*; behavior actionIds that do not exist as case "..." in the agent.
 - RIGHT: after each phase, mentally cross-check wire strings and actionIds against the previous file; then emit the next file. Prefer the smallest feature that satisfies the instruction in this pass — no extra screens, deps, or enums “for later”.
 
+${OmegaAiCommand._omegaAiConceptualArchitecture}
+
 ${OmegaAiCommand._omegaAiOmegaSourceOfTruth}
 
 """;
@@ -5245,7 +5296,9 @@ OUTPUT JSON RULES:
 
 $_omegaAiScreenEntryDataLoad
 $_omegaAiOmegaChannelEvents
+$_omegaAiNavigationChannelEmit
 $_omegaAiAgentUiStateListening
+$_omegaAiFlowActivatorAndFlowManager
 $_omegaAiRolesFlowAgentBehavior
 $_omegaAiUtf8StringLiterals
 $_omegaAiUiDesignStandards
@@ -5274,7 +5327,9 @@ REFERENCE (official package patterns; PRIMARY: example/lib/omega/omega_setup.dar
 
 $_omegaAiScreenEntryDataLoad
 $_omegaAiOmegaChannelEvents
+$_omegaAiNavigationChannelEmit
 $_omegaAiAgentUiStateListening
+$_omegaAiFlowActivatorAndFlowManager
 $_omegaAiRolesFlowAgentBehavior
 $_omegaAiOmegaWorkflowFlow
 $_omegaAiAgentBehaviorApi
