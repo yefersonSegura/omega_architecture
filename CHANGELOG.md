@@ -1,3 +1,8 @@
+## 1.0.2
+
+- **[OmegaWorkflowFlow]:** Default implementations of [onIntent] / [onEvent] (no-op) so subclasses that only use [defineStep] + [startAt]/[next] compile without being forced to add empty overrides ([OmegaFlow] still requires those members). **IA / CLI:** prompts for workflow flows now state that `super` must receive `id` + `channel`, that [defineStep] does not run until [startAt] or [next], and that contracts should list `workflow.step` / `workflow.error` / `workflow.done`.
+- **IA:** MASTER CHECKLIST section 6 + generación de módulo citan `example/lib/omega/omega_setup.dart` como registro canónico (`agents:` + `flows:` con la misma instancia de agente). PACKAGE GROUND TRUTH incluye primero ese archivo y añade `example/lib/provider/provider_flow.dart` y `example/lib/orders/orders_flow.dart`; heal compact incluye `omega_setup` del example.
+
 ## 1.0.1
 
 - **[OmegaFlow.uiScopeAgent]:** optional getter (default `null`). When a flow subclass returns its primary UI [OmegaAgent], **[OmegaFlowExpressionBuilder]** wraps the `builder` result in **[OmegaAgentScope]** so **[OmegaScopedAgentBuilder]** resolves the agent without wrapping the whole route. Override in flows that own one agent for the screen (same instance the flow uses).

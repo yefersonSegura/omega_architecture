@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:omega_architecture/omega/bootstrap/omega_runtime.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 import 'omega/app_semantics.dart';
 import 'omega/omega_setup.dart';

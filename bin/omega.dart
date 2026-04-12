@@ -1454,7 +1454,7 @@ OMEGA API (must compile against package exports):
 ${OmegaAiCommand._omegaAiRolesFlowAgentBehavior}
 ${OmegaAiCommand._omegaAiCompleteArtifactGuide}
 ${OmegaAiCommand._omegaAiScreenEntryDataLoad}
-- OmegaConfig createOmegaConfig(OmegaChannel channel) with agents: <OmegaAgent>[], flows: <OmegaFlow>[], routes: <OmegaRoute>[], initialFlowId optional, intentHandlerRegistrars optional (void Function(OmegaFlowManager, OmegaChannel) tear-offs e.g. MyModule.attach — bootstrap runs them after wireNavigator)
+- OmegaConfig createOmegaConfig(OmegaChannel channel) with agents: <OmegaAgent>[], flows: <OmegaFlow>[], routes: <OmegaRoute>[], initialFlowId optional, intentHandlerRegistrars optional (void Function(OmegaFlowManager, OmegaChannel) tear-offs e.g. MyModule.attach — bootstrap runs them after wireNavigator). **Register flows like the package example:** `example/lib/omega/omega_setup.dart` — one agent instance per module, reuse it in `flows:` constructor calls (`channel:` + `agent:` + optional extras); never duplicate `MyAgent(channel)` for the same module.
 - OmegaRuntime.bootstrap((OmegaChannel c) => createOmegaConfig(c))
 - Agents: extend OmegaAgent or OmegaStatefulAgent<T>; super(id:, channel:, behavior:) — channel is OmegaEventBus (pass OmegaChannel or namespace). When the app has `lib/omega/app_runtime_ids.dart`, use `id: AppAgentId.<Module>.id` + import `package:<app>/omega/app_runtime_ids.dart`. OmegaAgent.emit(String name, {payload}) — first arg is a string; use MyModuleEvent.requested.name, NOT emit(MyModuleEvent.requested) nor invented enum cases.
 - Flows: extend OmegaFlow or OmegaWorkflowFlow; super(id:, channel:). Prefer `AppFlowId.<Module>.id` when `app_runtime_ids.dart` exists. Optional `OmegaAgent? get uiScopeAgent` when UI uses OmegaFlowExpressionBuilder + OmegaScopedAgentBuilder without route-level OmegaAgentScope — flow ctor receives `agent` from createOmegaConfig (same variable as in agents: list). OmegaWorkflowFlow.failStep(code, {String? message}) — second argument must be named message:, not positional.
@@ -3289,12 +3289,16 @@ OMEGA ROLES — Flow vs Agent vs Behavior (do not merge into one class):
   /// OmegaWorkflowFlow API (failStep / emitExpression signatures).
   static const String _omegaAiOmegaWorkflowFlow = r'''
 OMEGA WORKFLOW FLOW (OmegaWorkflowFlow — omega_workflow_flow.dart):
+- Constructor: MUST pass both `id` and `channel` to `super` — e.g. `MyFlow(OmegaEventBus channel) : super(id: 'MyFlow', channel: channel);` OR `MyFlow({required super.channel}) : super(id: 'MyFlow');` (never omit `channel`).
+- [defineStep] only registers step handlers — nothing runs until you call [startAt]('stepId') or [next]('stepId') from [onStart], [onIntent], or [onEvent]. Typical: [onStart] { emitExpression('idle'); startAt('start'); } or handle an intent then [startAt].
+- Base class provides **default empty** [onIntent] / [onEvent] so a workflow can compile with only [defineStep] + lifecycle in [onStart]; **override** them when you need intents/events (same rules as [OmegaFlow]).
 - OmegaFlowContext exposes ONLY: [event], [intent], [memory]. FORBIDDEN (undefined): ctx.getAgentViewState, ctx.getAgent, any read of OmegaStatefulAgent.viewState from the flow. Put credentials or form data in the intent payload (payloadAs<T>()) or in memory / channel events.
-- onEvent(OmegaFlowContext ctx): ctx.event is OmegaEvent? (single object). Use event?.name, event?.payload, event?.payloadAs<T>(). There is no overload that takes two positional event arguments.
-- onIntent: compare with intent?.name == MyIntent.start.name (not intent == MyIntent.start — [OmegaIntent] is not the enum).
+- When you override onEvent(OmegaFlowContext ctx): ctx.event is OmegaEvent? (single object). Use event?.name, event?.payload, event?.payloadAs<T>(). There is no overload that takes two positional event arguments.
+- When you override onIntent: compare with intent?.name == MyIntent.start.name (not intent == MyIntent.start — [OmegaIntent] is not the enum).
 - emitExpression(String type, {dynamic payload}) — payload is a NAMED parameter only: emitExpression('error', payload: event?.payload).
 - failStep(String code, {String? message}) — only ONE positional argument (the code). WRONG: failStep('start', ctx.event?.payload). RIGHT: failStep('start', message: ctx.event?.payloadAs<OmegaFailure>()?.message ?? ctx.event?.payload?.toString()).
-- next(String stepId) and startAt(String stepId): one positional step id each.
+- next(String stepId) and startAt(String stepId): one positional step id each; each emits `workflow.step` then runs the handler (which usually calls emitExpression for UI types like `loading`/`success`/`error` and may call next/completeWorkflow).
+- Contract [emittedExpressionTypes] must include `workflow.step`, `workflow.error`, `workflow.done` plus any custom types you pass to emitExpression (e.g. `idle`, `loading`).
 ''';
 
   /// Behavior/agent patterns must match example auth module; blocks invented BLoC-style behavior APIs.
@@ -3411,6 +3415,12 @@ Must include:
 Forbidden: scope.agentManager; flow.onIntent from widget; OmegaFlowContext in UI; const Page if non-const agent required.
 
 ━━ 6) omega_setup.dart (human wiring after JSON — mention in reasoning) ━━
+━━ CANONICAL omega_setup.dart (package example — mirror this) ━━
+Ground-truth file: `example/lib/omega/omega_setup.dart` (included in PACKAGE GROUND TRUTH for AI). Registration must match it:
+- In `createOmegaConfig(OmegaChannel channel)`: **one** agent instance per module → reuse the **same** variable in `agents: <OmegaAgent>[...]` and in `flows: <OmegaFlow>[ MyFlow(channel: ns, agent: myAgent), ... ]`. Never two `MyModuleAgent(...)` for the same module.
+- `flows:` is a list of **constructor calls** with the same named args as *_flow.dart* (`channel:`, `agent:` when `uiScopeAgent`, optional `offlineQueue:` etc.). FORBIDDEN: bare `MyFlow` without `(...)`.
+- Example pattern: `final authNs = channel.namespace('auth');` + `AuthAgent(authNs)` + `AuthFlow(channel: authNs, agent: authAgent)` — see example app.
+- `initialFlowId:` e.g. `AppFlowId.authFlow.id` when using `app_runtime_ids.dart`; `intentHandlerRegistrars:` optional; routes pass shared agents into `builder:` (`OmegaLoginPage(authAgent: authAgent)`), `OmegaRoute.typed<T>` when needed.
 - REQUIRED imports (or analyzer: "function/class isn't defined"): from `lib/omega/omega_setup.dart` use relative `../<folder>/<lower>_flow.dart`, `../<folder>/<lower>_agent.dart`, `../<folder>/ui/<lower>_page.dart` OR `package:<app_name>/...` matching pubspec `name:`.
 - FORBIDDEN: duplicate `import` lines (same URI twice). Each `*_agent`, `*_flow`, `*_page` path appears at most once at the top of omega_setup.dart.
 - **Single agent instance per module:** `final myModuleAgent = MyModuleAgent(channel);` then `agents: <OmegaAgent>[..., myModuleAgent]` and, when the flow defines `uiScopeAgent`, `flows: <OmegaFlow>[..., MyModuleFlow(channel: channel, agent: myModuleAgent)]` — never `MyModuleFlow(channel)` plus a separate `MyModuleAgent(channel)` for the same module.
@@ -5035,6 +5045,7 @@ class _${moduleName}PageState extends State<${moduleName}Page> {
       final List<String> exampleRels;
       if (compactForHeal) {
         exampleRels = [
+          "example/lib/omega/omega_setup.dart",
           "example/lib/auth/auth_behavior.dart",
           "example/lib/auth/auth_agent.dart",
         ];
@@ -5045,13 +5056,15 @@ class _${moduleName}PageState extends State<${moduleName}Page> {
         ];
       } else {
         exampleRels = [
+          "example/lib/omega/omega_setup.dart",
+          "example/lib/provider/provider_flow.dart",
+          "example/lib/orders/orders_flow.dart",
+          "example/lib/auth/auth_flow.dart",
           "example/lib/auth/auth_behavior.dart",
           "example/lib/auth/auth_agent.dart",
-          "example/lib/auth/auth_flow.dart",
           "example/lib/auth/ui/auth_page.dart",
           "example/lib/omega/app_semantics.dart",
           "example/lib/omega/app_runtime_ids.dart",
-          "example/lib/omega/omega_setup.dart",
           "lib/omega/app_runtime_ids.dart",
         ];
       }
@@ -5199,7 +5212,8 @@ PRIMARY FOCUS / INSTRUCTION: '$description'.
 $contextBlock
 $filesContextBlock
 $packageContextBlock
-REFERENCE (official package patterns; mirror example/lib/omega/omega_setup.dart, example/lib/omega/app_semantics.dart, example/lib/omega/app_runtime_ids.dart):
+REFERENCE (official package patterns; PRIMARY: example/lib/omega/omega_setup.dart for how to register agents + flows + routes + initialFlowId — it is included in full in PACKAGE GROUND TRUTH; also example/lib/provider/provider_flow.dart + example/lib/orders/orders_flow.dart for Flow ctor shapes with agent / extra deps):
+- **omega_setup.dart is the source of truth:** same agent variable in `agents:` and in each `SomeFlow(channel: ns, agent: thatAgent)`; optional `channel.namespace('x')` per module; `OrdersFlow(..., offlineQueue: q)` shows extra named deps. Do not invent a different registration shape.
 - Agent + behavior ground truth (same repo): example/lib/auth/auth_behavior.dart + example/lib/auth/auth_agent.dart — match their structure before inventing patterns.
 - Typed ids: if the app has `lib/omega/app_runtime_ids.dart`, use `super(id: AppFlowId.$moduleName.id, ...)` / `super(id: AppAgentId.$moduleName.id, ...)` with `import 'package:<pubspec_name>/omega/app_runtime_ids.dart';` and ensure both enums contain a `$moduleName,` entry (user would run `omega g ecosystem $moduleName` to merge; in JSON you may edit that file to add the member). CLI: `omega g ecosystem` updates both enums; `omega g agent` only AppAgentId; `omega g flow` only AppFlowId.
 - Flow id: ${moduleName}Flow must use super(id: ...) consistent with getFlow / OmegaFlowExpressionBuilder (string or AppFlowId.$moduleName.id). If this module is the app entry flow, OmegaConfig.initialFlowId in omega_setup.dart must be that same wire string (example legacy: AuthFlow id "authFlow" and OmegaConfig.initialFlowId: "authFlow").

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'omega_flow.dart';
+import 'omega_flow_context.dart';
 
 typedef OmegaWorkflowStepHandler = FutureOr<void> Function();
 
@@ -11,6 +12,19 @@ typedef OmegaWorkflowStepHandler = FutureOr<void> Function();
 /// - standard step/error expressions for UI/Inspector
 abstract class OmegaWorkflowFlow extends OmegaFlow {
   OmegaWorkflowFlow({required super.id, required super.channel});
+
+  /// Override to handle intents (e.g. call [startAt] / [next] on user actions).
+  ///
+  /// Default is a no-op so step-only workflows compile without boilerplate when
+  /// activation is driven from [onStart] or elsewhere.
+  @override
+  void onIntent(OmegaFlowContext ctx) {}
+
+  /// Override to react to channel events alongside [defineStep] handlers.
+  ///
+  /// Default is a no-op; pure workflow UIs often only need steps + [onIntent].
+  @override
+  void onEvent(OmegaFlowContext ctx) {}
 
   String? _currentStepId;
   final Map<String, OmegaWorkflowStepHandler> _steps = {};
