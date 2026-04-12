@@ -1495,6 +1495,7 @@ OMEGA API (concise — full master checklist omitted here; follow roles + rules 
 ${OmegaAiCommand._omegaAiRolesFlowAgentBehavior}
 ${OmegaAiCommand._omegaAiHealPromptCompactOmega}
 ${OmegaAiCommand._omegaAiOmegaChannelEvents}
+${OmegaAiCommand._omegaAiAgentUiStateListening}
 ${OmegaAiCommand._omegaAiScreenEntryDataLoad}
 - String literals: valid UTF-8; fix mojibake or use plain ASCII mock text where needed.
 
@@ -3282,6 +3283,17 @@ OMEGAEVENT / OMEGAINTENT — required id:
 - Inside an OmegaAgent subclass, prefer emit(someEvent.name, payload: ...) (inherited helper builds OmegaEvent with id) instead of hand-building OmegaEvent( without id.
 ''';
 
+  /// How UI rebuilds from OmegaStatefulAgent — exact builder arity (models often invent Provider-style signatures).
+  static const String _omegaAiAgentUiStateListening = r'''
+OMEGA — UI LISTENS TO AGENT STATE (read before any OmegaAgentBuilder / OmegaScopedAgentBuilder):
+- **Where state lives:** [OmegaStatefulAgent] keeps typed UI data in [viewState] (T). The agent updates the UI by calling [setViewState(next)] from [onAction] or async helpers — not by returning widgets.
+- **How Flutter rebuilds:** the package subscribes to [stateStream] / [viewStateStream] (same broadcast stream). [OmegaAgentBuilder] and [OmegaScopedAgentBuilder] listen and call [setState] when [viewState] changes. You do not wire StreamBuilder manually unless you choose the advanced path below.
+- **Builder typedef (package law):** `OmegaAgentWidgetBuilder<TState>` = `Widget Function(BuildContext context, TState state)` — **exactly two parameters: context + state only.** The agent is passed on the **widget** ctor: `OmegaAgentBuilder<MyAgent, MyViewState>(agent: widget.agent, builder: (context, state) => ...)`. There is **no** `agent` parameter inside the builder closure, **no** `Widget? child`, **no** third/fourth arguments.
+- **OmegaScopedAgentBuilder<TAgent, TState>:** uses the **same** two-parameter builder `(context, state)`. It resolves `TAgent` from [OmegaAgentScope] (route) or from [OmegaFlow.uiScopeAgent] when [OmegaFlowExpressionBuilder] wraps the subtree in scope. WRONG (does not match the package): `(context, MyAgent agent, MyViewState viewState)`, `(context, agent, state, child)`, or any Consumer/Selector-style signature copied from Riverpod/Provider.
+- **Advanced (optional):** `StreamBuilder<MyViewState>(stream: agent.stateStream, initialData: agent.viewState, ...)` — remember broadcast streams may not replay; read [viewState] first if you need the current snapshot before the first event.
+- **FORBIDDEN:** inventing `context.watch<SomeAgent>()`, extra builder parameters, or “pass the agent into the builder” — the API is fixed in `omega_agent_builder.dart`; mirror `example/lib/auth/ui/auth_page.dart` for classic [OmegaAgentBuilder] with `widget.agent`.
+''';
+
   /// What Flow vs Agent vs Behavior are for (keep responsibilities separate in generated code).
   static const String _omegaAiRolesFlowAgentBehavior = r'''
 OMEGA ROLES — Flow vs Agent vs Behavior (do not merge into one class):
@@ -3319,7 +3331,7 @@ OmegaAgentBehaviorEngine (*_behavior.dart*) — architecture, not a recipe count
 
 OmegaStatefulAgent (*_agent.dart*):
 - Base [OmegaAgent] exposes Map<String, dynamic> state — loose key/value bag for behavior rules if needed; it is NOT your typed UI model and has no copyWith for that.
-- Typed screen state lives in viewState (TState) + setViewState(next). Reactive stream: [stateStream] and [viewStateStream] are the same (not a generic agent.stream). Broadcast: new listeners do not receive the current viewState until the next setViewState — if awaiting firstWhere(!isLoading), check viewState first when already idle.
+- Typed screen state lives in viewState (TState) + setViewState(next). Reactive stream: [stateStream] and [viewStateStream] are the same (not a generic agent.stream). [OmegaAgentBuilder] / [OmegaScopedAgentBuilder] subscribe and rebuild the subtree when viewState changes — the **builder** is always `Widget Function(BuildContext, TState)` only (agent passed on the widget ctor for OmegaAgentBuilder; scoped builder resolves agent from scope). Broadcast: new listeners do not receive the current viewState until the next setViewState — if awaiting firstWhere(!isLoading), check viewState first when already idle.
 - When TState has copyWith, use: setViewState(viewState.copyWith(...)) — read the current snapshot from viewState, never from state for UI fields.
 - Optional lookup in a List field of viewState (e.g. cart lines, orders): prefer indexWhere + null if missing, or a small loop — do NOT use firstWhere with orElse: () => null as SomeType? (unsafe cast, bad style).
 - WRONG: state.copyWith(...) — Map does not define copyWith; the analyzer reports copyWith on Map.
@@ -3413,7 +3425,7 @@ Must include:
 - Obtain scope: `OmegaScope.of(context)` — only .channel, .flowManager, .initialFlowId.
 - Flow-driven UI: prefer `OmegaFlowExpressionBuilder(flowId: 'FLOW_ID', builder: (context, exp) => ...)` OR `getFlow('FLOW_ID')` + `StreamBuilder<OmegaFlowExpression>(stream: flow!.expressions, ...)` (same FLOW_ID as Flow super(id:)). If the builder nests `OmegaScopedAgentBuilder`, set Flow `uiScopeAgent` + shared agent in omega_setup (see section 4).
 - Entry: wrap route with `OmegaFlowActivator(flowId: 'FLOW_ID', child: ...)` OR once `activate('FLOW_ID')` in didChangeDependencies; then EITHER `handleIntent(OmegaIntent.fromName(<Module>Intent.${lower}Start))` OR `channel.emit(OmegaEvent.fromName(<Module>Event.${lower}Requested))` — must match what behavior/flow listen to (see SCREEN ENTRY rules).
-- Agent-driven lists: EITHER `OmegaAgentScope` at route + `OmegaScopedAgentBuilder` OR `OmegaFlowExpressionBuilder` + `OmegaScopedAgentBuilder` with Flow `uiScopeAgent` OR classic `OmegaAgentBuilder(..., agent: widget.agent, ...)` — two builder parameters only; never construct a new Agent in build().
+- Agent-driven lists: EITHER `OmegaAgentScope` at route + `OmegaScopedAgentBuilder` OR `OmegaFlowExpressionBuilder` + `OmegaScopedAgentBuilder` with Flow `uiScopeAgent` OR classic `OmegaAgentBuilder(..., agent: widget.agent, ...)` — **builder closure: `(BuildContext, TState)` only** (same as typedef `OmegaAgentWidgetBuilder`); never construct a new Agent in build(); never Provider-style `(context, agent, state, child)`.
 - Navigator: `channel.emit(OmegaEvent.fromName(...navigationIntent..., payload: OmegaIntent.fromName(...)))` — not handleIntent alone for navigate.*.
 - Reactive wait: use `agent.stateStream` / `viewStateStream` (same stream); remember broadcast does not replay current viewState.
 Forbidden: scope.agentManager; flow.onIntent from widget; OmegaFlowContext in UI; const Page if non-const agent required.
@@ -3457,6 +3469,7 @@ HEAL — OMEGA API (fix analyzer errors; mirror PACKAGE GROUND TRUTH examples):
 - Do not call `OmegaEventName(...)` / `OmegaIntentName(...)` — abstract; use `fromName` with concrete enums.
 - Behavior `OmegaAgentReaction('actionId', ...)` strings must match `onAction` `switch` cases — **string literals** only, not `case SomeEnum.foo.name`.
 - OmegaStatefulAgent: `setViewState(viewState.copyWith(...))`; expose `stateStream` / `viewStateStream` (fix wrong stream names); never `extends OmegaViewState`; add missing types in `*_events.dart` and emit via channel.
+- OmegaAgentBuilder / OmegaScopedAgentBuilder: builder is **only** `(BuildContext, TState)` — never add `agent`, `child`, or extra parameters (see `_omegaAiAgentUiStateListening` in module prompts).
 - OmegaWorkflowFlow: `failStep(code, message: text)` — `message` is **named**, not a second positional.
 - Flow: `onIntent` / `onEvent` only inside the flow class. `OmegaFlowContext`: `event`, `intent`, `memory` only — no `getAgentViewState` / agent reads from flow.
 - Bus: listeners see `OmegaEvent` only; typed payloads — `event.payloadAs<T>()`, never `if (event is MyTypedEvent)`.
@@ -5232,6 +5245,7 @@ OUTPUT JSON RULES:
 
 $_omegaAiScreenEntryDataLoad
 $_omegaAiOmegaChannelEvents
+$_omegaAiAgentUiStateListening
 $_omegaAiRolesFlowAgentBehavior
 $_omegaAiUtf8StringLiterals
 $_omegaAiUiDesignStandards
@@ -5260,6 +5274,7 @@ REFERENCE (official package patterns; PRIMARY: example/lib/omega/omega_setup.dar
 
 $_omegaAiScreenEntryDataLoad
 $_omegaAiOmegaChannelEvents
+$_omegaAiAgentUiStateListening
 $_omegaAiRolesFlowAgentBehavior
 $_omegaAiOmegaWorkflowFlow
 $_omegaAiAgentBehaviorApi
@@ -5383,7 +5398,7 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
       }
     }
   - Agent + flow (B classic): `class ${moduleName}Page extends StatefulWidget { ${moduleName}Page({super.key, required this.agent}); final ${moduleName}Agent agent;` + same didChangeDependencies pattern if lists are agent-driven + OmegaAgentBuilder — omega_setup MUST use `final $camelAgentVar = ${moduleName}Agent(channel);` (or `${moduleName}Agent(channel: channel);` if the agent ctor is `{required OmegaEventBus channel}`) in agents: [..., $camelAgentVar] and `OmegaRoute(..., builder: (c) => ${moduleName}Page(agent: $camelAgentVar))`.
-  - Agent + flow (B decoupled): `const ${moduleName}Page()` + body uses `OmegaFlowExpressionBuilder(flowId: '$moduleName', builder: (_, __) => OmegaScopedAgentBuilder<${moduleName}Agent, ${moduleName}ViewState>(...))` — then **flow** MUST have `agent` field + `uiScopeAgent` and omega_setup MUST wire `final $camelAgentVar = ${moduleName}Agent(channel);` once and `${moduleName}Flow(channel: channel, agent: $camelAgentVar)`.
+  - Agent + flow (B decoupled): `const ${moduleName}Page()` + body uses `OmegaFlowExpressionBuilder(flowId: '$moduleName', builder: (_, exp) => OmegaScopedAgentBuilder<${moduleName}Agent, ${moduleName}ViewState>(builder: (context, state) => /* UI from state only — TWO args */))` — then **flow** MUST have `agent` field + `uiScopeAgent` and omega_setup MUST wire `final $camelAgentVar = ${moduleName}Agent(channel);` once and `${moduleName}Flow(channel: channel, agent: $camelAgentVar)`.
 
 Return ONLY one JSON object with string values, including "reasoning" plus "events","behavior","agent","flow","page". No markdown fences. No text before or after the JSON.
 """;
