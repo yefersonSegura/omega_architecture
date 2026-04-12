@@ -1,7 +1,8 @@
 import 'package:omega_architecture/omega_architecture.dart';
 
-/// Eventos globales del example. Cada miembro es **camelCase**; el nombre en alambre
-/// lleva puntos automáticamente ([OmegaEventNameDottedCamel]), p. ej.
+/// Eventos globales del example. Cada miembro es **solo identificador camelCase** (sin
+/// `('auth.login.success')` por caso ni `const AppEvent(this.name); final String name`).
+/// El alambre lleva puntos vía [OmegaEventNameDottedCamel], p. ej.
 /// `authLoginSuccess` → `auth.login.success`.
 enum AppEvent with OmegaEventNameDottedCamel implements OmegaEventName {
   navigationIntent,
@@ -13,8 +14,8 @@ enum AppEvent with OmegaEventNameDottedCamel implements OmegaEventName {
   authLogoutSuccess,
 }
 
-/// Intents globales del example. Misma convención ([OmegaIntentNameDottedCamel]):
-/// `navigateLogin` → `navigate.login`, `ordersCreate` → `orders.create`.
+/// Intents globales del example. Misma convención ([OmegaIntentNameDottedCamel]): solo
+/// identificadores — `navigateLogin` → `navigate.login`, `ordersCreate` → `orders.create`.
 enum AppIntent with OmegaIntentNameDottedCamel implements OmegaIntentName {
   navigateLogin,
   navigateHome,

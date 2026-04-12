@@ -6,21 +6,28 @@ import 'omega_semantics_wire_from_camel.dart';
 /// events and use [OmegaEvent.fromName] when emitting. You get autocomplete and
 /// the analyzer catches broken usages when you change the name.
 ///
-/// **Styles:** (1) Enhanced enum with explicit `name`. (2) [OmegaEventNameDottedCamel]
-/// — camelCase member → dotted wire (`authLoginSuccess` → `auth.login.success`).
-/// (3) [OmegaEventNameEnumWire] — wire equals [Enum.name].
+/// **Styles:** (1) Enhanced enum with explicit `name` per case (legacy). (2)
+/// [OmegaEventNameDottedCamel] — camelCase member → dotted wire (`authLoginSuccess` →
+/// `auth.login.success`). **Preferred for** `lib/omega/app_semantics.dart` and feature
+/// `*_events.dart` — see `example/lib/omega/app_semantics.dart`. (3) [OmegaEventNameEnumWire]
+/// — wire equals [Enum.name].
 ///
-/// Example with enum:
+/// Preferred (`AppEvent` in app semantics):
 /// ```dart
-/// enum AppEvent implements OmegaEventName {
-///   authLoginSuccess('auth.login.success'),
-///   userUpdated('user.updated'),
-///   navigateHome('navigate.home');
-///   const AppEvent(this.name);
+/// enum AppEvent with OmegaEventNameDottedCamel implements OmegaEventName {
+///   navigationIntent,
+///   authLoginSuccess,
+/// }
+/// ```
+///
+/// Legacy (explicit wire per case):
+/// ```dart
+/// enum LegacyEvent implements OmegaEventName {
+///   authLoginSuccess('auth.login.success');
+///   const LegacyEvent(this.name);
 ///   @override
 ///   final String name;
 /// }
-/// // Usage: channel.emit(OmegaEvent.fromName(AppEvent.authLoginSuccess, payload: user));
 /// ```
 abstract class OmegaEventName {
   /// Event name (e.g. "auth.login.success").

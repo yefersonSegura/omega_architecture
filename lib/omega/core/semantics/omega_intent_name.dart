@@ -7,21 +7,30 @@ import 'omega_semantics_wire_from_camel.dart';
 /// and the analyzer catches broken usages when you change the name.
 ///
 /// **Styles:** (1) Enhanced enum with `final String name` when you need exact wire
-/// ids (`navigate.login`). (2) [OmegaIntentNameDottedCamel] — one camelCase member per
-/// intent; wire is derived (`ordersCreate` → `orders.create`). (3) [OmegaIntentNameEnumWire]
-/// when the wire should equal [Enum.name] as-is (no dots).
+/// ids per case (legacy / hand-maintained strings). (2) [OmegaIntentNameDottedCamel] —
+/// one camelCase member per intent; wire is derived (`navigateLogin` → `navigate.login`,
+/// `ordersCreate` → `orders.create`). **Preferred for** `lib/omega/app_semantics.dart`
+/// and feature `*_events.dart` — matches `example/lib/omega/app_semantics.dart` and
+/// `omega init`. (3) [OmegaIntentNameEnumWire] when the wire should equal [Enum.name]
+/// as-is (no dots).
 ///
-/// Example with enum:
+/// Preferred (`AppIntent` in app semantics):
 /// ```dart
-/// enum AppIntent implements OmegaIntentName {
-///   goLogin('navigate.login'),
-///   goHome('navigate.home'),
-///   addToCart('cart.add');
-///   const AppIntent(this.name);
+/// enum AppIntent with OmegaIntentNameDottedCamel implements OmegaIntentName {
+///   navigateLogin,
+///   navigateHome,
+/// }
+/// // OmegaIntent.fromName(AppIntent.navigateLogin) → name "navigate.login"
+/// ```
+///
+/// Legacy (explicit wire per case — still valid API, not recommended for new apps):
+/// ```dart
+/// enum LegacyIntent implements OmegaIntentName {
+///   goLogin('navigate.login');
+///   const LegacyIntent(this.name);
 ///   @override
 ///   final String name;
 /// }
-/// // Usage: OmegaIntent.fromName(AppIntent.goLogin, payload: args);
 /// ```
 abstract class OmegaIntentName {
   /// Intent name (e.g. "navigate.login", "cart.add").
