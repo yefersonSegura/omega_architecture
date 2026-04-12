@@ -95,6 +95,35 @@ class _OmegaAiRemote {
     return s;
   }
 
+  /// JSON allows `\"`, `\\`, `\n`, … but **not** `\$`. Models often put Dart like
+  /// `'Total: \$${x}'` inside JSON string values, which makes [jsonDecode] throw.
+  /// Replaces invalid `\$` with valid `\\$` (decoded string keeps `\` + `$`).
+  /// Preserves existing valid `\\$` sequences via a placeholder.
+  static String sanitizeAiJsonTextForDecode(String text) {
+    const tok = '\uE000OMEGA_JSON_BS_DOLLAR\uE000';
+    final out = StringBuffer();
+    for (var i = 0; i < text.length; i++) {
+      final c0 = text.codeUnitAt(i);
+      if (i + 2 < text.length &&
+          c0 == 0x5c &&
+          text.codeUnitAt(i + 1) == 0x5c &&
+          text.codeUnitAt(i + 2) == 0x24) {
+        out.write(tok);
+        i += 2;
+        continue;
+      }
+      if (i + 1 < text.length &&
+          c0 == 0x5c &&
+          text.codeUnitAt(i + 1) == 0x24) {
+        out.write(r'\\' r'$');
+        i += 1;
+        continue;
+      }
+      out.writeCharCode(c0);
+    }
+    return out.toString().replaceAll(tok, r'\\' r'$');
+  }
+
   static String? _extractOpenAiContent(dynamic decoded) {
     if (decoded is! Map) return null;
     final choices = decoded["choices"];
@@ -1481,7 +1510,7 @@ Return only JSON. No markdown fences.
 """;
 
     const healSystem =
-        "You output only valid JSON objects mapping path strings to full file contents. You fix Dart analyzer errors for Flutter + omega_architecture package. Follow the MASTER CHECKLIST BY FILE in the user message: keep FLOW_ID aligned across flow/page/route; behavior OmegaAgentReaction ids must match agent onAction string cases; flow contracts must list intents/events/expression types actually used. When lib/omega/app_runtime_ids.dart exists, keep AppFlowId/AppAgentId enum members in sync with super(id: ...) on flows/agents (add missing enum values or fix references). In omega_setup.dart add imports for every Flow/Agent/Page; flows list must use constructor calls like MyFlow(channel), never bare MyFlow without parentheses (missing import or missing () causes undefined symbol). Never emit duplicate identical import lines in any file (common mistake — each URI once). Add package:omega_architecture (and flutter/material where needed) when Omega types are missing. If PROJECT PUBSPEC lists equatable, intl, camera, image_picker, etc. (including after CLI pub add), you may import them; otherwise remove broken third-party imports and rewrite with plain Dart. When *ViewState or *Event types are missing, define them in the module *_events.dart* and emit via channel.emitTyped, not as methods on the agent. Never introduce OmegaViewState. In onAction, switch cases use string literals, never case Enum.value.name. Replace undefined viewStateStream with stateStream on OmegaStatefulAgent.";
+        "You output only valid JSON objects mapping path strings to full file contents. You fix Dart analyzer errors for Flutter + omega_architecture package. Follow the MASTER CHECKLIST BY FILE in the user message: keep FLOW_ID aligned across flow/page/route; behavior OmegaAgentReaction ids must match agent onAction string cases; flow contracts must list intents/events/expression types actually used. When lib/omega/app_runtime_ids.dart exists, keep AppFlowId/AppAgentId enum members in sync with super(id: ...) on flows/agents (add missing enum values or fix references). In omega_setup.dart add imports for every Flow/Agent/Page; flows list must use constructor calls like MyFlow(channel), never bare MyFlow without parentheses (missing import or missing () causes undefined symbol). Never emit duplicate identical import lines in any file (common mistake — each URI once). Add package:omega_architecture (and flutter/material where needed) when Omega types are missing. If PROJECT PUBSPEC lists equatable, intl, camera, image_picker, etc. (including after CLI pub add), you may import them; otherwise remove broken third-party imports and rewrite with plain Dart. When *ViewState or *Event types are missing, define them in the module *_events.dart* and emit via channel.emitTyped, not as methods on the agent. Never introduce OmegaViewState. In onAction, switch cases use string literals, never case Enum.value.name. Replace undefined viewStateStream with stateStream on OmegaStatefulAgent. In JSON output, never use invalid escapes like backslash-dollar inside string values; JSON allows backslash-backslash-dollar for a literal backslash followed by dollar in the decoded Dart string, or avoid dollar-escape patterns.";
 
     final rawContent = await _OmegaAiRemote.completeChat(
       system: healSystem,
@@ -1493,7 +1522,9 @@ Return only JSON. No markdown fences.
     if (rawContent == null || rawContent.isEmpty) return null;
 
     try {
-      final jsonText = _OmegaAiRemote.stripCodeFences(rawContent);
+      final jsonText = _OmegaAiRemote.sanitizeAiJsonTextForDecode(
+        _OmegaAiRemote.stripCodeFences(rawContent),
+      );
       final fixedFiles = jsonDecode(jsonText);
       if (fixedFiles is! Map) return null;
 
@@ -5246,6 +5277,7 @@ CRITICAL RULES:
 7. If the page uses OmegaAgentBuilder with `required ${moduleName}Agent agent`, put in "reasoning" one line: user must set omega_setup route to ${moduleName}Page(agent: $camelAgentVar) and declare `final $camelAgentVar = ${moduleName}Agent(channel);` (or `channel: channel` if ctor is named-only) in agents — same pattern as example omega_setup + auth page.
 8. If the screen lists items, metrics, or catalog data: the "page" MUST implement an on-open kickoff per SCREEN ENTRY rules (activate + one-shot handleIntent(start) and/or channel emit of *.requested) so data loads without requiring a dummy first tap.
 9. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
+10. JSON string values that contain Dart: the sequence **one backslash + dollar** inside the JSON text is **invalid** (models often emit `Text('Total: \\$${...}')` with only one backslash before `$`, which throws FormatException on parse). Prefer **no** `\\$` in generated Dart—use string concatenation, e.g. `'Total: ' + order.totalAmount.toStringAsFixed(2)`, or ensure every literal backslash in JSON is doubled per JSON rules. The CLI may fix common `\\$` mistakes before decode, but valid JSON is still required overall.
 
 UI DESIGN (apply to the 'page' value only — maximize quality; the structural snippet below is NOT the final UI):
 $_omegaAiUiDesignStandards
@@ -5362,7 +5394,9 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     if (raw == null || raw.isEmpty) return null;
 
     try {
-      final jsonText = _OmegaAiRemote.stripCodeFences(raw);
+      final jsonText = _OmegaAiRemote.sanitizeAiJsonTextForDecode(
+        _OmegaAiRemote.stripCodeFences(raw),
+      );
       final decodedModule = jsonDecode(jsonText);
       if (decodedModule is! Map) {
         _err("AI Provider JSON Error: root is not a JSON object");

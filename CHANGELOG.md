@@ -2,6 +2,7 @@
 
 - **[OmegaWorkflowFlow]:** Default implementations of [onIntent] / [onEvent] (no-op) so subclasses that only use [defineStep] + [startAt]/[next] compile without being forced to add empty overrides ([OmegaFlow] still requires those members). **IA / CLI:** prompts for workflow flows now state that `super` must receive `id` + `channel`, that [defineStep] does not run until [startAt] or [next], and that contracts should list `workflow.step` / `workflow.error` / `workflow.done`.
 - **IA:** MASTER CHECKLIST section 6 + generación de módulo citan `example/lib/omega/omega_setup.dart` como registro canónico (`agents:` + `flows:` con la misma instancia de agente). PACKAGE GROUND TRUTH incluye primero ese archivo y añade `example/lib/provider/provider_flow.dart` y `example/lib/orders/orders_flow.dart`; heal compact incluye `omega_setup` del example.
+- **IA / JSON:** si el modelo emite en el JSON una barra invertida suelta delante de `$` (p. ej. texto Dart tipo `Total: \\$` + interpolación), `jsonDecode` fallaba (`FormatException: Unrecognized string escape`). El CLI aplica `sanitizeAiJsonTextForDecode` antes de parsear respuestas de módulo y heal; regla 10 en prompts pide concatenación u escapes JSON válidos.
 
 ## 1.0.1
 
