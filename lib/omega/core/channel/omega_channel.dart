@@ -6,7 +6,14 @@ import '../semantics/omega_typed_event.dart';
 /// and [OmegaChannelNamespace], so flows and agents can use either the global channel
 /// or a namespaced view.
 abstract class OmegaEventBus {
-  /// Publishes [event]. On a namespace view, the event is tagged with that namespace.
+  /// Publishes **[event]** on the bus. **Signature:** exactly **one** argument —
+  /// [OmegaEvent]. There is **no** `emit(String name, {dynamic payload})` on the
+  /// channel (that shape exists only on `OmegaAgent.emit`). **Wrong:**
+  /// `channel.emit(ctx.intent!.name, payload: ctx.intent!.payload)` — the first
+  /// parameter must be an [OmegaEvent], e.g.
+  /// `channel.emit(OmegaEvent.fromName(MyEvent.foo, payload: ctx.intent?.payloadAs<Bar>()))`.
+  /// The `(String name, {dynamic payload})` overload exists on **agents** only
+  /// (`OmegaAgent.emit`), not on this bus.
   void emit(OmegaEvent event);
 
   /// Publishes a typed event. The instance is used as payload and [event.name] as the event name.

@@ -32,6 +32,11 @@ class OmegaIntent extends OmegaObject {
   /// Creates an intent with a typed name ([OmegaIntentName]). Generates [id] if not provided.
   ///
   /// **Why use it:** Avoids magic strings; safe refactors and autocomplete.
+  ///
+  /// **First argument [intentName]:** the **enum value** (e.g. `AppIntent.navigateLogin`),
+  /// not a string and not `AppIntent.navigateLogin.name`. Optional **[payload]:** any
+  /// object; use [OmegaIntentPayloadExtension.payloadAs] in flows. Pairs with
+  /// [OmegaEvent.fromName] when the same DTO is re-emitted on the channel.
   factory OmegaIntent.fromName(
     OmegaIntentName intentName, {
     dynamic payload,

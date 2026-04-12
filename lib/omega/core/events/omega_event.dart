@@ -35,6 +35,28 @@ class OmegaEvent extends OmegaObject {
   /// Creates an event with a typed name (enum implementing [OmegaEventName]). Generates [id] if not provided.
   ///
   /// **Why use it:** Autocomplete and safe refactors; avoids typos in strings.
+  ///
+  /// **First argument [eventName]:** pass the **enum value**, not a string and not
+  /// `[SomeEvent.case.name]` — e.g. `OmegaEvent.fromName(HomeEvent.toggleTaskStatus, …)`.
+  /// Wrong: `OmegaEvent.fromName('home.toggle.task.status')` or
+  /// `OmegaEvent.fromName(HomeEvent.toggleTaskStatus.name)` (first parameter type is
+  /// [OmegaEventName], not [String]).
+  ///
+  /// **Optional [payload]:** any object carried on the bus; listeners use
+  /// [OmegaEventPayloadExtension.payloadAs] on the received [OmegaEvent]. Use a **plain
+  /// Dart** DTO class (no fake `implements` types from the package). Common pattern when
+  /// a flow forwards data from an intent to an agent that listens on `ctx.event`:
+  /// ```dart
+  /// // In flow onIntent — behavior matches ctx.event?.name == HomeEvent.toggleTaskStatus.name
+  /// channel.emit(
+  ///   OmegaEvent.fromName(
+  ///     HomeEvent.toggleTaskStatus,
+  ///     payload: ctx.intent?.payloadAs<ToggleTaskStatusPayload>(),
+  ///   ),
+  /// );
+  /// ```
+  /// Declare `toggleTaskStatus` on `enum HomeEvent with OmegaEventNameDottedCamel` and
+  /// `ToggleTaskStatusPayload` in the module `*_events.dart` next to the enums.
   factory OmegaEvent.fromName(
     OmegaEventName eventName, {
     dynamic payload,

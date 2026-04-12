@@ -1406,6 +1406,7 @@ HEAL RECIPE — analyzer says missing required named parameter `agent` (usually 
 
 HEAL RECIPE — OmegaFlowContext has no getAgentViewState (and no agent API):
 - Replace with data from ctx.intent: use flowManager.handleIntent(OmegaIntent.fromName(UserAuthIntent.start, payload: UserAuthCredentials(email: e, password: p))) from the UI, then in onIntent: final creds = ctx.intent?.payloadAs<UserAuthCredentials>(); channel.emitTyped(UserAuthRequestedEvent(email: creds?.email ?? '', password: creds?.password ?? '')); OR store fields in ctx.memory on prior intents.
+- **FORBIDDEN on [OmegaChannel] / [OmegaChannelNamespace]:** `channel.emit(ctx.intent!.name, payload: ctx.intent!.payload)` — [OmegaEventBus.emit] is **`void emit(OmegaEvent event)`** only (one positional). There is **no** named `payload:` on the channel. **RIGHT:** `channel.emit(OmegaEvent.fromName(MyEvent.requested, payload: ctx.intent?.payloadAs<MyPayload>()));` or `channel.emitTyped(...)` / wrap with `OmegaIntent.fromName` inside `OmegaEvent.fromName` for navigation. **Do not** paste [OmegaAgent.emit]'s `(String name, {payload})` API onto `channel`.
 - Compare intents with intent?.name == UserAuthIntent.start.name, not intent == UserAuthIntent.start.
 """
         : "";
@@ -1542,6 +1543,35 @@ HEAL RECIPE — invented Omega “payload” marker types (undefined class / bad
 """
         : "";
 
+    final channelEmitWrongShapeHealError = errors.any((e) {
+      final s = e.toLowerCase();
+      final omegaEventMismatch =
+          s.contains("omegaevent") &&
+          (s.contains("string") ||
+              s.contains("'string'") ||
+              s.contains("assigned to parameter type"));
+      final noPayloadOnEmit = s.contains("payload") &&
+          (s.contains("isn't defined") || s.contains("isnt defined")) &&
+          (s.contains("named parameter") || s.contains("undefined_named"));
+      final tooManyPositionals =
+          s.contains("too many positional") &&
+          (s.contains("emit") ||
+              s.contains("_flow.dart") ||
+              s.contains("omega_channel"));
+      return omegaEventMismatch || noPayloadOnEmit || tooManyPositionals;
+    });
+    final channelEmitWrongShapeHealRecipe = channelEmitWrongShapeHealError
+        ? """
+
+HEAL RECIPE — [OmegaChannel.emit] / [OmegaEventBus.emit] wrong call shape (analyzer: String vs OmegaEvent / undefined named payload):
+- **[OmegaChannel] / namespace views:** **`void emit(OmegaEvent event)`** — **exactly one** positional argument. **FORBIDDEN:** `channel.emit(someString, payload: …)`, `channel.emit(ctx.intent!.name, payload: ctx.intent!.payload)`, or any BLoC-style “name + payload” on the channel — that API is **[OmegaAgent.emit]** (`void emit(String name, {dynamic payload})`), **not** the bus.
+- **RIGHT (forward intent as bus event):** pick the **enum case** for the bus name and wrap in [OmegaEvent.fromName]:
+  `channel.emit(OmegaEvent.fromName(MyModuleEvent.requested, payload: ctx.intent?.payloadAs<MyPayload>()));`
+  or `channel.emitTyped(MyTypedEvent(...))` which internally builds one [OmegaEvent].
+- If you only need to re-broadcast the same intent wire as an event (rare), still build an [OmegaEvent]: e.g. match behavior with a dedicated `MyModuleEvent.intentForwarded` + `payload: ctx.intent` or unwrap with `payloadAs` — do not pass raw `ctx.intent!.name` as the first arg to `channel.emit`.
+"""
+        : "";
+
     final nullableReceiverHealError = errors.any(
       (e) =>
           e.contains("can't be unconditionally accessed") ||
@@ -1579,6 +1609,7 @@ $undefinedEventEnumHealRecipe
 $optionalPackagesAndStateHealRecipe
 $missingModuleTypesHealRecipe
 $fakePayloadInterfaceHealRecipe
+$channelEmitWrongShapeHealRecipe
 $nullableReceiverHealRecipe
 $pubspecDepsHint$appPubspecHealHint
 HEAL — PUB: The CLI may run `dart pub add <pkg>` before this call when analyzer reports missing package: URIs (unless OMEGA_AI_HEAL_PUB_ADD=false). After that, PROJECT PUBSPEC lists those packages — you MAY import them. Prefer removing unused imports over leaving broken URIs.
@@ -3719,6 +3750,7 @@ OMEGA — OmegaFlowActivator + OmegaFlowManager (exact API from package — neve
   /// **User prompt:** bus = `OmegaEvent` only; typed payloads via `payloadAs`; explains why `event is MyTypedEvent` fails.
   static const String _omegaAiOmegaChannelEvents = r'''
 OMEGA CHANNEL EVENTS (Stream<OmegaEvent>, flow onEvent ctx.event, agent listeners):
+- **`OmegaChannel.emit` / `OmegaEventBus.emit` — ONE API only:** **`void emit(OmegaEvent event)`** — a **single** positional [OmegaEvent]. **FORBIDDEN:** `channel.emit(ctx.intent!.name, payload: ctx.intent!.payload)`, `channel.emit('my.event', payload: x)`, or any **`emit(String, {payload})`** on **`channel`** / **`namespace(...).emit`** — that signature belongs to **[OmegaAgent.emit]** inside *_agent.dart*, not the bus. **RIGHT:** `channel.emit(OmegaEvent.fromName(MyEvent.requested, payload: data));` or `channel.emitTyped(MyTypedEvent(...))`.
 - Listing / loading / refresh: if your module starts work when an event appears on the bus (e.g. product.catalog.requested, orders.refresh), the button must emit that event: scope.channel.emit(OmegaEvent.fromName(MyEvent.requested)) or emitTyped(MyRequestedEvent(...)). Agents never see handleIntent — they see channel.events. Using only handleIntent when behavior uses ctx.event?.name == MyEvent.requested.name will not load data.
 - Every emission on the bus is an OmegaEvent (id, name, payload, namespace). It is NOT an instance of your `class FooEvent implements OmegaTypedEvent`.
 - emitTyped(ShoppingCartAddProductEvent(...)) builds OmegaEvent(name: event.name, payload: that same instance). Listeners must unwrap:
@@ -3732,6 +3764,9 @@ OMEGA CHANNEL EVENTS (Stream<OmegaEvent>, flow onEvent ctx.event, agent listener
 OMEGAEVENT / OMEGAINTENT — required id:
 - OmegaEvent( and OmegaIntent( direct constructors require BOTH id: and name: (see package). channel.emit(OmegaEvent(name: 'x')) without id fails analysis.
 - Preferred: OmegaEvent.fromName(MyEventEnum.foo, payload: ...) and OmegaIntent.fromName(MyIntentEnum.bar, payload: ...) — factories generate id unless you pass id: explicitly.
+- **`OmegaEvent.fromName` — copy this API literally:** positional **`eventName`** = **enum constant** implementing [OmegaEventName] (e.g. `HomeEvent.toggleTaskStatus`), **FORBIDDEN** as first arg: a string wire, `OmegaEventName('…')`, or **`HomeEvent.toggleTaskStatus.name`** (that is a [String]; the factory expects the enum value). Optional named **`payload:`** = any object; receivers use **`event.payloadAs<YourDto>()`**. **Intent → bus (flow `onIntent`):** when behavior/agent keys off `ctx.event?.name == HomeEvent.toggleTaskStatus.name` but the UI sent a **handleIntent** with a typed payload, re-emit on the channel in one line — do NOT invent a second API:
+  `channel.emit(OmegaEvent.fromName(HomeEvent.toggleTaskStatus, payload: ctx.intent?.payloadAs<ToggleTaskStatusPayload>()));`
+  Preconditions: `toggleTaskStatus` exists on `enum HomeEvent with OmegaEventNameDottedCamel`; plain class `ToggleTaskStatusPayload` in `*_events.dart`; flow holds `channel` (same as flow ctor). Same rule as [OmegaIntent.fromName]: **enum constant first**, then **`payload:`** only if you need data.
 - FORBIDDEN (analyzer: abstract class can't be instantiated): OmegaEventName('navigation.intent') or OmegaIntentName('navigate.register') — [OmegaEventName] and [OmegaIntentName] are abstract contracts only. You MUST pass a concrete enum value, e.g. OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateLogin)).
 - **`lib/omega/app_semantics.dart` (AppEvent / AppIntent)** — **canonical = same as modules:** `enum AppEvent with OmegaEventNameDottedCamel implements OmegaEventName { navigationIntent, … }` and `enum AppIntent with OmegaIntentNameDottedCamel implements OmegaIntentName { navigateLogin, navigateHome, … }` — **camelCase members only**; `.name` is the dotted wire ([OmegaIntentNameDottedCamel] / [OmegaEventNameDottedCamel]). **Mirror** `example/lib/omega/app_semantics.dart` and `_defaultAppSemanticsDartSource` (`omega init`). **FORBIDDEN in greenfield / CLI / AI output:** `enum AppEvent implements OmegaEventName { navigationIntent('navigation.intent'); const AppEvent(this.name); @override final String name; }` (and the same for `AppIntent` with string literals per case) — duplicates wires the mixin already derives and drifts from validate / navigator rules.
 - **Feature `lib/<module>/*_events.dart`:** same — **`with OmegaIntentNameDottedCamel` / `with OmegaEventNameDottedCamel` only**; never hand-wired per-case string constructors there.
@@ -3826,6 +3861,7 @@ OmegaStatefulAgent (*_agent.dart*):
 
 OmegaAgent.emit (omega_agent.dart — also inherited on your *Agent):
 - Signature: void emit(String name, {dynamic payload}) — first argument MUST be a String (event name), NOT an enum value object.
+- **Never confuse with the bus:** [OmegaChannel.emit] / [OmegaEventBus.emit] is **`void emit(OmegaEvent event)`** — **no** `payload:` named parameter on the channel. From UI/flows use **`channel.emit(OmegaEvent.fromName(..., payload: …))`**; only **inside the agent** use **`emit(SomeEvent.case.name, payload: …)`** for the inherited helper.
 - CORRECT: emit(MediaUploadEvent.requested.name, payload: file) or emit(MyEvent.succeeded.name, payload: result).
 - WRONG: emit(MediaUploadEvent.selectImage) — type error (enum is not String) and models invent selectImage/submit/retry on *Event when only requested/succeeded/failed exist. Add new cases to *_events.dart* first, then use .name, OR reuse existing enum cases / literal strings that behavior rules already match.
 - From *Page* widgets: prefer scope.channel.emit(OmegaEvent.fromName(MediaUploadEvent.requested, payload: ...)) or flowManager.handleIntent so behavior sees ctx.event; if calling agent.emit from UI, same rule: string name only — agent.emit(MediaUploadEvent.requested.name, ...).
@@ -3886,7 +3922,7 @@ Must include:
 - `@override void onMessage(OmegaAgentMessage msg) {}` or real handling; use `msg.action` not msg.type.
 - `@override void onAction(String action, dynamic payload) { switch (action) { case "id": ... } }` with string cases for every behavior actionId.
 - Use `setViewState(viewState.copyWith(...))` for UI model; never `state.copyWith` for view fields.
-- `emit` / `channel.emit` / `channel.emitTyped`: follow String .name rules for emit(); prefer channel for events the flow must see.
+- `emit` (**agent only:** `void emit(String name, {payload})` — `.name` on enum) vs **`channel.emit` / `namespace.emit`:** **`void emit(OmegaEvent)`** one arg — **FORBIDDEN** `channel.emit(ctx.intent!.name, payload: …)`. Prefer **`channel.emit(OmegaEvent.fromName(<Module>Event.x, payload: …))`** / **`emitTyped`** for what the flow/behavior sees on the bus.
 - `OmegaAgentContract`: set listenedEventNames / acceptedIntentNames honestly for debug; `{}` acceptable on shared global channel if rules only use ctx from same bus (see template).
 Cross-file rules:
 - Emitted event NAMES must appear in Flow contract listenedEventNames / flow onEvent if the flow should react.
@@ -3975,7 +4011,9 @@ HEAL — OMEGA API (fix analyzer errors; mirror PACKAGE GROUND TRUTH examples):
 - OmegaScope: `.channel`, `.flowManager`, `.initialFlowId`, `.initialNavigationIntent` — no agentManager. Use `getFlow` + `StreamBuilder`, or pass `agent` into the Page, or `OmegaAgentScope` / `Flow.uiScopeAgent` + shared agent in setup. **`lib/main.dart`:** mirror `_omegaAiMainDartEntry` / example `main.dart` — **`initialFlowId` + `initialNavigationIntent` from `runtime.` only** (no `'Auth'` / `'authFlow'` literals on `OmegaScope`); `MaterialApp.home` uses `OmegaInitialRoute` + `RootHandler`.
 - `OmegaFlowActivator`: only `flowId` + `child` + optional `useSwitchTo` — no `onActivate` / callbacks. `OmegaFlowManager`: no `getAgent` — remove invented manager→agent bridges. `OmegaScope`: no `agentManager` / `getAgent` — use `widget.agent`, `OmegaAgentScope`, or `uiScopeAgent` + `OmegaScopedAgentBuilder`.
 - Navigation: `OmegaIntent.fromName` takes an **AppIntent** / **ModuleIntent enum constant**, never a string like `'navigate.home'`; outer `AppEvent.navigationIntent` (see `_omegaAiNavigationChannelEmit`).
-- handleIntent reaches running flows’ onIntent; agents and behavior react to **channel** events — emit `OmegaEvent.fromName(...)` / `emitTyped` for patterns that use `ctx.event` (lists, navigation). `OmegaIntent.fromName(MyEnum.member)` — enum constant, not String, not `.name`.
+- **`OmegaEvent.fromName`:** first arg = **enum value** (`MyEvent.requested`), never String, never `MyEvent.requested.name`. Optional `payload:`; flow bridge: `channel.emit(OmegaEvent.fromName(HomeEvent.toggleTaskStatus, payload: ctx.intent?.payloadAs<ToggleTaskStatusPayload>()));`
+- **`channel.emit`:** argument = **one** [OmegaEvent] only — never mirror `agent.emit(name, payload:)`.
+- handleIntent reaches running flows’ onIntent; agents and behavior react to **channel** events — emit `OmegaEvent.fromName(...)` / `emitTyped` for patterns that use `ctx.event` (lists, navigation). **`OmegaIntent.fromName` / `OmegaEvent.fromName`:** enum constant as first positional, not String, not `.name`.
 - Do not call `OmegaEventName(...)` / `OmegaIntentName(...)` — abstract; use `fromName` with concrete enums.
 - **Intent/event DTO payloads** (classes passed as `payload:` to `OmegaIntent.fromName` / `OmegaEvent.fromName`, read with `payloadAs<YourType>()`): **plain Dart classes** with `final` fields — **FORBIDDEN:** `implements OmegaIntentPayload`, `implements OmegaEventPayload`, or `extends Equatable` on those unless `package:equatable` is a real dependency and you keep the class **without** fake omega interfaces (prefer no Equatable in `*_events.dart`).
 - Behavior `OmegaAgentReaction('actionId', ...)` strings must match `onAction` `switch` cases — **string literals** only, not `case SomeEnum.foo.name`.
@@ -5838,7 +5876,8 @@ CRITICAL RULES:
    - "events", "behavior", "agent", "flow", "page": full Dart file contents as strings (same as before).
    - "response" (optional): if the user asked for a single "template" or "código de pantalla", you MAY put the same full Dart as "page" here too so tools can read one field; if omitted, "page" alone is enough.
 5. ENUMS in **"events"** (module `*_events.dart`): **`enum ${moduleName}Intent with OmegaIntentNameDottedCamel implements OmegaIntentName`** and **`enum ${moduleName}Event with OmegaEventNameDottedCamel implements OmegaEventName`** — camelCase members only; wire strings come from the mixin (e.g. member `navigateRegister` → wire `navigate.register`). NEVER write `implements OmegaIntent` / `implements OmegaEvent` on an enum. NEVER call `OmegaEventName('...')` / `OmegaIntentName('...')`. **FORBIDDEN everywhere in greenfield code (modules AND `lib/omega/app_semantics.dart`):** `const MyCase('a.b'); const Foo(this.name); @override final String name;` — use **example/lib/omega/app_semantics.dart** as the app-wide pattern (`AppEvent` / `AppIntent` with DottedCamel mixins only).
-6. UI: OmegaIntent.fromName(${moduleName}Intent.${lower}Start) — pass the enum constant, NOT a String, NOT ${moduleName}Intent.${lower}Start.name.
+6. **`OmegaIntent.fromName` / `OmegaEvent.fromName`:** first positional = **enum constant** only — e.g. `OmegaIntent.fromName(${moduleName}Intent.${lower}Start)` and `OmegaEvent.fromName(${moduleName}Event.${lower}Requested)`. **FORBIDDEN:** string wire as first arg, `OmegaEventName('…')`, or **`.name`** as the first argument (`.name` is a [String]). Optional **`payload:`** — plain DTO or forward from flow: `channel.emit(OmegaEvent.fromName(${moduleName}Event.someCase, payload: ctx.intent?.payloadAs<SomePayload>()));` when behavior listens on `ctx.event` but the screen used **handleIntent**; declare **`someCase`** on `enum ${moduleName}Event with OmegaEventNameDottedCamel` and **`SomePayload`** in the same **events** file.
+6b. **`channel.emit` / `namespace(...).emit`:** **[OmegaEventBus.emit]** = **`void emit(OmegaEvent event)`** — **one** positional [OmegaEvent] only. **FORBIDDEN:** `channel.emit(ctx.intent!.name, payload: ctx.intent!.payload)` or any `channel.emit(String, …)` — that is **[OmegaAgent.emit]**, not the channel. Wrap bus emissions with **`OmegaEvent.fromName(…Event.case, payload: …)`** or **`emitTyped`**.
 7. If the page uses OmegaAgentBuilder with `required ${moduleName}Agent agent`, put in "reasoning" one line: user must set omega_setup route to ${moduleName}Page(agent: $camelAgentVar) and declare `final $camelAgentVar = ${moduleName}Agent(channel);` (or `channel: channel` if ctor is named-only) in agents — same pattern as example omega_setup + auth page.
 8. If the screen lists items, metrics, or catalog data: the "page" MUST implement an on-open kickoff per SCREEN ENTRY rules (activate + one-shot handleIntent(start) and/or channel emit of *.requested) so data loads without requiring a dummy first tap.
 9. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
