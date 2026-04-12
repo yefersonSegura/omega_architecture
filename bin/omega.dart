@@ -493,7 +493,7 @@ void printHelp() {
     "  g flow <Name>        Flow only; updates AppFlowId in app_runtime_ids.dart (needs *_agent.dart)",
   );
   stdout.writeln(
-    "  validate             Check omega_setup.dart (structure, duplicate route id / agent ref / flow ctor, routes vs *Page agent)",
+    "  validate             Check omega_setup.dart (structure, duplicates, routes vs *Page agent, login/home cold start when Auth + multi-route)",
   );
   stdout.writeln(
     "  trace [view|validate] [file]  Inspect or validate a recorded trace file (JSON)",
@@ -502,7 +502,7 @@ void printHelp() {
     "  doctor [path]        Project health (path = start search from, e.g. example or .)",
   );
   stdout.writeln(
-    "  ai <doctor|env|explain>  AI setup and offline trace explanation",
+    "  ai <doctor|env|explain>  Omi / assistant setup and offline trace explanation",
   );
   stdout.writeln("");
   stdout.writeln("Options:");
@@ -535,7 +535,7 @@ void printHelp() {
     "  omega doctor                   # from app root, or: omega doctor example",
   );
   stdout.writeln(
-    "  omega ai doctor                # check AI provider/api key setup",
+    "  omega ai doctor                # check Omi / assistant env (provider, key, model)",
   );
   stdout.writeln("  omega ai env                   # print env variable names");
   stdout.writeln(
@@ -561,7 +561,7 @@ class OmegaCreateAppCommand {
         'Usage: omega create app <name> [--kickstart "description"] [--provider-api]',
       );
       stdout.writeln(
-        "  With --provider-api: adds intl + equatable to pubspec for AI-generated modules/heal.",
+        "  With --provider-api: adds intl + equatable to pubspec for Omi-generated modules/heal.",
       );
       return;
     }
@@ -625,8 +625,8 @@ class OmegaCreateAppCommand {
     if (useProviderApi) {
       final extrasRes = await runWithProgress<ProcessResult>(
         _tr(
-          en: "Adding intl & equatable (for AI-generated code)",
-          es: "Agregando intl y equatable (código generado por IA)",
+          en: "Adding intl & equatable (Omi often needs them in generated code)",
+          es: "Agregando intl y equatable (Omi suele necesitarlos en código generado)",
         ),
         () => Process.run(
           "dart",
@@ -665,13 +665,13 @@ class OmegaCreateAppCommand {
       String? firstModule;
       if (kickstart != null) {
         stdout.writeln(
-          "🤖 ${_tr(en: "Kickstarting with AI: $kickstart", es: "Iniciando con IA: $kickstart")}...",
+          "✨ ${_tr(en: "Omi is kickstarting your app: $kickstart", es: "Omi arranca tu app: $kickstart")}...",
         );
 
         final modules = await runWithProgress<List<String>>(
           _tr(
-            en: "Analyzing architecture needs",
-            es: "Analizando necesidades de arquitectura",
+            en: "Omi suggests modules for this product",
+            es: "Omi propone módulos para este producto",
           ),
           () async {
             if (useProviderApi) {
@@ -701,8 +701,8 @@ class OmegaCreateAppCommand {
           if (!coachOk) {
             _err(
               _tr(
-                en: "Kickstart stopped: AI module generation failed. Fix your provider/key/model or run without --provider-api.",
-                es: "Kickstart detenido: falló la generación del módulo por IA. Corrige proveedor/clave/modelo o ejecuta sin --provider-api.",
+                en: "Kickstart stopped: Omi could not generate this module. Fix provider/key/model or run without --provider-api.",
+                es: "Kickstart detenido: Omi no pudo generar este módulo. Corrige proveedor/clave/modelo o ejecuta sin --provider-api.",
               ),
             );
             return;
@@ -980,7 +980,7 @@ void main() {
 
     if (!useAi || !aiEnabled) {
       stdout.writeln(
-        "❌ ${_tr(en: "AI self-healing disabled or not enabled. Fix these errors manually:", es: "Auto-sanación IA desactivada. Corrige manualmente:")}",
+        "❌ ${_tr(en: "Omi cannot heal this project (assistant disabled). Fix manually:", es: "Omi no puede sanar el proyecto (asistente desactivado). Corrige manualmente:")}",
       );
       _printMachineErrors(errors);
       return;
@@ -989,7 +989,7 @@ void main() {
     final providerLc = (env["OMEGA_AI_PROVIDER"] ?? "").trim().toLowerCase();
     if (providerLc != "openai" && providerLc != "gemini") {
       stdout.writeln(
-        "❌ ${_tr(en: "Self-heal requires OMEGA_AI_PROVIDER=openai or gemini.", es: "La auto-sanación requiere OMEGA_AI_PROVIDER=openai o gemini.")}",
+        "❌ ${_tr(en: "Omi self-heal requires OMEGA_AI_PROVIDER=openai or gemini.", es: "La sanación con Omi requiere OMEGA_AI_PROVIDER=openai o gemini.")}",
       );
       _printMachineErrors(errors);
       return;
@@ -997,7 +997,7 @@ void main() {
 
     if (_OmegaAiRemote.effectiveApiKey().isEmpty) {
       stdout.writeln(
-        "❌ ${_tr(en: "No API key for the selected provider (OMEGA_AI_API_KEY, or OMEGA_AI_GEMINI_API_KEY when using gemini). Cannot auto-fix.", es: "Falta clave API para el proveedor (OMEGA_AI_API_KEY, u OMEGA_AI_GEMINI_API_KEY con gemini). No se puede corregir automáticamente.")}",
+        "❌ ${_tr(en: "No API key for the assistant (OMEGA_AI_API_KEY, or OMEGA_AI_GEMINI_API_KEY when using gemini). Omi cannot auto-fix.", es: "Falta clave API del asistente (OMEGA_AI_API_KEY, u OMEGA_AI_GEMINI_API_KEY con gemini). Omi no puede corregir solo.")}",
       );
       _printMachineErrors(errors);
       return;
@@ -1009,7 +1009,7 @@ void main() {
     for (var pass = 0; pass < maxPasses; pass++) {
       if (pass > 0) {
         stdout.writeln(
-          "🔁 ${_tr(en: "Re-check: errors remain, another AI fix pass", es: "Revisión: aún hay errores, otro pase de corrección IA")} (${pass + 1}/$maxPasses)...",
+          "🔁 ${_tr(en: "Re-check: errors remain — Omi tries another pass", es: "Revisión: aún hay errores — Omi intenta otra pasada")} (${pass + 1}/$maxPasses)...",
         );
       }
 
@@ -1048,15 +1048,15 @@ void main() {
 
       final fixedFiles = await runWithProgress<Map<String, String>?>(
         _tr(
-          en: "Asking AI to fix compilation errors",
-          es: "Pidiendo a la IA que corrija errores de compilación",
+          en: "Omi is fixing analyzer / compile errors",
+          es: "Omi corrige errores del analizador / compilación",
         ),
         () => _providerFixErrors(root, currentErrors),
       );
 
       if (fixedFiles == null || fixedFiles.isEmpty) {
         stdout.writeln(
-          "❌ ${_tr(en: "AI provider failed to suggest fixes.", es: "El proveedor de IA no devolvió correcciones.")}",
+          "❌ ${_tr(en: "Omi got no usable fixes from the assistant.", es: "Omi no recibió correcciones utilizables del asistente.")}",
         );
         _printMachineErrors(currentErrors);
         return;
@@ -1090,7 +1090,7 @@ void main() {
     }
 
     stdout.writeln(
-      "❌ ${_tr(en: "Self-healing could not clear all errors after $maxPasses pass(es). Remaining:", es: "La auto-sanación no eliminó todos los errores tras $maxPasses pase(s). Restantes:")}",
+      "❌ ${_tr(en: "Omi could not clear all errors after $maxPasses pass(es). Remaining:", es: "Omi no eliminó todos los errores tras $maxPasses pase(s). Restantes:")}",
     );
     _printMachineErrors(currentErrors);
   }
@@ -1297,7 +1297,7 @@ void main() {
         );
     if (healGroundTruth.isNotEmpty) {
       stdout.writeln(
-        "  ${_tr(en: "AI heal: attached package examples (${healGroundTruth.length} chars)", es: "Sanación IA: ejemplos del paquete (${healGroundTruth.length} caracteres)")}",
+        "  ${_tr(en: "Omi heal: attached package examples (${healGroundTruth.length} chars)", es: "Sanación Omi: ejemplos del paquete (${healGroundTruth.length} caracteres)")}",
       );
     }
     final healContextBlock = healGroundTruth.isEmpty
@@ -1575,7 +1575,7 @@ Return only JSON. No markdown fences.
       }
       return result.isEmpty ? null : result;
     } catch (e) {
-      _err("AI heal parse/IO error: $e");
+      _err("Omi heal parse/IO error: $e");
       return null;
     }
   }
@@ -2495,7 +2495,7 @@ void registerInOmegaSetup(
   final pagePattern = RegExp(
     "import\\s+['\"].*${RegExp.escape("${nameLower}_page.dart")}['\"];\\s*",
   );
-  // Quita todas las líneas de import de este módulo (IA / doble register pueden duplicar).
+  // Quita todas las líneas de import de este módulo (generación remota / doble register pueden duplicar).
   if (registerAgentEffective) {
     while (agentPattern.hasMatch(content)) {
       content = content.replaceFirst(agentPattern, "");
@@ -2957,6 +2957,50 @@ class OmegaValidateCommand {
         "  Each OmegaRoute(id: ...) must be unique — matches navigate.* / OmegaNavigator lookup.",
       );
       ok = false;
+    }
+
+    // Login + home cold start: catches common AI mistakes (missing OmegaConfig fields, wrong route ids).
+    final looksAuthApp = content.contains('AuthFlow(') ||
+        content.contains('AuthAgent(') ||
+        routeIds.any(
+          (id) =>
+              id.toLowerCase().contains('auth') ||
+              id.toLowerCase() == 'login',
+        ) ||
+        agentNames.any((n) => n.toLowerCase() == 'auth');
+    final looksMultiModule =
+        routeIds.length >= 2 || agentNames.length >= 2;
+    if (looksAuthApp && looksMultiModule) {
+      if (!RegExp(r'\binitialFlowId\s*:').hasMatch(content)) {
+        _err(
+          "OmegaConfig missing initialFlowId: — with Auth + multiple modules/routes, set it to the login/auth flow id (same as AuthFlow super(id: ...)).",
+        );
+        ok = false;
+      }
+      if (!RegExp(r'\binitialNavigationIntent\s*:').hasMatch(content)) {
+        _err(
+          "OmegaConfig missing initialNavigationIntent: — set e.g. OmegaIntent.fromName(AppIntent.navigateLogin) so the first screen is login (see example/lib/omega/omega_setup.dart).",
+        );
+        ok = false;
+      }
+      if (content.contains('AppIntent.navigateLogin')) {
+        final hasLoginRoute = routeIds.any((id) => id == 'login');
+        if (!hasLoginRoute) {
+          _err(
+            "Using AppIntent.navigateLogin requires OmegaRoute(id: 'login', ...) — navigator strips the navigate. prefix (WRONG: id: 'Auth' for login).",
+          );
+          ok = false;
+        }
+      }
+      if (content.contains('AppIntent.navigateHome')) {
+        final hasHomeRoute = routeIds.any((id) => id == 'home');
+        if (!hasHomeRoute) {
+          _err(
+            "Using AppIntent.navigateHome requires OmegaRoute(id: 'home', ...) (lowercase id matches wire navigate.home).",
+          );
+          ok = false;
+        }
+      }
     }
 
     final routeAgentIssues = collectRouteAgentMismatches(root, content);
@@ -3600,7 +3644,8 @@ Ground-truth file: `example/lib/omega/omega_setup.dart` (included in PACKAGE GRO
 - In `createOmegaConfig(OmegaChannel channel)`: **one** agent instance per module → reuse the **same** variable in `agents: <OmegaAgent>[...]` and in `flows: <OmegaFlow>[ MyFlow(channel: ns, agent: myAgent), ... ]`. Never two `MyModuleAgent(...)` for the same module.
 - `flows:` is a list of **constructor calls** with the same named args as *_flow.dart* (`channel:`, `agent:` when `uiScopeAgent`, optional `offlineQueue:` etc.). FORBIDDEN: bare `MyFlow` without `(...)`.
 - Example pattern: `final authNs = channel.namespace('auth');` + `AuthAgent(authNs)` + `AuthFlow(channel: authNs, agent: authAgent)` — see example app.
-- `initialFlowId:` e.g. `AppFlowId.authFlow.id` when using `app_runtime_ids.dart`; **`initialNavigationIntent:`** optional `OmegaIntent.fromName(AppIntent.navigateXxx)` — same value on **`OmegaScope.initialNavigationIntent`** and **`MaterialApp.home: OmegaInitialRoute(child: ...)`** (see package example); `intentHandlerRegistrars:` optional; routes pass shared agents into `builder:` (`OmegaLoginPage(authAgent: authAgent)`), `OmegaRoute.typed<T>` when needed.
+- `initialFlowId:` e.g. `AppFlowId.authFlow.id` when using `app_runtime_ids.dart`; **`initialNavigationIntent:`** `OmegaIntent.fromName(AppIntent.navigateLogin)` for standard apps (same value on **`OmegaScope.initialNavigationIntent`** and **`MaterialApp.home: OmegaInitialRoute(child: ...)`**). **Not optional** when you ship Login+Home — without it the first screen is undefined. `intentHandlerRegistrars:` optional; routes pass shared agents into `builder:` (`OmegaLoginPage(authAgent: authAgent)`), `OmegaRoute.typed<T>` when needed.
+- **`OmegaRoute` ids for global intents:** With [OmegaIntentNameDottedCamel], `AppIntent.navigateLogin.name` is `navigate.login` → navigator looks up route id **`login`** (substring after `navigate.`). `navigate.home` → id **`home`**. Using `id: 'Auth'` for login breaks cold start. Feature routes: intent wire segment must equal `OmegaRoute.id` (e.g. `navigate.orderManagement` → `id: 'orderManagement'`).
 - REQUIRED imports (or analyzer: "function/class isn't defined"): from `lib/omega/omega_setup.dart` use relative `../<folder>/<lower>_flow.dart`, `../<folder>/<lower>_agent.dart`, `../<folder>/ui/<lower>_page.dart` OR `package:<app_name>/...` matching pubspec `name:`.
 - FORBIDDEN: duplicate `import` lines (same URI twice). Each `*_agent`, `*_flow`, `*_page` path appears at most once at the top of omega_setup.dart.
 - **Single agent instance per module:** `final myModuleAgent = MyModuleAgent(channel);` then `agents: <OmegaAgent>[..., myModuleAgent]` and, when the flow defines `uiScopeAgent`, `flows: <OmegaFlow>[..., MyModuleFlow(channel: channel, agent: myModuleAgent)]` — never `MyModuleFlow(channel)` plus a separate `MyModuleAgent(channel)` for the same module.
@@ -3629,13 +3674,16 @@ COHERENCE SELF-TEST (model should mentally verify before answering):
 
   /// **User prompt:** default app shell — every real product starts at Login and lands on Home with global navigation.
   static const String _omegaAiLoginHomeShell = r'''
-APP SHELL — LOGIN + HOME (mandatory mental model whenever you create or extend a whole app: `lib/omega/omega_setup.dart`, `lib/main.dart`, `lib/omega/app_semantics.dart`, kickstart with several modules, or JSON that invents routes):
+APP SHELL — LOGIN + HOME (mandatory whenever you create or extend a whole app: `lib/omega/omega_setup.dart`, `lib/main.dart`, `lib/omega/app_semantics.dart`, kickstart with several modules, or JSON that invents routes):
 
 - Every app has **two first-class screens**: (1) **Login** — sign-in / cold-start gate; (2) **Home** — post-auth **shell** where **global navigation** lives (Drawer, BottomNavigationBar, NavigationRail, or tabs linking to other modules). Do not leave the user on a feature page with no way to reach other areas after auth.
-- **Cold start:** `OmegaConfig.initialFlowId` MUST match the **login/auth** flow’s `super(id: ...)`. Set `OmegaConfig.initialNavigationIntent:` to `OmegaIntent.fromName(AppIntent.navigateLogin)` (or your app’s equivalent) so the **first route is Login**, not Home — mirror `example/lib/omega/omega_setup.dart` + `OmegaScope` / `OmegaInitialRoute` / `RootHandler` in `example/lib/main.dart`.
-- **After successful login:** navigate to Home with `channel.emit(OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateHome)))` (or the module’s `*Event.navigationIntent` wrapping the same inner `AppIntent` / wire). The login flow or agent MUST perform this transition on success (same pattern as example auth).
-- **`AppIntent` / `routes:`:** define **both** `navigateLogin` and `navigateHome` (wire strings aligned with `OmegaRoute(id: ...)`). Home route’s `builder` should host the main app navigation chrome; Login route focuses on credentials only.
-- If this pass outputs **only** one feature module (no `omega_setup` in JSON): still mention in **reasoning** that the host app must keep **initialNavigationIntent → login**, **initialFlowId → auth flow**, and **Login → Home** navigation on success; add `navigateLogin` / `navigateHome` to `app_semantics.dart` when you touch shared semantics.
+- **`OmegaConfig` is incomplete without cold start:** When the app includes **Auth/Login + Home**, the `return OmegaConfig(` **MUST** include **`initialFlowId:`** (same string as the **Auth** flow’s `super(id: ...)`, e.g. `AppFlowId.authFlow.id` or `'authFlow'`) **and** **`initialNavigationIntent: OmegaIntent.fromName(AppIntent.navigateLogin)`**. Omitting either leaves the app opening on the wrong screen or with no first navigation — **FORBIDDEN** for standard products. Import `app_semantics.dart` for `AppIntent` / `AppEvent`; import `app_runtime_ids.dart` when using `AppFlowId`.
+- **Route ids vs navigator (critical):** [OmegaNavigator] resolves `navigate.{destination}` by stripping the `navigate.` prefix and looking up **`OmegaRoute(id: destination)`**. So for `AppIntent.navigateLogin` (wire `navigate.login`) the login route id **must be exactly** `login` — **WRONG:** `OmegaRoute(id: 'Auth', ...)` for the login page (navigator will not find `login`). For `AppIntent.navigateHome` (wire `navigate.home`) use **`id: 'home'`** for the Home shell. Feature modules use matching ids, e.g. `navigate.orderManagement` → `id: 'orderManagement'`.
+- **Cold start order:** `initialFlowId` = auth flow; `initialNavigationIntent` = `navigateLogin` so the **first visible route is Login**, not Home — mirror `example/lib/omega/omega_setup.dart` + `OmegaInitialRoute` in `example/lib/main.dart`.
+- **After successful login:** the **Auth flow or Auth agent** MUST emit `OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateHome))` when credentials validate (demo: accept non-empty fields). Do not require a manual second tap to reach Home.
+- **Home page UX:** When the app has multiple modules (Tracking, Orders, …), the **Home** screen must offer **clear, attractive navigation** to each: e.g. `ListTile` / `Card` with **leading icons**, short titles, subtitles, `FilledButton.tonal` or `NavigationRail` for a polished shell — not a bare `Text('Home')`. Each destination should `channel.emit(OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateXxx)))` using the correct **`AppIntent`** case whose wire matches the target route id.
+- **Duplicates:** Never list the same agent variable twice in `agents:` or duplicate `OmegaRoute(id: ...)` — `omega validate` fails; re-read the list before emitting JSON.
+- If this pass outputs **only** one feature module (no `omega_setup` in JSON): still mention in **reasoning** that the host must set **`initialFlowId` + `initialNavigationIntent`**, use route ids **`login`** / **`home`**, and wire **Login → Home** on success.
 ''';
 
   /// **Heal user prompt only:** compact Omega API subset when full checklist is omitted (token budget).
@@ -3656,7 +3704,7 @@ HEAL — OMEGA API (fix analyzer errors; mirror PACKAGE GROUND TRUTH examples):
 - Flow: `onIntent` / `onEvent` only inside the flow class. `OmegaFlowContext`: `event`, `intent`, `memory` only — no `getAgentViewState` / agent reads from flow.
 - Bus: listeners see `OmegaEvent` only; typed payloads — `event.payloadAs<T>()`, never `if (event is MyTypedEvent)`.
 - JSON values: avoid invalid `\\` + `$` sequences inside JSON strings (breaks decode); CLI may sanitize common cases — still prefer valid JSON.
-- Full app: **initialFlowId** = login/auth flow; **initialNavigationIntent** = login route; register **Login** + **Home** routes; **Home** = shell with main nav; on login success emit **navigateHome** via `AppEvent.navigationIntent`.
+- Full app: **initialFlowId** + **initialNavigationIntent** (navigateLogin) required on `OmegaConfig`; route ids **`login`** / **`home`** (not `Auth` for login — breaks `navigate.login` lookup). **Home** = shell with main nav; login success → **navigateHome**. No duplicate agents or route ids.
 ''';
 
   /// **User prompt:** UTF-8 / encoding hints for string literals inside generated Dart (JSON-safe copy).
@@ -3733,17 +3781,17 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
     stdout.writeln("Usage: omega ai <doctor|env|explain|coach>");
     stdout.writeln("");
     stdout.writeln(
-      "  doctor   Check AI env setup (enabled/provider/model/base-url/key).",
+      "  doctor   Check Omi / assistant env (enabled/provider/model/base-url/key).",
     );
     stdout.writeln(
-      "  env      Print supported AI env variable names and examples.",
+      "  env      Print supported assistant env variable names and examples.",
     );
     stdout.writeln(
       "  explain  Explain a trace file using offline heuristics (no API cost).",
     );
     stdout.writeln("           Add --json for machine-readable output.");
     stdout.writeln(
-      "           Add --provider-api to use configured OpenAI API.",
+      "           Add --provider-api so Omi uses your configured OpenAI/Gemini API.",
     );
     stdout.writeln(
       "           Writes to a temp file by default; add --stdout to print in console.",
@@ -3769,7 +3817,7 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
         .trim()
         .isNotEmpty;
 
-    stdout.writeln("Omega AI Doctor");
+    stdout.writeln("Omi doctor (Omega assistant)");
     stdout.writeln("  Enabled : $enabled");
     stdout.writeln("  Provider: $provider");
     stdout.writeln("  Model   : $model");
@@ -3790,20 +3838,20 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
       stdout.writeln(keyLine);
     } else {
       stdout.writeln(
-        "  API key : n/a for this provider (remote AI uses openai|gemini)",
+        "  API key : n/a for this provider (remote assistant uses openai|gemini)",
       );
     }
     stdout.writeln("");
 
     if (!enabled) {
-      stdout.writeln("AI is disabled (default-safe mode).");
-      stdout.writeln("Set OMEGA_AI_ENABLED=true to enable AI CLI commands.");
+      stdout.writeln("Omi is asleep (assistant disabled, default-safe mode).");
+      stdout.writeln("Set OMEGA_AI_ENABLED=true to enable coach / heal / explain with Omi.");
       return;
     }
 
     if (providerLc == "none") {
       _err("OMEGA_AI_PROVIDER is not set.");
-      stdout.writeln("  Suggested for remote AI: openai | gemini");
+      stdout.writeln("  Suggested for Omi (remote): openai | gemini");
       return;
     }
 
@@ -3811,7 +3859,7 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
         providerLc != "ollama" &&
         !_OmegaAiRemote.isRemoteProvider(providerLc)) {
       stdout.writeln(
-        "Note: coach / explain / suggest / gen / heal use OpenAI or Gemini only.",
+        "Note: Omi (coach / explain / heal / …) uses OpenAI or Gemini only for remote calls.",
       );
     }
 
@@ -3825,14 +3873,14 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
       return;
     }
 
-    stdout.writeln("AI base configuration looks good.");
+    stdout.writeln("Omi is ready — base configuration looks good.");
     stdout.writeln(
-      "Remote calls (coach, audit, explain, suggest, gen, heal, create-app fix) use the same prompts for OpenAI and Gemini.",
+      "Remote Omi calls (coach, audit, explain, heal, create-app fix, …) use the same prompts for OpenAI and Gemini.",
     );
   }
 
   static void _env() {
-    stdout.writeln("Omega AI environment variables");
+    stdout.writeln("Omi / Omega assistant — environment variables");
     stdout.writeln("");
     stdout.writeln("  OMEGA_AI_ENABLED   true|false (default: false)");
     stdout.writeln(
@@ -3857,7 +3905,7 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
       "  OMEGA_PACKAGE_ROOT          path to omega_architecture repo (if auto-detect fails)",
     );
     stdout.writeln(
-      "  OMEGA_AI_DOCS_URL           one http(s) URL — fetched via GET and appended to AI prompt",
+      "  OMEGA_AI_DOCS_URL           one http(s) URL — fetched via GET and appended to Omi's prompt",
     );
     stdout.writeln(
       "  OMEGA_AI_DOCS_URLS          comma-separated URLs (max 5), same as above",
@@ -3869,7 +3917,7 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
       "  OMEGA_AI_SKIP_REMOTE_DOCS       true = do not GET OMEGA_AI_DOCS_URL(S)",
     );
     stdout.writeln(
-      "  OMEGA_AI_STRICT_POSTCHECK       true = if full-module AI fails programmatic checks, skip writing AI files and use default template",
+      "  OMEGA_AI_STRICT_POSTCHECK       true = if full-module output fails checks, skip writing Omi files and use default template",
     );
     stdout.writeln("");
     stdout.writeln("PowerShell example (OpenAI):");
@@ -4047,12 +4095,12 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
     if (useProviderApi) {
       final aiDiagnosis = await _runWithProgress<List<String>?>(
         _tr(
-          en: "Consulting AI provider",
-          es: "Consultando proveedor IA",
-          pt: "Consultando provedor IA",
-          fr: "Consultation du fournisseur IA",
-          it: "Consultazione provider IA",
-          de: "KI-Anbieter wird abgefragt",
+          en: "Omi is asking the assistant",
+          es: "Omi consulta al asistente",
+          pt: "Omi consulta o assistente",
+          fr: "Omi consulte l'assistant",
+          it: "Omi consulta l'assistente",
+          de: "Omi fragt den Assistenten",
         ),
         () => _providerExplain(events),
       );
@@ -4119,7 +4167,7 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
         "  audit   ${_tr(en: "Audit current project gaps for a feature.", es: "Audita brechas actuales del proyecto para una feature.")}",
       );
       stdout.writeln(
-        "  module  ${_tr(en: "Create a complete ecosystem module (AI-guided).", es: "Crea un modulo de ecosistema completo (guiado por IA).")}",
+        "  module  ${_tr(en: "Create a complete ecosystem module (with Omi).", es: "Crea un modulo de ecosistema completo (con Omi).", pt: "Cria um modulo de ecossistema completo (com Omi).", fr: "Cree un module d'ecosysteme complet (avec Omi).", it: "Crea un modulo ecosistema completo (con Omi).", de: "Erstellt ein vollstaendiges Oekosystem-Modul (mit Omi).")}",
       );
       stdout.writeln(
         "  redesign ${_tr(en: "Redesign the module UI only (updates ui/*_page.dart; does not change agent/flow/behavior/events).", es: "Rediseña solo la vista del módulo (actualiza ui/*_page.dart; no cambia agent/flow/behavior/events).")}",
@@ -4213,12 +4261,12 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
     if (useProviderApi) {
       final providerSteps = await _runWithProgress<List<String>?>(
         _tr(
-          en: "Consulting AI provider",
-          es: "Consultando proveedor IA",
-          pt: "Consultando provedor IA",
-          fr: "Consultation du fournisseur IA",
-          it: "Consultazione provider IA",
-          de: "KI-Anbieter wird abgefragt",
+          en: "Omi is asking the assistant",
+          es: "Omi consulta al asistente",
+          pt: "Omi consulta o assistente",
+          fr: "Omi consulte l'assistant",
+          it: "Omi consulta l'assistente",
+          de: "Omi fragt den Assistenten",
         ),
         () => _providerCoachPlan(feature),
       );
@@ -4655,31 +4703,31 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
       final ev = toWrite["events"] ?? "";
       if (ev.trim().isNotEmpty && !_omegaAiEventsPassSanity(ev, moduleName)) {
         stdout.writeln(
-          "⚠️ ${_tr(en: "AI events file has potential issues. Will attempt to fix via self-healing...", es: "Archivo de eventos IA con posibles problemas. Se intentará arreglar con auto-sanación...")}",
+          "⚠️ ${_tr(en: "Omi spotted possible issues in events — self-heal will try...", es: "Omi ve posibles problemas en eventos — se intentará auto-sanación...")}",
         );
       }
       final pg = toWrite["page"] ?? "";
       if (pg.trim().isNotEmpty && !_omegaAiPagePassSanity(pg, moduleName)) {
         stdout.writeln(
-          "⚠️ ${_tr(en: "AI page has potential issues. Will attempt to fix via self-healing...", es: "Página IA con posibles problemas. Se intentará arreglar con auto-sanación...")}",
+          "⚠️ ${_tr(en: "Omi spotted possible issues in the page — self-heal will try...", es: "Omi ve posibles problemas en la página — se intentará auto-sanación...")}",
         );
       }
       final bh = toWrite["behavior"] ?? "";
       if (bh.trim().isNotEmpty && !_omegaAiBehaviorPassSanity(bh)) {
         stdout.writeln(
-          "⚠️ ${_tr(en: "AI behavior file does not match OmegaAgentBehaviorEngine (addRule/evaluate). Will attempt self-healing...", es: "El behavior IA no coincide con OmegaAgentBehaviorEngine (addRule/evaluate). Se intentará auto-sanación...")}",
+          "⚠️ ${_tr(en: "Omi: behavior may not match OmegaAgentBehaviorEngine (addRule/evaluate). Self-heal will try...", es: "Omi: el behavior podría no coincidir con OmegaAgentBehaviorEngine (addRule/evaluate). Se intentará auto-sanación...")}",
         );
       }
       final ag = toWrite["agent"] ?? "";
       if (ag.trim().isNotEmpty && !_omegaAiAgentPassSanity(ag)) {
         stdout.writeln(
-          "⚠️ ${_tr(en: "AI agent may use state.copyWith — use viewState.copyWith with OmegaStatefulAgent. Will attempt self-healing...", es: "El agente IA podría usar state.copyWith — con OmegaStatefulAgent usa viewState.copyWith. Se intentará auto-sanación...")}",
+          "⚠️ ${_tr(en: "Omi: agent may use state.copyWith — prefer viewState.copyWith (OmegaStatefulAgent). Self-heal will try...", es: "Omi: el agente podría usar state.copyWith — con OmegaStatefulAgent usa viewState.copyWith. Se intentará auto-sanación...")}",
         );
       }
       final fl = toWrite["flow"] ?? "";
       if (fl.trim().isNotEmpty && !_omegaAiFlowPassSanity(fl)) {
         stdout.writeln(
-          "⚠️ ${_tr(en: "AI flow may call failStep with a second positional arg — use failStep('code', message: ...). Will attempt self-healing...", es: "El flow IA podría usar failStep con un segundo argumento posicional — usa failStep('code', message: ...). Se intentará auto-sanación...")}",
+          "⚠️ ${_tr(en: "Omi: flow may use failStep with a second positional arg — use failStep('code', message: ...). Self-heal will try...", es: "Omi: el flow podría usar failStep con un segundo argumento posicional — usa failStep('code', message: ...). Se intentará auto-sanación...")}",
         );
       }
       for (final key in ["events", "behavior", "agent", "flow", "page"]) {
@@ -4688,7 +4736,7 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
             chunk.trim().isNotEmpty &&
             !_omegaAiAbstractNameConstructorPassSanity(chunk)) {
           stdout.writeln(
-            "⚠️ ${_tr(en: "AI file \"$key\" uses OmegaEventName(...) or OmegaIntentName(...) — abstract types cannot be constructed; use enum values (e.g. AppEvent.*, AppIntent.*). Will attempt self-healing...", es: "El archivo IA \"$key\" usa OmegaEventName(...) u OmegaIntentName(...) — tipos abstractos; usa valores de enum (ej. AppEvent.*, AppIntent.*). Se intentará auto-sanación...")}",
+            "⚠️ ${_tr(en: "Omi: file \"$key\" uses OmegaEventName(...) or OmegaIntentName(...) — use enum values (AppEvent.*, AppIntent.*). Self-heal will try...", es: "Omi: el archivo \"$key\" usa OmegaEventName(...) u OmegaIntentName(...) — usa valores de enum (ej. AppEvent.*, AppIntent.*). Se intentará auto-sanación...")}",
           );
           break;
         }
@@ -4696,7 +4744,7 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
             chunk.trim().isNotEmpty &&
             !_omegaAiSourceEncodingPassSanity(chunk)) {
           stdout.writeln(
-            "⚠️ ${_tr(en: "AI file \"$key\" may contain invalid control characters or mojibake. Will attempt self-healing...", es: "El archivo IA \"$key\" puede tener caracteres de control o texto corrupto. Se intentará auto-sanación...")}",
+            "⚠️ ${_tr(en: "Omi: file \"$key\" may contain invalid control characters or mojibake. Self-heal will try...", es: "Omi: el archivo \"$key\" puede tener caracteres de control o texto corrupto. Se intentará auto-sanación...")}",
           );
           break;
         }
@@ -4706,8 +4754,8 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
       if (post.warnings.isNotEmpty || post.errors.isNotEmpty) {
         stdout.writeln(
           _tr(
-            en: "--- Post-generation Omega check (${post.errors.length} error(s), ${post.warnings.length} warning(s)) ---",
-            es: "--- Comprobación Omega post-IA (${post.errors.length} error(es), ${post.warnings.length} aviso(s)) ---",
+            en: "--- Post-generation Omega check after Omi (${post.errors.length} error(s), ${post.warnings.length} warning(s)) ---",
+            es: "--- Comprobación Omega tras Omi (${post.errors.length} error(es), ${post.warnings.length} aviso(s)) ---",
           ),
         );
       }
@@ -4730,8 +4778,8 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
       if (strictPost && !post.isOk && fullAiModule) {
         stdout.writeln(
           _tr(
-            en: "OMEGA_AI_STRICT_POSTCHECK: reverting to default advanced template (full module).",
-            es: "OMEGA_AI_STRICT_POSTCHECK: volviendo a la plantilla avanzada por defecto (módulo completo).",
+            en: "OMEGA_AI_STRICT_POSTCHECK: reverting to default advanced template (Omi full module output rejected).",
+            es: "OMEGA_AI_STRICT_POSTCHECK: volviendo a la plantilla avanzada por defecto (se rechazó la salida completa de Omi).",
           ),
         );
         _writeDefaultAdvancedTemplate(
@@ -4747,8 +4795,8 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
         if (strictPost && !post.isOk && !fullAiModule) {
           stdout.writeln(
             _tr(
-              en: "Strict post-check failed but output is partial (e.g. page-only); writing AI files anyway.",
-              es: "Post-check estricto falló pero la salida es parcial (ej. solo página); se escriben archivos IA igualmente.",
+              en: "Strict post-check failed but output is partial (e.g. page-only); writing Omi output anyway.",
+              es: "Post-check estricto falló pero la salida es parcial (ej. solo página); se escribe la salida de Omi igualmente.",
             ),
           );
         }
@@ -5074,7 +5122,7 @@ class _${moduleName}PageState extends State<${moduleName}Page> {
     if (reasoning != null && reasoning.trim().isNotEmpty) {
       stdout.writeln("");
       stdout.writeln(
-        "🧠 ${_tr(en: "AI reasoning (design)", es: "Razonamiento IA (diseño)")}:",
+        "🧠 ${_tr(en: "Omi's design notes", es: "Notas de diseño de Omi")}:",
       );
       stdout.writeln(reasoning.trim());
       stdout.writeln("");
@@ -5100,11 +5148,11 @@ class _${moduleName}PageState extends State<${moduleName}Page> {
       _err(
         _tr(
           en:
-              "AI JSON missing required string keys (events, behavior, agent, flow, page). "
-              "If the model put the screen only in \"response\", that key is used as \"page\" when \"page\" is empty.",
+              "Omi's JSON response is missing required string keys (events, behavior, agent, flow, page). "
+              "If the assistant put the screen only in \"response\", that key is used as \"page\" when \"page\" is empty.",
           es:
-              "Falta en el JSON de la IA alguna clave string obligatoria (events, behavior, agent, flow, page). "
-              "Si el modelo dejó la pantalla solo en \"response\", se usa como \"page\" cuando \"page\" está vacío.",
+              "Faltan en la respuesta de Omi claves string obligatorias (events, behavior, agent, flow, page). "
+              "Si el asistente dejó la pantalla solo en \"response\", se usa como \"page\" cuando \"page\" está vacío.",
         ),
       );
       return null;
@@ -5133,7 +5181,7 @@ class _${moduleName}PageState extends State<${moduleName}Page> {
     if (reasoning != null && reasoning.trim().isNotEmpty) {
       stdout.writeln("");
       stdout.writeln(
-        "🧠 ${_tr(en: "AI reasoning (UI only)", es: "Razonamiento IA (solo vista)")}:",
+        "🧠 ${_tr(en: "Omi's UI notes", es: "Notas de UI de Omi")}:",
       );
       stdout.writeln(reasoning.trim());
       stdout.writeln("");
@@ -5150,8 +5198,8 @@ class _${moduleName}PageState extends State<${moduleName}Page> {
     if (page == null || page.trim().isEmpty) {
       _err(
         _tr(
-          en: "AI JSON missing UI file: need non-empty string key \"page\" (or \"response\").",
-          es: "Falta la pantalla en el JSON de la IA: se requiere \"page\" o \"response\" con el Dart completo.",
+          en: "Omi's JSON is missing the UI file: need non-empty \"page\" (or \"response\").",
+          es: "Falta la pantalla en la respuesta de Omi: se requiere \"page\" o \"response\" con el Dart completo.",
         ),
       );
       return null;
@@ -5163,7 +5211,7 @@ class _${moduleName}PageState extends State<${moduleName}Page> {
         raw.containsKey("events") ||
         raw.containsKey("behavior")) {
       stdout.writeln(
-        "⚠️ ${_tr(en: "AI returned non-UI keys; only \"page\" will be written.", es: "La IA devolvió claves fuera de la vista; solo se escribirá \"page\".")}",
+        "⚠️ ${_tr(en: "Omi returned non-UI keys; only \"page\" will be written.", es: "Omi devolvió claves fuera de la vista; solo se escribirá \"page\".")}",
       );
     }
 
@@ -5404,7 +5452,7 @@ ${currentFiles.entries.map((e) => "--- FILE: ${e.key} ---\n${e.value}").join("\n
     );
     if (packageGroundTruth.isNotEmpty) {
       stdout.writeln(
-        "  ${_tr(en: "AI: attached package examples/docs (${packageGroundTruth.length} chars)", es: "IA: ejemplos/docs del paquete (${packageGroundTruth.length} caracteres)")}",
+        "  ${_tr(en: "Omi: attached package examples/docs (${packageGroundTruth.length} chars)", es: "Omi: ejemplos/docs del paquete (${packageGroundTruth.length} caracteres)")}",
       );
     }
     final packageContextBlock = packageGroundTruth.isEmpty
@@ -5494,6 +5542,7 @@ CRITICAL RULES:
 9. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
 10. JSON string values that contain Dart: in JSON a backslash may only introduce the usual escapes (quote, another backslash, slash, b, f, n, r, t, or u plus four hex digits). Any other backslash-plus-character (including before a dollar sign, space, or letters) is invalid and breaks jsonDecode (FormatException: unrecognized string escape). Avoid lone backslashes in embedded Dart; use concatenation or double each literal backslash per JSON rules. The CLI repairs some invalid escapes before decode; still emit valid JSON when possible.
 11. Intent payload classes (passed to OmegaIntent.fromName(..., payload: YourPayload(...))): plain Dart only — NOT OmegaTypedEvent. Named arguments when constructing the payload MUST use the **same identifiers as the class fields** (e.g. field `userName` ⇒ argument `userName: controller.text`). WRONG: declaring `final String? userName` but calling with `name:` — that is a different parameter and breaks the analyzer. Do not reuse the word "name" for a user display name unless the field is literally named `name`.
+12. If the JSON includes **`lib/omega/omega_setup.dart`**: `OmegaConfig` MUST include **`initialFlowId:`** (auth/login flow id) **and** **`initialNavigationIntent: OmegaIntent.fromName(AppIntent.navigateLogin)`** when the app has login+home. Login route: **`OmegaRoute(id: 'login', ...)`** (not `Auth` — navigator matches `navigate.login` → id **`login`**). Home route: **`id: 'home'`**. On valid login, auth flow/agent emits **`navigateHome`** via `AppEvent.navigationIntent`. **HomePage** must expose attractive navigation (cards / list tiles / rail) to every other module route. Never duplicate the same agent in `agents:` or the same `id:` twice in `routes:`.
 
 UI DESIGN (apply to the 'page' value only — maximize quality; the structural snippet below is NOT the final UI):
 $_omegaAiUiDesignStandards
@@ -5615,7 +5664,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
       );
       final decodedModule = jsonDecode(jsonText);
       if (decodedModule is! Map) {
-        _err("AI Provider JSON Error: root is not a JSON object");
+        _err("Omi: provider JSON error — root is not a JSON object");
         return null;
       }
       if (pageOnly) {
@@ -5625,7 +5674,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
       }
       return _normalizeAiModuleJson(Map<String, dynamic>.from(decodedModule));
     } catch (e) {
-      _err("AI Provider JSON Error: $e");
+      _err("Omi: provider JSON error: $e");
       return null;
     }
   }
@@ -5776,7 +5825,14 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     var mode = "offline";
     if (useProviderApi) {
       final provider = await _runWithProgress<List<String>?>(
-        _tr(en: "Consulting AI provider", es: "Consultando proveedor IA"),
+        _tr(
+          en: "Omi is asking the assistant",
+          es: "Omi consulta al asistente",
+          pt: "Omi consulta o assistente",
+          fr: "Omi consulte l'assistant",
+          it: "Omi consulta l'assistente",
+          de: "Omi fragt den Assistenten",
+        ),
         () => _providerAuditInsights(feature, gaps, findings),
       );
       if (provider != null && provider.isNotEmpty) {
@@ -5916,7 +5972,14 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
 
     if (useProviderApi) {
       final providerSteps = await _runWithProgress<List<String>?>(
-        _tr(en: "Consulting AI provider", es: "Consultando proveedor IA"),
+        _tr(
+          en: "Omi is asking the assistant",
+          es: "Omi consulta al asistente",
+          pt: "Omi consulta o assistente",
+          fr: "Omi consulte l'assistant",
+          it: "Omi consulta l'assistente",
+          de: "Omi fragt den Assistenten",
+        ),
         () => _providerCoachPlan(cleanFeature),
       );
       if (providerSteps != null && providerSteps.isNotEmpty) {
@@ -5943,11 +6006,11 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
       final generated = await _runWithProgress<Map<String, String>?>(
         _tr(
           en: uiOnly
-              ? "Redesigning UI with AI (page only)"
-              : "Generating/Redesigning logic with AI",
+              ? "Omi is redesigning the screen (page only)"
+              : "Omi is writing / redesigning module logic",
           es: uiOnly
-              ? "Rediseñando la vista con IA (solo página)"
-              : "Generando/Rediseñando lógica con IA",
+              ? "Omi rediseña la vista (solo página)"
+              : "Omi escribe o rediseña la lógica del módulo",
         ),
         () => _providerGenerateModuleCode(
           cleanFeature,
@@ -5971,13 +6034,13 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
         if (moduleExists) {
           _err(
             _tr(
-              en: "AI generation failed. Keeping existing files for module '$moduleName'.",
-              es: "La generación por IA falló. Manteniendo archivos existentes para el módulo '$moduleName'.",
+              en: "Omi could not generate this pass. Keeping existing files for module '$moduleName'.",
+              es: "Omi no pudo completar esta generación. Se mantienen los archivos del módulo '$moduleName'.",
             ),
           );
           stdout.writeln("");
           stdout.writeln(
-            "⏹️ ${_tr(en: "Console generation stopped — AI response was missing or invalid; module left unchanged.", es: "Generación en consola detenida — la respuesta de la IA faltaba o era inválida; el módulo no se modificó.")}",
+            "⏹️ ${_tr(en: "Stopped — Omi's response was missing or invalid; module left unchanged.", es: "Detenido — la respuesta de Omi faltaba o era inválida; el módulo no se modificó.")}",
           );
           if (asJson) {
             _emitAiOutput(
@@ -6001,8 +6064,8 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
         } else {
           _err(
             _tr(
-              en: "AI generation failed — cannot create a new module without valid AI output.",
-              es: "La generación por IA falló — no se puede crear un módulo nuevo sin una salida válida de la IA.",
+              en: "Omi could not create a new module — no valid assistant output.",
+              es: "Omi no pudo crear el módulo nuevo — sin salida válida del asistente.",
             ),
           );
           stdout.writeln("");
@@ -6119,7 +6182,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     }
 
     final out = StringBuffer()
-      ..writeln("# Omega AI Coach ${uiOnly ? "Redesign" : "Module"} ($mode)")
+      ..writeln("# Omi — Omega coach ${uiOnly ? "redesign" : "module"} ($mode)")
       ..writeln("")
       ..writeln("- Feature: `$feature`")
       ..writeln("- Module name: `$moduleName`")
@@ -6159,7 +6222,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     if (insights.isNotEmpty) {
       out
         ..writeln("")
-        ..writeln("## ${_tr(en: "AI insights", es: "Insights de IA")}");
+        ..writeln("## ${_tr(en: "Omi's ideas", es: "Ideas de Omi")}");
       for (final i in insights) {
         out.writeln("- $i");
       }
@@ -6356,12 +6419,12 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     );
     stdout.writeln(
       _tr(
-        en: "AI output saved to temporary file:",
-        es: "Salida de IA guardada en archivo temporal:",
-        pt: "Saida da IA salva em arquivo temporario:",
-        fr: "Sortie IA enregistree dans un fichier temporaire:",
-        it: "Output IA salvato in file temporaneo:",
-        de: "KI-Ausgabe in temporaerer Datei gespeichert:",
+        en: "Omi saved output to temporary file:",
+        es: "Omi guardó la salida en archivo temporal:",
+        pt: "Omi salvou a saida em arquivo temporario:",
+        fr: "Omi a enregistre la sortie dans un fichier temporaire:",
+        it: "Omi ha salvato l'output in un file temporaneo:",
+        de: "Omi hat die Ausgabe in einer temporaeren Datei gespeichert:",
       ),
     );
     stdout.writeln("  ${_absPath(path)}");
@@ -6402,7 +6465,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     required List<String> diagnosis,
   }) {
     final b = StringBuffer();
-    b.writeln("# Omega AI Explain ($mode)");
+    b.writeln("# Omi — Omega trace explain ($mode)");
     b.writeln("");
     b.writeln("## ${_tr(en: "Summary", es: "Resumen")}");
     b.writeln("- Trace: `$tracePath`");
@@ -6455,7 +6518,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     required String nextCommand,
   }) {
     final b = StringBuffer();
-    b.writeln("# Omega AI Coach ($mode)");
+    b.writeln("# Omi — Omega coach ($mode)");
     b.writeln("");
     b.writeln(
       "- ${_tr(en: "Feature", es: "Feature", pt: "Feature", fr: "Feature", it: "Feature", de: "Feature")}: `$feature`",
@@ -6481,7 +6544,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     }
     if (insights.isNotEmpty) {
       b.writeln("");
-      b.writeln("## ${_tr(en: "AI insights", es: "Insights de IA")}");
+      b.writeln("## ${_tr(en: "Omi's ideas", es: "Ideas de Omi")}");
       for (final item in insights) {
         b.writeln("- $item");
       }
@@ -6504,7 +6567,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     required List<String> insights,
   }) {
     final b = StringBuffer();
-    b.writeln("# Omega AI Coach Audit ($mode)");
+    b.writeln("# Omi — Omega coach audit ($mode)");
     b.writeln("");
     b.writeln("- Feature: `$feature`");
     b.writeln("- Score: `$score/100`");
@@ -6534,7 +6597,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
 
     if (insights.isNotEmpty) {
       b.writeln("");
-      b.writeln("## AI Insights");
+      b.writeln("## ${_tr(en: "Omi's ideas", es: "Ideas de Omi")}");
       for (final item in insights) {
         b.writeln("- $item");
       }
@@ -6639,12 +6702,12 @@ Future<T> runWithProgress<T>(
     if (isNullFailure) {
       stdout.writeln(
         _tr(
-          en: "$label — failed (no usable AI response).",
-          es: "$label — falló (sin respuesta usable de la IA).",
-          pt: "$label — falhou (sem resposta utilizavel da IA).",
-          fr: "$label — echec (pas de reponse IA utilisable).",
-          it: "$label — fallito (nessuna risposta IA utilizzabile).",
-          de: "$label — fehlgeschlagen (keine brauchbare KI-Antwort).",
+          en: "$label — failed (no usable response from Omi).",
+          es: "$label — falló (sin respuesta usable de Omi).",
+          pt: "$label — falhou (sem resposta utilizavel de Omi).",
+          fr: "$label — echec (pas de reponse utilisable d'Omi).",
+          it: "$label — fallito (nessuna risposta utilizzabile da Omi).",
+          de: "$label — fehlgeschlagen (keine brauchbare Antwort von Omi).",
         ),
       );
     } else {
