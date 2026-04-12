@@ -10,7 +10,7 @@
 ///   lightweight [OmegaFlowManager.registerIntentHandler] / [Omega.handle] /
 ///   [OmegaIntentReducer] / [OmegaIntentHandlerPipeline] for minimal intent-only reactions.
 /// - [OmegaScope] / [OmegaAgentScope] / [OmegaScopedAgentBuilder] /
-///   [OmegaFlowActivator] / [OmegaFlowExpressionBuilder] / [OmegaBuilder] / [OmegaInspector] /
+///   [OmegaFlowActivator] / [OmegaInitialRoute] / [OmegaInitialNavigationEmitter] / [OmegaFlowExpressionBuilder] / [OmegaBuilder] / [OmegaInspector] /
 ///   [OmegaInspectorLauncher] / [OmegaInspectorReceiver] / [OmegaInspectorServer]:
 ///   Flutter UI and in-browser Inspector.
 /// - [OmegaNavigator] / [OmegaRoute]: intent-driven navigation.
@@ -81,6 +81,7 @@ export 'omega/ui/navigation/omega_navigation_entry.dart';
 
 // UI INTEGRATION (FLUTTER)
 export 'omega/ui/flutter/omega_scope.dart';
+export 'omega/ui/flutter/omega_initial_navigation_emitter.dart';
 export 'omega/ui/flutter/omega_flow_activator.dart';
 export 'omega/ui/flutter/omega_agent_scope.dart';
 export 'omega/ui/flutter/omega_builder.dart';
@@ -91,6 +92,7 @@ export 'omega/ui/flutter/omega_inspector.dart';
 export 'omega/ui/flutter/omega_inspector_launcher.dart';
 export 'omega/ui/flutter/omega_inspector_receiver.dart';
 export 'omega/ui/flutter/omega_inspector_server.dart';
+export 'omega/ui/flutter/root_heandler_app.dart';
 
 // BOOTSTRAP
 export 'omega/bootstrap/omega_runtime.dart';

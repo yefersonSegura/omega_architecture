@@ -50,7 +50,9 @@ abstract class OmegaAgent {
   }
 
   /// Optional declarative contract: events and intents this agent is declared to handle.
-  /// In debug mode Omega warns when the agent receives something not in the contract. Override to set.
+  ///
+  /// In debug mode, Omega warns only when [behavior] would run a reaction but the name is
+  /// missing from the contract. Bus traffic that matches no rule does not print.
   /// Cached on first access so prefer returning a const or stable instance.
   OmegaAgentContract? get contract => null;
 
@@ -88,15 +90,21 @@ abstract class OmegaAgent {
   // -----------------------------------------------------------
 
   void _handleEvent(OmegaEvent event) {
+    final ctx = OmegaAgentBehaviorContext(event: event, state: state);
+    final reaction = behavior.evaluate(ctx);
     if (kDebugMode) {
       final c = _cachedContract;
-      if (c != null && !c.acceptsEvent(event.name)) {
+      if (c != null &&
+          reaction != null &&
+          !c.acceptsEvent(event.name)) {
         debugPrint(
           'OmegaAgent[$id]: received event "${event.name}" not in contract (listened: ${c.listenedEventNames}).',
         );
       }
     }
-    _evaluateBehavior(OmegaAgentBehaviorContext(event: event, state: state));
+    if (reaction != null) {
+      _executeReaction(reaction);
+    }
   }
 
   // -----------------------------------------------------------
@@ -107,19 +115,18 @@ abstract class OmegaAgent {
   ///
   /// **Example:** Flow receives intent "auth.login"; calls agent.receiveIntent(intent); agent performs login and emits events.
   void receiveIntent(OmegaIntent intent) {
+    final ctx = OmegaAgentBehaviorContext(intent: intent, state: state);
+    final reaction = behavior.evaluate(ctx);
     if (kDebugMode) {
       final c = _cachedContract;
-      if (c != null && !c.acceptsIntent(intent.name)) {
+      if (c != null &&
+          reaction != null &&
+          !c.acceptsIntent(intent.name)) {
         debugPrint(
           'OmegaAgent[$id]: received intent "${intent.name}" not in contract (accepted: ${c.acceptedIntentNames}).',
         );
       }
     }
-    _evaluateBehavior(OmegaAgentBehaviorContext(intent: intent, state: state));
-  }
-
-  void _evaluateBehavior(OmegaAgentBehaviorContext context) {
-    final reaction = behavior.evaluate(context);
     if (reaction != null) {
       _executeReaction(reaction);
     }

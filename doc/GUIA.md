@@ -301,7 +301,7 @@ flowManager.handleIntent(OmegaIntent.fromName(AppIntent.authLogin, payload: cred
 
 ### OmegaScope (inyección en Flutter)
 
-**Qué hace:** Widget que pone el `OmegaChannel` y el `OmegaFlowManager` (y opcionalmente `initialFlowId`) en el árbol. Cualquier hijo hace `OmegaScope.of(context)` para acceder al canal y al manager.
+**Qué hace:** Widget que pone el `OmegaChannel` y el `OmegaFlowManager` (y opcionalmente `initialFlowId` / `initialNavigationIntent` para [OmegaInitialRoute]) en el árbol. Cualquier hijo hace `OmegaScope.of(context)` para acceder al canal y al manager.
 
 **Ejemplo:**
 
@@ -489,7 +489,9 @@ channel.emit(OmegaEvent.fromName(
 
 ### OmegaRuntime (arranque)
 
-**Qué hace:** Crea el canal, el config (agentes, flows, rutas), registra todo y devuelve el runtime. La app usa `runtime.channel`, `runtime.flowManager`, `runtime.navigator` y `runtime.initialFlowId` para montar OmegaScope y el MaterialApp.
+**Qué hace:** Crea el canal, el config (agentes, flows, rutas), registra todo y devuelve el runtime. La app usa `runtime.channel`, `runtime.flowManager`, `runtime.navigator`, `runtime.initialFlowId` y opcionalmente **`runtime.initialNavigationIntent`** para montar OmegaScope y el MaterialApp.
+
+`initialFlowId` solo activa el flow en el árbol ([OmegaFlowActivator]); **no** elige la primera [OmegaRoute]. Para la ruta inicial: en `OmegaConfig` pon **`initialNavigationIntent:`** `OmegaIntent.fromName(AppIntent.navigateLogin)` (alineado con `OmegaRoute(id: …)`), pasa **`initialNavigationIntent: runtime.initialNavigationIntent`** en **[OmegaScope]** y usa **`home: OmegaInitialRoute(child: …)`** en el `MaterialApp` (lee el intent del scope; sin parámetros extra en tu `MyApp`). Alternativa: [OmegaInitialNavigationEmitter] con `intent:` explícito.
 
 **Ejemplo:**
 
@@ -501,6 +503,7 @@ void main() {
       channel: runtime.channel,
       flowManager: runtime.flowManager,
       initialFlowId: runtime.initialFlowId,
+      initialNavigationIntent: runtime.initialNavigationIntent,
       child: MyApp(navigator: runtime.navigator),
     ),
   );
@@ -568,7 +571,7 @@ El proyecto incluye un **example** (carpeta `example/`) con login, navegación a
 - `example/lib/omega/omega_setup.dart` — Config, agentes, flows, rutas (incluida `OmegaRoute.typed<LoginSuccessPayload>` para home).
 - `example/lib/auth/auth_flow.dart` — Flow que reacciona a intents y eventos y navega con payload. **Implementa contrato** (`OmegaFlowContract`): eventos e intents declarados; en debug Omega avisa si llega algo no declarado.
 - `example/lib/auth/auth_agent.dart` — Agente que hace login y emite éxito/error. **Implementa contrato** (`OmegaAgentContract`). Referencia principal para ver contratos en uso.
-- `example/lib/main.dart` — `_RootHandler` usa [OmegaFlowActivator] con `useSwitchTo: true` y `initialFlowId` en lugar de `switchTo` manual en el callback.
+- `example/lib/main.dart` — [OmegaScope] con `initialNavigationIntent`; `MaterialApp.home` = [OmegaInitialRoute] + `_RootHandler` con [OmegaFlowActivator] (`useSwitchTo: true`, `initialFlowId`).
 - `example/lib/home/home.dart` — [OmegaFlowActivator] para `ordersFlow` antes de `handleIntent` del botón de pedido.
 - `example/lib/auth/ui/auth_page.dart` — UI que emite intents y escucha expresiones; [OmegaFlowActivator] para `authFlow`.
 - `example/lib/home/home.dart` — Pantalla que recibe `LoginSuccessPayload?` por la ruta tipada.

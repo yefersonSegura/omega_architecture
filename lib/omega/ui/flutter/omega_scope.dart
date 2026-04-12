@@ -2,6 +2,7 @@
 
 import 'package:flutter/widgets.dart';
 import 'package:omega_architecture/omega/core/channel/omega_channel.dart';
+import 'package:omega_architecture/omega/core/semantics/omega_intent.dart';
 import 'package:omega_architecture/omega/flows/omega_flow_manager.dart';
 
 /// Dependency container: exposes [channel] and [flowManager] to the whole UI via inheritance.
@@ -9,7 +10,7 @@ import 'package:omega_architecture/omega/flows/omega_flow_manager.dart';
 /// **Why use it:** Screens need the channel to emit events and the flowManager for
 /// [handleIntent] and [getFlow]. By wrapping the app with OmegaScope, any child can use [OmegaScope.of].
 ///
-/// **Example:** `OmegaScope(channel: r.channel, flowManager: r.flowManager, initialFlowId: r.initialFlowId, child: MaterialApp(...));`
+/// **Example:** `OmegaScope(channel: r.channel, flowManager: r.flowManager, initialFlowId: r.initialFlowId, initialNavigationIntent: r.initialNavigationIntent, child: MaterialApp(home: OmegaInitialRoute(child: ...)));`
 class OmegaScope extends InheritedWidget {
   /// Event channel. For emitting or listening to events from the UI.
   final OmegaChannel channel;
@@ -21,11 +22,15 @@ class OmegaScope extends InheritedWidget {
   /// For per-screen activation without repeating that in [State.didChangeDependencies], use [OmegaFlowActivator].
   final String? initialFlowId;
 
+  /// First navigation intent for [OmegaInitialRoute] (usually `runtime.initialNavigationIntent` from [OmegaConfig]).
+  final OmegaIntent? initialNavigationIntent;
+
   const OmegaScope({
     super.key,
     required this.channel,
     required this.flowManager,
     this.initialFlowId,
+    this.initialNavigationIntent,
     required super.child,
   });
 
@@ -43,6 +48,7 @@ class OmegaScope extends InheritedWidget {
   bool updateShouldNotify(OmegaScope oldWidget) {
     return channel != oldWidget.channel ||
         flowManager != oldWidget.flowManager ||
-        initialFlowId != oldWidget.initialFlowId;
+        initialFlowId != oldWidget.initialFlowId ||
+        initialNavigationIntent != oldWidget.initialNavigationIntent;
   }
 }

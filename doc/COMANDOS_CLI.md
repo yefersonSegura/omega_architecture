@@ -36,7 +36,7 @@ dart run omega_architecture:omega ai --help
 | `g ecosystem <Nombre>` | Genera agente, flow, behavior y página; **actualiza** `lib/omega/app_runtime_ids.dart` (debe existir: `omega init`); registra en `omega_setup`. |
 | `g agent <Nombre>` | Solo agente + behavior. |
 | `g flow <Nombre>` | Solo flow. |
-| `validate [ruta]` | Valida `omega_setup` (estructura, ids duplicados, rutas vs `*Page`). |
+| `validate [ruta]` | Valida `omega_setup` (estructura, **mismo `id:` en dos `OmegaRoute`**, **misma variable dos veces en `agents:`**, **mismo `*Flow` repetido en `flows:`**), rutas vs `*Page`). |
 | `trace view <archivo.json>` | Resumen de una traza grabada. |
 | `trace validate <archivo.json>` | Valida el JSON; código de salida 0/1. |
 | `doctor [ruta]` | Salud del proyecto (setup, conteos, sugerencias de contratos). |
@@ -93,7 +93,7 @@ dart run omega_architecture:omega g flow Profile
 
 ### `validate`
 
-Analiza `omega_setup.dart` y coherencia con páginas (`*Page` y parámetro `agent` en rutas). Opcionalmente una ruta inicial de búsqueda.
+Analiza `lib/omega/omega_setup.dart` y coherencia con páginas (`*Page` y parámetro `agent` en rutas). Opcionalmente una carpeta inicial de búsqueda (monorepo). Falla si hay **dos rutas con el mismo `OmegaRoute(id: …)`**, si en `agents: <OmegaAgent>[...]` aparece **dos veces la misma variable** (p. ej. `orderManagementAgent` duplicado) o **dos constructores `FooAgent(channel)`** del mismo módulo, o si en `flows:` hay **dos líneas del mismo `FooFlow(...)`**.
 
 ```bash
 dart run omega_architecture:omega validate

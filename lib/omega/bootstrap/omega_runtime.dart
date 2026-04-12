@@ -1,10 +1,11 @@
 import 'package:omega_architecture/omega/agents/protocol/omega_agent_protocol.dart';
 import 'package:omega_architecture/omega/bootstrap/omega_config.dart';
 import 'package:omega_architecture/omega/core/channel/omega_channel.dart';
+import 'package:omega_architecture/omega/core/semantics/omega_intent.dart';
 import 'package:omega_architecture/omega/flows/omega_flow_manager.dart';
 import 'package:omega_architecture/omega/ui/navigation/omega_navigator.dart';
 
-/// Result of bootstrap: channel, flowManager, protocol, navigator and optionally [initialFlowId].
+/// Result of bootstrap: channel, flowManager, protocol, navigator and optionally [initialFlowId] / [initialNavigationIntent].
 ///
 /// **Why use it:** Single creation point; agents, flows and navigator share the same channel.
 ///
@@ -18,12 +19,16 @@ class OmegaRuntime {
   /// Id of the flow to activate on startup. On first frame: flowManager.switchTo(initialFlowId).
   final String? initialFlowId;
 
+  /// Copy of [OmegaConfig.initialNavigationIntent]; pass to [OmegaScope.initialNavigationIntent] + [OmegaInitialRoute].
+  final OmegaIntent? initialNavigationIntent;
+
   OmegaRuntime._(
     this.channel,
     this.flowManager,
     this.protocol,
     this.navigator,
     this.initialFlowId,
+    this.initialNavigationIntent,
   );
 
   /// Creates channel, config (with your createConfig), flowManager, protocol, navigator; registers agents, flows and routes; connects navigator to the channel; then runs [OmegaConfig.intentHandlerRegistrars].
@@ -65,6 +70,7 @@ class OmegaRuntime {
       protocol,
       navigator,
       config.initialFlowId,
+      config.initialNavigationIntent,
     );
   }
 }

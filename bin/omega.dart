@@ -95,33 +95,97 @@ class _OmegaAiRemote {
     return s;
   }
 
-  /// JSON allows `\"`, `\\`, `\n`, … but **not** `\$`. Models often put Dart like
-  /// `'Total: \$${x}'` inside JSON string values, which makes [jsonDecode] throw.
-  /// Replaces invalid `\$` with valid `\\$` (decoded string keeps `\` + `$`).
-  /// Preserves existing valid `\\$` sequences via a placeholder.
+  /// Makes AI-returned JSON decodable when the model pastes Dart into string values:
+  /// - JSON allows `\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t`, `\uXXXX` only after `\`.
+  /// - **Invalid** escapes (`\$`, `\ `, `\e`, trailing `\` before closing `"`, etc.) break
+  /// [jsonDecode]; this pass **doubles the backslash** so the payload becomes a literal `\`
+  /// plus the following character in the decoded Dart string (same idea as the old `\$` fix).
+  ///
+  /// Only treats escapes **inside** JSON `"..."` strings so `{` `}` outside strings are untouched.
   static String sanitizeAiJsonTextForDecode(String text) {
-    const tok = '\uE000OMEGA_JSON_BS_DOLLAR\uE000';
     final out = StringBuffer();
-    for (var i = 0; i < text.length; i++) {
-      final c0 = text.codeUnitAt(i);
-      if (i + 2 < text.length &&
-          c0 == 0x5c &&
-          text.codeUnitAt(i + 1) == 0x5c &&
-          text.codeUnitAt(i + 2) == 0x24) {
-        out.write(tok);
+    var inString = false;
+    var i = 0;
+    while (i < text.length) {
+      final c = text.codeUnitAt(i);
+      if (!inString) {
+        if (c == 0x22) {
+          inString = true;
+        }
+        out.writeCharCode(c);
+        i++;
+        continue;
+      }
+      if (c == 0x22) {
+        if (_jsonQuoteEscapedByBackslash(text, i)) {
+          out.writeCharCode(c);
+          i++;
+          continue;
+        }
+        inString = false;
+        out.writeCharCode(c);
+        i++;
+        continue;
+      }
+      if (c != 0x5c) {
+        out.writeCharCode(c);
+        i++;
+        continue;
+      }
+      if (i + 1 >= text.length) {
+        out.write(r'\\');
+        i++;
+        break;
+      }
+      final n = text.codeUnitAt(i + 1);
+      if (n == 0x75 && _jsonUnicodeEscapeOk(text, i + 2)) {
+        out.write(text.substring(i, i + 6));
+        i += 6;
+        continue;
+      }
+      if (n == 0x22 ||
+          n == 0x5c ||
+          n == 0x2f ||
+          n == 0x62 ||
+          n == 0x66 ||
+          n == 0x6e ||
+          n == 0x72 ||
+          n == 0x74) {
+        out.writeCharCode(c);
+        out.writeCharCode(n);
         i += 2;
         continue;
       }
-      if (i + 1 < text.length &&
-          c0 == 0x5c &&
-          text.codeUnitAt(i + 1) == 0x24) {
-        out.write(r'\\' r'$');
-        i += 1;
-        continue;
-      }
-      out.writeCharCode(c0);
+      out.write(r'\\');
+      out.writeCharCode(n);
+      i += 2;
     }
-    return out.toString().replaceAll(tok, r'\\' r'$');
+    return out.toString();
+  }
+
+  static bool _jsonQuoteEscapedByBackslash(String text, int quoteIndex) {
+    var count = 0;
+    for (var j = quoteIndex - 1; j >= 0 && text.codeUnitAt(j) == 0x5c; j--) {
+      count++;
+    }
+    return count.isOdd;
+  }
+
+  static bool _jsonUnicodeEscapeOk(String text, int hexStart) {
+    if (hexStart + 4 > text.length) return false;
+    for (var k = 0; k < 4; k++) {
+      if (!_jsonHexDigit(text.codeUnitAt(hexStart + k))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static bool _jsonHexDigit(int u) {
+    if (u >= 0x30 && u <= 0x39) return true;
+    if (u >= 0x41 && u <= 0x46) return true;
+    if (u >= 0x61 && u <= 0x66) return true;
+    return false;
   }
 
   static String? _extractOpenAiContent(dynamic decoded) {
@@ -429,7 +493,7 @@ void printHelp() {
     "  g flow <Name>        Flow only; updates AppFlowId in app_runtime_ids.dart (needs *_agent.dart)",
   );
   stdout.writeln(
-    "  validate             Check omega_setup.dart (structure, duplicate ids, routes vs *Page agent)",
+    "  validate             Check omega_setup.dart (structure, duplicate route id / agent ref / flow ctor, routes vs *Page agent)",
   );
   stdout.writeln(
     "  trace [view|validate] [file]  Inspect or validate a recorded trace file (JSON)",
@@ -692,19 +756,34 @@ class OmegaCreateAppCommand {
 
     final initialFlowId = initialModule != null ? "'$initialModule'" : "null";
     mainFile.writeAsStringSync('''
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 import 'omega/omega_setup.dart';
 
-void main() {
-  final runtime = OmegaRuntime.bootstrap(
-    (OmegaChannel channel) => createOmegaConfig(channel),
-  );
+void main() async {
+  if (kIsWeb && Uri.base.queryParameters['omega_inspector'] == '1') {
+    runApp(
+      MaterialApp(
+        title: 'Omega Inspector',
+        theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange)),
+        home: const OmegaInspectorReceiver(),
+      ),
+    );
+    return;
+  }
+
+  final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
+  if (kDebugMode && !kIsWeb) {
+    await OmegaInspectorServer.start(runtime.channel, runtime.flowManager);
+  }
+
   runApp(
     OmegaScope(
       channel: runtime.channel,
       flowManager: runtime.flowManager,
       initialFlowId: $initialFlowId,
+      initialNavigationIntent: runtime.initialNavigationIntent,
       child: OmegaApp(navigator: runtime.navigator),
     ),
   );
@@ -712,6 +791,7 @@ void main() {
 
 class OmegaApp extends StatelessWidget {
   final OmegaNavigator navigator;
+
   const OmegaApp({super.key, required this.navigator});
 
   @override
@@ -723,57 +803,9 @@ class OmegaApp extends StatelessWidget {
         useMaterial3: true,
       ),
       navigatorKey: navigator.navigatorKey,
-      // Same pattern as package example/lib/main.dart: use [home] so Flutter does not
-      // request route "/" (Omega routes are ids like "login", "Home", not "/").
       onGenerateRoute: navigator.onGenerateRoute,
-      home: const _OmegaAppRoot(),
-    );
-  }
-}
-
-/// Boots the initial flow and opens the first screen via [navigationIntentEvent],
-/// matching [example/lib/main.dart] (_RootHandler).
-class _OmegaAppRoot extends StatefulWidget {
-  const _OmegaAppRoot();
-
-  @override
-  State<_OmegaAppRoot> createState() => _OmegaAppRootState();
-}
-
-class _OmegaAppRootState extends State<_OmegaAppRoot> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final scope = OmegaScope.of(context);
-      final flowId = scope.initialFlowId;
-      if (flowId != null) {
-        scope.flowManager.switchTo(flowId);
-        scope.channel.emit(
-          OmegaEvent(
-            id: 'omega:initial-nav',
-            name: navigationIntentEvent,
-            payload: OmegaIntent(
-              id: 'omega:initial-nav-intent',
-              name: 'navigate.\$flowId',
-            ),
-          ),
-        );
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasBootTarget = OmegaScope.of(context).initialFlowId != null;
-    return Scaffold(
-      body: Center(
-        child: hasBootTarget
-            ? const CircularProgressIndicator()
-            : const Text(
-                'Omega is running. Add flows and routes in lib/omega/omega_setup.dart.',
-              ),
+      home: OmegaInitialRoute(
+        child: const RootHandler(showInspector: true),
       ),
     );
   }
@@ -818,6 +850,8 @@ void main() {
       OmegaScope(
         channel: runtime.channel,
         flowManager: runtime.flowManager,
+        initialFlowId: runtime.initialFlowId,
+        initialNavigationIntent: runtime.initialNavigationIntent,
         child: OmegaApp(navigator: runtime.navigator),
       ),
     );
@@ -1492,12 +1526,14 @@ RULES:
 1. Return ONE JSON object: keys = project-relative paths with forward slashes (e.g. "lib/omega/omega_setup.dart"), values = FULL fixed file content as strings.
 2. Include every file you changed; you may include only files that need edits.
 3. Preserve public API names (classes, flow ids) unless the error requires a fix.
+4. omega_setup.dart: if you output it, ensure **no duplicate** `OmegaRoute(id: 'SameId', ...)` entries, **no duplicate** same agent variable in `agents:`, and **no duplicate** identical `*Flow(...)` constructor lines — keep one registration per module/route.
 
 OMEGA API (concise — full master checklist omitted here; follow roles + rules below + PACKAGE GROUND TRUTH):
 ${OmegaAiCommand._omegaAiRolesFlowAgentBehavior}
 ${OmegaAiCommand._omegaAiHealPromptCompactOmega}
 ${OmegaAiCommand._omegaAiOmegaChannelEvents}
 ${OmegaAiCommand._omegaAiNavigationChannelEmit}
+${OmegaAiCommand._omegaAiMainDartEntry}
 ${OmegaAiCommand._omegaAiAgentUiStateListening}
 ${OmegaAiCommand._omegaAiFlowActivatorAndFlowManager}
 ${OmegaAiCommand._omegaAiScreenEntryDataLoad}
@@ -2839,34 +2875,85 @@ class OmegaValidateCommand {
       ok = false;
     }
 
-    // Duplicate ids: find all XAgent(channel) / XAgent(channel: channel) and XFlow(...)
-    final agentReg = RegExp(
+    // Duplicates: scope to agents:/flows:/routes: list bodies (AI often repeats variable or id:).
+    final agentsBlock = RegExp(
+      r'agents:\s*<OmegaAgent>\s*\[([\s\S]*?)\]\s*[,)]',
+      multiLine: true,
+    ).firstMatch(content);
+    final flowsBlock = RegExp(
+      r'flows:\s*<OmegaFlow>\s*\[([\s\S]*?)\]\s*[,)]',
+      multiLine: true,
+    ).firstMatch(content);
+    final routesBlock = RegExp(
+      r'routes:\s*<OmegaRoute>\s*\[([\s\S]*?)\]\s*[,)]',
+      multiLine: true,
+    ).firstMatch(content);
+
+    final agentCtorReg = RegExp(
       r"(\w+)Agent\s*\(\s*(?:channel\s*:\s*)?channel\s*[,\)]",
     );
-    final flowReg = RegExp(r"(\w+)Flow\s*\(\s*[^)]*channel[^)]*\)");
-    final agentMatches = agentReg.allMatches(content);
-    final flowMatches = flowReg.allMatches(content);
+    final flowCtorReg = RegExp(r"(\w+)Flow\s*\(\s*[^)]*channel[^)]*\)");
+    final routeIdReg = RegExp(
+      r'''OmegaRoute(?:\.typed<[^>]+>)?\(\s*id:\s*['"]([^'"]+)['"]''',
+    );
+
     final agentNames = <String>[];
     final flowNames = <String>[];
-    for (final m in agentMatches) {
-      agentNames.add(m.group(1)!);
+    final routeIds = <String>[];
+
+    if (agentsBlock != null) {
+      final inner = agentsBlock.group(1)!;
+      for (final m in agentCtorReg.allMatches(inner)) {
+        agentNames.add(m.group(1)!);
+      }
+      final agentListRefs = _omegaSetupListCommaEntries(inner);
+      final dupAgentRefs = _duplicates(agentListRefs);
+      if (dupAgentRefs.isNotEmpty) {
+        _err(
+          "Duplicate entries in agents: list: ${dupAgentRefs.join(", ")}.",
+        );
+        stdout.writeln(
+          "  Each agent variable must appear once in agents: <OmegaAgent>[...] "
+          "(e.g. remove the second orderManagementAgent).",
+        );
+        ok = false;
+      }
     }
-    for (final m in flowMatches) {
-      flowNames.add(m.group(1)!);
+    if (flowsBlock != null) {
+      final inner = flowsBlock.group(1)!;
+      for (final m in flowCtorReg.allMatches(inner)) {
+        flowNames.add(m.group(1)!);
+      }
     }
+    if (routesBlock != null) {
+      final inner = routesBlock.group(1)!;
+      for (final m in routeIdReg.allMatches(inner)) {
+        routeIds.add(m.group(1)!);
+      }
+    }
+
     final duplicateAgents = _duplicates(agentNames);
     final duplicateFlows = _duplicates(flowNames);
+    final duplicateRouteIds = _duplicates(routeIds);
+
     if (duplicateAgents.isNotEmpty) {
-      _err("Duplicate agent registration: ${duplicateAgents.join(", ")}.");
+      _err("Duplicate *Agent(channel) constructor in agents: block: ${duplicateAgents.join(", ")}.");
       stdout.writeln(
-        "  Remove duplicate XAgent(channel / channel: channel) from omega_setup.dart.",
+        "  Only one `FooAgent(channel)` per module inside agents: <OmegaAgent>[...].",
       );
       ok = false;
     }
     if (duplicateFlows.isNotEmpty) {
-      _err("Duplicate flow registration: ${duplicateFlows.join(", ")}.");
+      _err("Duplicate *Flow(...) in flows: block: ${duplicateFlows.join(", ")}.");
       stdout.writeln(
-        "  Remove duplicate XFlow(channel) from omega_setup.dart.",
+        "  Only one `FooFlow(...)` registration per flow id inside flows: <OmegaFlow>[...].",
+      );
+      ok = false;
+    }
+    if (duplicateRouteIds.isNotEmpty) {
+      _err("Duplicate OmegaRoute id: ${duplicateRouteIds.join(", ")}.");
+      stdout.writeln(
+        "  Each OmegaRoute(id: ...) must be unique — matches navigate.* / OmegaNavigator lookup.",
       );
       ok = false;
     }
@@ -2883,7 +2970,7 @@ class OmegaValidateCommand {
       stdout.writeln("Valid.");
       stdout.writeln("  File: ${_absPath(setupPath)}");
       stdout.writeln(
-        "  Agents: ${agentNames.length}, Flows: ${flowNames.length}",
+        "  Agents: ${agentNames.length}, Flows: ${flowNames.length}, Routes: ${routeIds.length}",
       );
     } else {
       stdout.writeln("");
@@ -2939,6 +3026,24 @@ class OmegaValidateCommand {
       );
     }
     return issues;
+  }
+
+  /// Comma-split entries in `agents:` / `flows:` list inner text; keeps only **single-token**
+  /// references (e.g. `orderManagementAgent`) so duplicate variable lines are detected.
+  static List<String> _omegaSetupListCommaEntries(String inner) {
+    final out = <String>[];
+    for (final part in inner.split(',')) {
+      var t = part.trim();
+      final c = t.indexOf('//');
+      if (c >= 0) {
+        t = t.substring(0, c).trim();
+      }
+      if (t.isEmpty) continue;
+      if (RegExp(r'^\w+$').hasMatch(t)) {
+        out.add(t);
+      }
+    }
+    return out;
   }
 
   static List<String> _duplicates(List<String> list) {
@@ -3243,7 +3348,7 @@ class OmegaAiCommand {
   /// **User prompt:** mental model of Omega (scope vs channel vs flows vs agents). Reduces invented APIs.
   static const String _omegaAiConceptualArchitecture = r'''
 CONCEPT — how Omega is wired (read first; avoids inventing APIs from other frameworks):
-- **OmegaScope** is intentionally minimal: only **`channel`** ([OmegaEventBus]), **`flowManager`** ([OmegaFlowManager]), **`initialFlowId`**. It is **not** a service locator: there is **no** `agentManager`, **no** `getAgent`, **no** `repositories` on scope. Anything else your app needs (HTTP clients, DB, extra repos) lives in **your** classes and is passed through **constructors** from `createOmegaConfig` / routes / flow fields — never “discovered” via a fake scope API.
+- **OmegaScope** is intentionally minimal: **`channel`**, **`flowManager`**, **`initialFlowId`**, optional **`initialNavigationIntent`** (for [OmegaInitialRoute]). It is **not** a service locator: there is **no** `agentManager`, **no** `getAgent`, **no** `repositories` on scope. Anything else your app needs (HTTP clients, DB, extra repos) lives in **your** classes and is passed through **constructors** from `createOmegaConfig` / routes / flow fields — never “discovered” via a fake scope API.
 - **Two lanes from the UI:** (1) **`flowManager.handleIntent(OmegaIntent.fromName(...))`** — delivers to **running** [OmegaFlow]s and optional intent-handlers; good for **wizard / flow steps** that the flow’s `onIntent` handles. (2) **`channel.emit(OmegaEvent.fromName(...))` / `emitTyped(...)`** — **broadcast**; **agents** (behavior → `onAction`) and **flows** (`onEvent`) listen here; **OmegaNavigator** listens for **`navigation.intent`**. Domain “load list / refresh” tied to `ctx.event` belongs here, not only `handleIntent`.
 - **Where agents come from:** one shared **instance per module** registered in [OmegaConfig] and wired into **flows** (`agent:` ctor) and/or **routes** (`OmegaAgentScope`, or `required this.agent` on the page). Widgets use **`OmegaAgentBuilder(agent: …)`** or **`OmegaScopedAgentBuilder`** (two-arg builder). You **cannot** obtain an agent by string id from `flowManager` or `OmegaScope` — those methods do not exist by design.
 - **Why invention fails:** every method you add in generated code must already exist on a type from **`package:omega_architecture/omega_architecture.dart`**. If you cannot point to it in PACKAGE GROUND TRUTH or that export, **do not emit it** — mirror `example/lib/auth/*` + `omega_setup.dart` instead.
@@ -3290,7 +3395,7 @@ OMEGA — OmegaFlowActivator + OmegaFlowManager (exact API from package — neve
 - **OmegaFlowActivator** (`omega_flow_activator.dart`): constructor allows ONLY `key`, **`flowId`** ([String] or [OmegaFlowId] e.g. `AppFlowId.myModule`), **`child`** ([Widget]), optional **`useSwitchTo`** (bool — default calls [activate]; if true calls [switchTo]). Implementation runs [activate]/[switchTo] once inside [didChangeDependencies]. **FORBIDDEN:** `onActivate`, `onReady`, `onFlowReady`, `builder`, or any callback that receives [OmegaFlowManager] — those parameters **do not exist**. WRONG: `OmegaFlowActivator(flowId: x, onActivate: (fm) { ... }, child: ...)`.
 - **OmegaFlowManager** (`omega_flow_manager.dart`): UI/flow integration uses **`registerFlow`**, **`getFlow`** / **`getFlowFlexible`**, **`activate`**, **`activateExclusive`**, **`switchTo`**, **`handleIntent`**, optional **`registerIntentHandler`** / **`clearIntentHandlers`**, snapshot APIs (`getFlowSnapshot`, `getAppSnapshot`, `restoreFromSnapshot`), **`registeredFlowIds`**, **`activeFlowId`**, **`channel`**. **FORBIDDEN:** **`getAgent`**, **`getAgent<T>`**, **`agents`**, **`findAgent`**, or any API that returns an [OmegaAgent] from the manager — **not in the package**. Agents are registered in [OmegaConfig.agents], held on flow fields, and exposed to widgets via [OmegaAgentScope] / [OmegaFlow.uiScopeAgent] + [OmegaScopedAgentBuilder] or [OmegaAgentBuilder(agent: ...)].
 - **Never** `flowManager.getAgent(...).viewStateStream` or similar. To react to agent loading: use [OmegaScopedAgentBuilder]/[OmegaAgentBuilder] and read `state.isLoading`, or `StreamBuilder` on `agent.stateStream` with `initialData: agent.viewState` when you already have an `agent` reference (see `_omegaAiAgentUiStateListening`).
-- **OmegaScope** (`omega_scope.dart`): ONLY **`channel`**, **`flowManager`**, **`initialFlowId`**. **FORBIDDEN (invented — does not compile):** `scope.agentManager`, **`scope.agentManager.getAgent('ModuleName')`**, `scope.getAgent<T>(...)`, or any “registry” on scope. WRONG: `_buildProfileForm(context, state, scope.agentManager.getAgent('UserManagement') as UserManagementAgent)`. RIGHT: pass `UserManagementAgent` via `required this.agent` on the page + [OmegaAgentBuilder], or [OmegaAgentScope] + [OmegaScopedAgentBuilder], or [OmegaFlowExpressionBuilder] + flow [uiScopeAgent] (see package examples).
+- **OmegaScope** (`omega_scope.dart`): **`channel`**, **`flowManager`**, **`initialFlowId`**, optional **`initialNavigationIntent`**. **FORBIDDEN (invented — does not compile):** `scope.agentManager`, **`scope.agentManager.getAgent('ModuleName')`**, `scope.getAgent<T>(...)`, or any “registry” on scope. WRONG: `_buildProfileForm(context, state, scope.agentManager.getAgent('UserManagement') as UserManagementAgent)`. RIGHT: pass `UserManagementAgent` via `required this.agent` on the page + [OmegaAgentBuilder], or [OmegaAgentScope] + [OmegaScopedAgentBuilder], or [OmegaFlowExpressionBuilder] + flow [uiScopeAgent] (see package examples).
 ''';
 
   /// **User prompt:** bus = `OmegaEvent` only; typed payloads via `payloadAs`; explains why `event is MyTypedEvent` fails.
@@ -3324,6 +3429,17 @@ OMEGA — NAVIGATION FROM A BUTTON (channel + OmegaNavigator — copy this shape
 - **Inner intent:** **`OmegaIntent.fromName(AppIntent.someMember)`** — argument is always an **enum value** implementing [OmegaIntentName]. **FORBIDDEN:** `OmegaIntent.fromName('navigate.home')`, `OmegaIntent.fromName("navigate.x")`, `OmegaIntent.fromName(\`navigate.home\`)`, or comments saying “placeholder string” — those are **not valid Dart** for this API and will not type-check.
 - **FORBIDDEN:** `OmegaIntent.fromName(MyIntent.start.name)` or any `.name` as the first argument — pass **`MyIntent.start`** (the enum constant), not a String.
 - **Module outer + app inner:** only if you intentionally wrap with your module’s `*Event.navigationIntent`; inner payload is still `OmegaIntent.fromName(AppIntent....)` with a real `AppIntent` case.
+- **Startup screen:** `OmegaConfig.initialFlowId` activates a flow only; it does **not** push an `OmegaRoute`. Set **`OmegaConfig.initialNavigationIntent:`** `OmegaIntent.fromName(AppIntent.navigateLogin)` (wire must match `OmegaRoute(id: ...)`), put **`initialNavigationIntent: runtime.initialNavigationIntent`** on **[OmegaScope]**, and set **`MaterialApp.home: OmegaInitialRoute(child: ...)`** (reads intent from scope — package example + `omega create app` template). Use **`OmegaInitialNavigationEmitter`** only when you must pass `intent:` explicitly without scope.
+''';
+
+  /// **User prompt:** canonical `lib/main.dart` — mirror **example/lib/main.dart** (PACKAGE GROUND TRUTH).
+  static const String _omegaAiMainDartEntry = r'''
+OMEGA — lib/main.dart (entrypoint — copy package example/lib/main.dart line-for-line structure; do not invent):
+- **Imports:** `package:flutter/foundation.dart`, `package:flutter/material.dart`, `package:omega_architecture/omega_architecture.dart`, `import 'omega/omega_setup.dart';` (relative from `lib/main.dart`). **FORBIDDEN:** `package:omega_architecture/omega/...` internal paths.
+- **main() async:** (1) If `kIsWeb && Uri.base.queryParameters['omega_inspector'] == '1'`, `runApp(MaterialApp(..., home: const OmegaInspectorReceiver())); return;` (2) `final runtime = OmegaRuntime.bootstrap(createOmegaConfig);` where `createOmegaConfig` is `OmegaConfig Function(OmegaChannel)` from `omega_setup.dart`. (3) Optional VM inspector: `if (kDebugMode && !kIsWeb) { await OmegaInspectorServer.start(runtime.channel, runtime.flowManager); }` (4) `runApp(OmegaScope(channel: runtime.channel, flowManager: runtime.flowManager, initialFlowId: runtime.initialFlowId, initialNavigationIntent: runtime.initialNavigationIntent, child: MyApp(navigator: runtime.navigator)));`
+- **MyApp:** `StatelessWidget` with `final OmegaNavigator navigator`; `MaterialApp(navigatorKey: navigator.navigatorKey, title: ..., theme: ..., home: OmegaInitialRoute(child: const RootHandler(showInspector: true)));` — **`OmegaInitialRoute`** reads startup navigation from **[OmegaScope.initialNavigationIntent]** (set from `runtime`); do **not** pass `OmegaIntent?` through `MyApp` constructors. **`RootHandler`** (exported from `omega_architecture`) wraps **[OmegaFlowActivator]** + debug AppBar; use **`showInspector: true`** when you want **[OmegaInspectorLauncher]** on web in debug. Use **`RootHandler(wrapWithScaffold: false)`** when each route provides its own `Scaffold`.
+- **FORBIDDEN:** `MaterialApp` with only `initialRoute: '/'` / `routes: {'/': ...}` as the sole Omega shell — registered [OmegaRoute] ids are not `/`. Use `home:` + [OmegaNavigator] + [OmegaInitialRoute].
+- **FORBIDDEN:** hand-rolled `_RootHandler` + `WidgetsBinding.instance.addPostFrameCallback` to emit the first `navigation.intent` if [OmegaConfig.initialNavigationIntent] + [OmegaInitialRoute] already define startup navigation (duplicate or races).
 ''';
 
   /// **User prompt:** `viewState` + streams drive rebuilds; typedef is `(context, state)` — not Provider’s multi-arg builders.
@@ -3469,13 +3585,13 @@ Cross-file rules:
 Purpose: Build Flutter UI; subscribe to flow.expressions and/or OmegaAgentBuilder (or scoped helpers).
 Must include:
 - `flutter/material.dart`, `omega_architecture`, `../<lower>_events.dart`; if Page has `required <Module>Agent agent` or OmegaAgentBuilder<<Module>Agent,...> or OmegaScopedAgentBuilder<<Module>Agent,...> then `../<lower>_agent.dart`.
-- Obtain scope: `OmegaScope.of(context)` — only .channel, .flowManager, .initialFlowId.
+- Obtain scope: `OmegaScope.of(context)` — .channel, .flowManager, .initialFlowId, .initialNavigationIntent.
 - Flow-driven UI: prefer `OmegaFlowExpressionBuilder(flowId: 'FLOW_ID', builder: (context, exp) => ...)` OR `getFlow('FLOW_ID')` + `StreamBuilder<OmegaFlowExpression>(stream: flow!.expressions, ...)` (same FLOW_ID as Flow super(id:)). If the builder nests `OmegaScopedAgentBuilder`, set Flow `uiScopeAgent` + shared agent in omega_setup (see section 4).
 - Entry: wrap route with `OmegaFlowActivator(flowId: 'FLOW_ID', child: ...)` (only those ctor args + optional `useSwitchTo` — **no** `onActivate` or other callbacks) OR once `activate('FLOW_ID')` in didChangeDependencies; then EITHER `handleIntent(OmegaIntent.fromName(<Module>Intent.${lower}Start))` OR `channel.emit(OmegaEvent.fromName(<Module>Event.${lower}Requested))` — must match what behavior/flow listen to (see SCREEN ENTRY rules).
 - Agent-driven lists: EITHER `OmegaAgentScope` at route + `OmegaScopedAgentBuilder` OR `OmegaFlowExpressionBuilder` + `OmegaScopedAgentBuilder` with Flow `uiScopeAgent` OR classic `OmegaAgentBuilder(..., agent: widget.agent, ...)` — **builder closure: `(BuildContext, TState)` only** (same as typedef `OmegaAgentWidgetBuilder`); never construct a new Agent in build(); never Provider-style `(context, agent, state, child)`.
 - Navigator: `channel.emit(OmegaEvent.fromName(...navigationIntent..., payload: OmegaIntent.fromName(...)))` — not handleIntent alone for navigate.*.
 - Reactive wait: use `agent.stateStream` / `viewStateStream` (same stream); remember broadcast does not replay current viewState.
-Forbidden: `scope.agentManager`, `scope.agentManager.getAgent(...)`, `scope.getAgent` (all invented — [OmegaScope] only has channel, flowManager, initialFlowId); flow.onIntent from widget; OmegaFlowContext in UI; const Page if non-const agent required.
+Forbidden: `scope.agentManager`, `scope.agentManager.getAgent(...)`, `scope.getAgent` (all invented — [OmegaScope] has channel, flowManager, initialFlowId, initialNavigationIntent only); flow.onIntent from widget; OmegaFlowContext in UI; const Page if non-const agent required.
 
 ━━ 6) omega_setup.dart (human wiring after JSON — mention in reasoning) ━━
 ━━ CANONICAL omega_setup.dart (package example — mirror this) ━━
@@ -3483,14 +3599,15 @@ Ground-truth file: `example/lib/omega/omega_setup.dart` (included in PACKAGE GRO
 - In `createOmegaConfig(OmegaChannel channel)`: **one** agent instance per module → reuse the **same** variable in `agents: <OmegaAgent>[...]` and in `flows: <OmegaFlow>[ MyFlow(channel: ns, agent: myAgent), ... ]`. Never two `MyModuleAgent(...)` for the same module.
 - `flows:` is a list of **constructor calls** with the same named args as *_flow.dart* (`channel:`, `agent:` when `uiScopeAgent`, optional `offlineQueue:` etc.). FORBIDDEN: bare `MyFlow` without `(...)`.
 - Example pattern: `final authNs = channel.namespace('auth');` + `AuthAgent(authNs)` + `AuthFlow(channel: authNs, agent: authAgent)` — see example app.
-- `initialFlowId:` e.g. `AppFlowId.authFlow.id` when using `app_runtime_ids.dart`; `intentHandlerRegistrars:` optional; routes pass shared agents into `builder:` (`OmegaLoginPage(authAgent: authAgent)`), `OmegaRoute.typed<T>` when needed.
+- `initialFlowId:` e.g. `AppFlowId.authFlow.id` when using `app_runtime_ids.dart`; **`initialNavigationIntent:`** optional `OmegaIntent.fromName(AppIntent.navigateXxx)` — same value on **`OmegaScope.initialNavigationIntent`** and **`MaterialApp.home: OmegaInitialRoute(child: ...)`** (see package example); `intentHandlerRegistrars:` optional; routes pass shared agents into `builder:` (`OmegaLoginPage(authAgent: authAgent)`), `OmegaRoute.typed<T>` when needed.
 - REQUIRED imports (or analyzer: "function/class isn't defined"): from `lib/omega/omega_setup.dart` use relative `../<folder>/<lower>_flow.dart`, `../<folder>/<lower>_agent.dart`, `../<folder>/ui/<lower>_page.dart` OR `package:<app_name>/...` matching pubspec `name:`.
 - FORBIDDEN: duplicate `import` lines (same URI twice). Each `*_agent`, `*_flow`, `*_page` path appears at most once at the top of omega_setup.dart.
 - **Single agent instance per module:** `final myModuleAgent = MyModuleAgent(channel);` then `agents: <OmegaAgent>[..., myModuleAgent]` and, when the flow defines `uiScopeAgent`, `flows: <OmegaFlow>[..., MyModuleFlow(channel: channel, agent: myModuleAgent)]` — never `MyModuleFlow(channel)` plus a separate `MyModuleAgent(channel)` for the same module.
 - **Flows with extra ctor args (ej. example `OrdersFlow`):** además de `channel` y `agent`, el flujo puede requerir `offlineQueue`, repositorios, etc. Declara esos valores **una vez** arriba en `createOmegaConfig` y pásalos nombrados al constructor del flujo. `registerInOmegaSetup` / `omega g ecosystem` no inventan deps extra — hay que alinear *_flow.dart* con omega_setup.
 - `flows: <OmegaFlow>[ ..., NewsFlow(channel), ]` — each item is a **constructor call** matching the Flow’s ctor in *_flow.dart* (add named `agent:` when the flow requires it). FORBIDDEN: bare `NewsFlow` without parentheses in the list; FORBIDDEN: treating Flow as a function — it is a class.
 - `agents: <OmegaAgent>[ ..., MyAgent(channel), ]` same rule; read ctor in *_agent.dart* (positional vs `{required OmegaEventBus channel}`).
-- Routes: `OmegaRoute(id: '...', builder: ...)`; Page with `required agent` needs `final x = MyAgent(...);` once and `MyPage(agent: x)`. Decoupled page (`const MyPage()` + `OmegaScopedAgentBuilder` inside `OmegaFlowExpressionBuilder`) needs **flow `uiScopeAgent`** + shared agent variable as above, not a second agent construction.
+- Routes: `OmegaRoute(id: '...', builder: ...)` — **unique** `id` per route in the whole `routes:` list. **FORBIDDEN:** two `OmegaRoute(id: 'UserManagement', ...)` or same `id` twice for any string — [OmegaNavigator] lookup is by id; duplicates are always wrong. Page with `required agent` needs `final x = MyAgent(...);` once and `MyPage(agent: x)`. Decoupled page (`const MyPage()` + `OmegaScopedAgentBuilder` inside `OmegaFlowExpressionBuilder`) needs **flow `uiScopeAgent`** + shared agent variable as above, not a second agent construction.
+- **agents:** list each **distinct** agent reference **once** — FORBIDDEN: the same variable twice (e.g. `..., orderManagementAgent, orderManagementAgent,`) or two `FooAgent(channel)` ctor lines for the same module. **flows:** FORBIDDEN: two `UserManagementFlow(...)` lines — one registration per flow. **CI / local:** `omega validate` rejects these duplicates automatically.
 - initialFlowId must match the entry flow’s `super(id: ...)` string when this module is first screen.
 - `lib/omega/app_semantics.dart`: shared `AppEvent` / `AppIntent` with `OmegaEventNameDottedCamel` / `OmegaIntentNameDottedCamel` (camelCase → dotted wire). `omega init` creates minimal `navigationIntent` + `navigateHome`; extend enums there for cross-module names — do not duplicate app-wide enums inside feature `*_events.dart`; import `../omega/app_semantics.dart` or `package:THE_EXACT_PUBSPEC_NAME/omega/app_semantics.dart` where needed (THE_EXACT_PUBSPEC_NAME = pubspec `name:`).
 
@@ -3502,6 +3619,7 @@ COHERENCE SELF-TEST (model should mentally verify before answering):
 - [ ] No forbidden APIs (OmegaViewState, case Enum.name in switch, emit(enumWithoutDotName), etc.).
 - [ ] omega_setup imports every Flow/Agent/Page class used; flows/agents lists use constructor calls (`FooFlow(channel: c, agent: fooAgent)` when the flow has `uiScopeAgent`), not bare type names.
 - [ ] No duplicate identical import lines in omega_setup or module files.
+- [ ] omega_setup: no duplicate entries in `agents:`; no duplicate `OmegaRoute` with the same `id:`; no duplicate same `*Flow(...)` line in `flows:`.
 - [ ] If using decoupled agent: EITHER route wraps `OmegaAgentScope(agent: ..., child: Page())` OR Flow overrides `uiScopeAgent` + same agent instance in `createOmegaConfig` (agents + flows); page uses `OmegaScopedAgentBuilder` / `OmegaFlowExpressionBuilder` where appropriate.
 - [ ] If the flow ctor has extra non-agent params (offlineQueue, repo): they are created once in createOmegaConfig and passed named into the flow; not confused with the module agent.
 ''';
@@ -3509,9 +3627,9 @@ COHERENCE SELF-TEST (model should mentally verify before answering):
   /// **Heal user prompt only:** compact Omega API subset when full checklist is omitted (token budget).
   static const String _omegaAiHealPromptCompactOmega = r'''
 HEAL — OMEGA API (fix analyzer errors; mirror PACKAGE GROUND TRUTH examples):
-- createOmegaConfig: `agents:` / `flows:` use constructor calls only (never bare `MyFlow` without `(...)`). One agent instance per module; reuse the same variable in `MyFlow(channel: c, agent: thatAgent)` when the flow exposes `uiScopeAgent`. No duplicate identical import lines.
+- createOmegaConfig: `agents:` / `flows:` use constructor calls only (never bare `MyFlow` without `(...)`). One agent instance per module; reuse the same variable in `MyFlow(channel: c, agent: thatAgent)` when the flow exposes `uiScopeAgent`. No duplicate identical import lines. **routes:** each `OmegaRoute` `id:` **globally unique** in `routes:` — never two blocks with `id: 'UserManagement'` or two `id: 'OrderManagement'`. **agents:** list each variable **once** — WRONG: `agents: [ userAgent, orderAgent, orderAgent ]`; **flows:** one ctor line per flow type — WRONG: two `UserManagementFlow(...)`. Run **`omega validate`** from app root; it fails on duplicate route ids, duplicate agent list entries, and duplicate flow types inside the lists.
 - Typed ids: if `lib/omega/app_runtime_ids.dart` exists, `super(id: AppFlowId.X.id)` / `AppAgentId.X.id` must match an enum member; import `package:<THIS_APP>/omega/app_runtime_ids.dart` with THIS_APP from the APP PUBSPEC block.
-- OmegaScope: only `.channel`, `.flowManager`, `.initialFlowId` — no agentManager. Use `getFlow` + `StreamBuilder`, or pass `agent` into the Page, or `OmegaAgentScope` / `Flow.uiScopeAgent` + shared agent in setup.
+- OmegaScope: `.channel`, `.flowManager`, `.initialFlowId`, `.initialNavigationIntent` — no agentManager. Use `getFlow` + `StreamBuilder`, or pass `agent` into the Page, or `OmegaAgentScope` / `Flow.uiScopeAgent` + shared agent in setup. **`lib/main.dart`:** mirror `_omegaAiMainDartEntry` / example `main.dart` (OmegaScope passes `initialNavigationIntent`; `MaterialApp.home` uses `OmegaInitialRoute` + `RootHandler`).
 - `OmegaFlowActivator`: only `flowId` + `child` + optional `useSwitchTo` — no `onActivate` / callbacks. `OmegaFlowManager`: no `getAgent` — remove invented manager→agent bridges. `OmegaScope`: no `agentManager` / `getAgent` — use `widget.agent`, `OmegaAgentScope`, or `uiScopeAgent` + `OmegaScopedAgentBuilder`.
 - Navigation: `OmegaIntent.fromName` takes an **AppIntent** / **ModuleIntent enum constant**, never a string like `'navigate.home'`; outer `AppEvent.navigationIntent` (see `_omegaAiNavigationChannelEmit`).
 - handleIntent reaches running flows’ onIntent; agents and behavior react to **channel** events — emit `OmegaEvent.fromName(...)` / `emitTyped` for patterns that use `ctx.event` (lists, navigation). `OmegaIntent.fromName(MyEnum.member)` — enum constant, not String, not `.name`.
@@ -5301,6 +5419,7 @@ OUTPUT JSON RULES:
 $_omegaAiScreenEntryDataLoad
 $_omegaAiOmegaChannelEvents
 $_omegaAiNavigationChannelEmit
+$_omegaAiMainDartEntry
 $_omegaAiAgentUiStateListening
 $_omegaAiFlowActivatorAndFlowManager
 $_omegaAiRolesFlowAgentBehavior
@@ -5320,8 +5439,8 @@ PRIMARY FOCUS / INSTRUCTION: '$description'.
 $contextBlock
 $filesContextBlock
 $packageContextBlock
-REFERENCE (official package patterns; PRIMARY: example/lib/omega/omega_setup.dart in PACKAGE GROUND TRUTH — agents, flows, routes, initialFlowId; auth_flow.dart for Flow ctor with channel + agent):
-- **omega_setup.dart is the source of truth:** same agent variable in `agents:` and in each `SomeFlow(channel: ns, agent: thatAgent)`; optional `channel.namespace('x')` per module. For flows with **extra** non-agent deps (offline queue, repos), mirror your app’s existing patterns or doc/GUIA — not duplicated in this prompt to save tokens.
+REFERENCE (official package patterns; PRIMARY: example/lib/omega/omega_setup.dart in PACKAGE GROUND TRUTH — agents, flows, routes, initialFlowId, initialNavigationIntent; **example/lib/main.dart** for `lib/main.dart` — OmegaScope + OmegaInitialRoute + RootHandler; auth_flow.dart for Flow ctor with channel + agent):
+- **omega_setup.dart is the source of truth:** same agent variable in `agents:` and in each `SomeFlow(channel: ns, agent: thatAgent)`; optional `channel.namespace('x')` per module. **DEDUPE:** each agent variable **once** in `agents: <OmegaAgent>[...]`; each `OmegaRoute(id: 'X')` **once** per id in `routes:` (never two routes with the same `id:`); each flow ctor **once** in `flows:`. For flows with **extra** non-agent deps (offline queue, repos), mirror your app’s existing patterns or doc/GUIA — not duplicated in this prompt to save tokens.
 - Agent + behavior ground truth (same repo): example/lib/auth/auth_behavior.dart + example/lib/auth/auth_agent.dart — match their structure before inventing patterns.
 - Typed ids: if the app has `lib/omega/app_runtime_ids.dart`, use `super(id: AppFlowId.$moduleName.id, ...)` / `super(id: AppAgentId.$moduleName.id, ...)` with `import 'package:$pkgId/omega/app_runtime_ids.dart';` and ensure both enums contain a `$moduleName,` entry (user would run `omega g ecosystem $moduleName` to merge; in JSON you may edit that file to add the member). CLI: `omega g ecosystem` updates both enums; `omega g agent` only AppAgentId; `omega g flow` only AppFlowId.
 - Flow id: ${moduleName}Flow must use super(id: ...) consistent with getFlow / OmegaFlowExpressionBuilder (string or AppFlowId.$moduleName.id). If this module is the app entry flow, OmegaConfig.initialFlowId in omega_setup.dart must be that same wire string (example legacy: AuthFlow id "authFlow" and OmegaConfig.initialFlowId: "authFlow").
@@ -5332,6 +5451,7 @@ REFERENCE (official package patterns; PRIMARY: example/lib/omega/omega_setup.dar
 $_omegaAiScreenEntryDataLoad
 $_omegaAiOmegaChannelEvents
 $_omegaAiNavigationChannelEmit
+$_omegaAiMainDartEntry
 $_omegaAiAgentUiStateListening
 $_omegaAiFlowActivatorAndFlowManager
 $_omegaAiRolesFlowAgentBehavior
@@ -5356,7 +5476,7 @@ CRITICAL RULES:
 7. If the page uses OmegaAgentBuilder with `required ${moduleName}Agent agent`, put in "reasoning" one line: user must set omega_setup route to ${moduleName}Page(agent: $camelAgentVar) and declare `final $camelAgentVar = ${moduleName}Agent(channel);` (or `channel: channel` if ctor is named-only) in agents — same pattern as example omega_setup + auth page.
 8. If the screen lists items, metrics, or catalog data: the "page" MUST implement an on-open kickoff per SCREEN ENTRY rules (activate + one-shot handleIntent(start) and/or channel emit of *.requested) so data loads without requiring a dummy first tap.
 9. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
-10. JSON string values that contain Dart: a **single backslash before a dollar** in the JSON text is an invalid escape and breaks jsonDecode (FormatException). Models often paste Dart Text / string literals that mix backslashes with interpolation inside JSON; avoid that—use string concatenation (e.g. a literal prefix plus order.totalAmount.toStringAsFixed(2)), or double backslashes per JSON rules for every literal backslash in the embedded Dart. The CLI sanitizes common invalid backslash-plus-dollar sequences before decode; the full message must still be valid JSON.
+10. JSON string values that contain Dart: in JSON a backslash may only introduce the usual escapes (quote, another backslash, slash, b, f, n, r, t, or u plus four hex digits). Any other backslash-plus-character (including before a dollar sign, space, or letters) is invalid and breaks jsonDecode (FormatException: unrecognized string escape). Avoid lone backslashes in embedded Dart; use concatenation or double each literal backslash per JSON rules. The CLI repairs some invalid escapes before decode; still emit valid JSON when possible.
 
 UI DESIGN (apply to the 'page' value only — maximize quality; the structural snippet below is NOT the final UI):
 $_omegaAiUiDesignStandards

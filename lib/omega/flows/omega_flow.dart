@@ -61,7 +61,11 @@ abstract class OmegaFlow {
   }
 
   /// Optional declarative contract: events listened, intents accepted, expression types emitted.
-  /// When set, in debug mode Omega warns if the flow receives or emits something not declared.
+  ///
+  /// In debug mode: **intents** and **emitExpression** types are always checked against the
+  /// contract when set. **Events** are only checked when this flow listens on a
+  /// [OmegaChannelNamespace] and the event carries the **same** [OmegaEvent.namespace] —
+  /// global or other-module events on a shared bus do not print (avoids cross-module noise).
   /// Override in subclasses to declare contracts. Default is null (no validation).
   /// Cached on first access so prefer returning a const or stable instance.
   OmegaFlowContract? get contract => null;
@@ -138,9 +142,14 @@ abstract class OmegaFlow {
     if (kDebugMode) {
       final c = _cachedContract;
       if (c != null && !c.acceptsEvent(event.name)) {
-        debugPrint(
-          'OmegaFlow[$id]: received event "${event.name}" not in contract (listened: ${c.listenedEventNames}).',
-        );
+        final bus = channel;
+        final sameNamespace = bus is OmegaChannelNamespace &&
+            event.namespace == bus.namespace;
+        if (sameNamespace) {
+          debugPrint(
+            'OmegaFlow[$id]: received event "${event.name}" not in contract (listened: ${c.listenedEventNames}).',
+          );
+        }
       }
     }
 

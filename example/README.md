@@ -5,8 +5,8 @@ Ejemplo mínimo que recorre **flow inicial**, **login** y **navegación** a home
 ## Flujo
 
 1. **Arranque:** `main()` hace `OmegaRuntime.bootstrap(createOmegaConfig)`, monta `OmegaScope` y `MyApp`.
-2. **Flow inicial:** `_RootHandler` envuelve la UI con **`OmegaFlowActivator`** (`useSwitchTo: true`, `flowId: initialFlowId`) para activar el flow de arranque sin llamar a `switchTo` a mano; en el primer frame solo emite la navegación a login.
-3. **Navegación a login:** Se emite en el canal el evento `navigation.intent` con un `OmegaIntent(name: "navigate.login")`, así la primera pantalla que ve el usuario es la de login.
+2. **Flow inicial:** `_RootHandler` envuelve la UI con **`OmegaFlowActivator`** (`useSwitchTo: true`, `flowId: initialFlowId`) para activar el flow de arranque sin llamar a `switchTo` a mano.
+3. **Primera ruta:** En `omega_setup.dart`, **`initialNavigationIntent:`** … y en `main` el mismo valor en **`OmegaScope.initialNavigationIntent`**; el `home` del `MaterialApp` es **`OmegaInitialRoute(child: …)`**, que tras el primer frame emite la navegación (sin pasar el intent por `MyApp`).
 4. **Pantalla de login:** `OmegaLoginPage` obtiene el `AuthFlow` y escucha `flow.expressions`. El usuario escribe y pulsa "Login"; la UI emite la intención `auth.login` con email/password. El flow la recibe en `onIntent`, emite "loading" y dispara el evento `auth.login.request` al canal.
 5. **Agente de auth:** `AuthAgent` (u otro agente que escuche `auth.login.request`) procesa y emite `auth.login.success` o `auth.login.error` por el canal.
 6. **Flow reacciona:** `AuthFlow.onEvent` recibe `auth.login.success` y emite en el canal `navigation.intent` con `OmegaIntent(name: "navigate.home")`, llevando al usuario a la pantalla Home.

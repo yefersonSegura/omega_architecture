@@ -54,4 +54,24 @@ void main() {
     await tester.pump();
     expect(find.text('hello omega'), findsOneWidget);
   });
+
+  testWidgets('OmegaInitialRoute builds child when scope has no initial intent', (
+    WidgetTester tester,
+  ) async {
+    final channel = OmegaChannel();
+    final flowManager = OmegaFlowManager(channel: channel);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OmegaScope(
+          channel: channel,
+          flowManager: flowManager,
+          child: const OmegaInitialRoute(child: Text('shell')),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    expect(find.text('shell'), findsOneWidget);
+  });
 }
