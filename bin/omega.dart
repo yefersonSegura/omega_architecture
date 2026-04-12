@@ -972,6 +972,34 @@ void main() {
       "⚠️ ${_tr(en: "Found ${errors.length} analyzer error(s). Attempting fix...", es: "Se encontraron ${errors.length} error(es) del analizador. Intentando corrección...")}",
     );
 
+    var workingErrors = errors;
+    if (_omegaTryDeterministicOmegaSetupHeal(root)) {
+      stdout.writeln(
+        "⚡ ${_tr(en: "Applied deterministic fixes to lib/omega/omega_setup.dart; re-running dart analyze.", es: "Correcciones deterministas en lib/omega/omega_setup.dart; ejecutando dart analyze de nuevo.")}",
+      );
+      final afterDet = await runWithProgress<ProcessResult>(
+        _tr(en: "Re-analyzing after setup fixes", es: "Re-analisis tras correcciones de setup"),
+        () => _dartAnalyzeMachine(root),
+      );
+      if (afterDet.exitCode == 0) {
+        stdout.writeln(
+          "✅ ${_tr(en: "Deterministic setup fixes cleared all analyzer errors.", es: "Las correcciones deterministas en omega_setup eliminaron todos los errores del analizador.")}",
+        );
+        return;
+      }
+      final detLines = _analyzeMachineLines(afterDet);
+      workingErrors = _extractAnalyzerErrors(detLines);
+      if (workingErrors.isEmpty) {
+        stdout.writeln(
+          "✅ ${_tr(en: "No analyzer errors after deterministic fixes (non-zero exit may be warnings only).", es: "Sin errores del analizador tras correcciones deterministas (código distinto de 0 puede ser advertencias).")}",
+        );
+        return;
+      }
+      stdout.writeln(
+        "⚠️ ${_tr(en: "${workingErrors.length} analyzer error(s) remain after deterministic fixes.", es: "Quedan ${workingErrors.length} error(es) del analizador tras las correcciones deterministas.")}",
+      );
+    }
+
     final env = Platform.environment;
     final aiEnabled = OmegaAiCommand._readBool(
       env["OMEGA_AI_ENABLED"],
@@ -982,7 +1010,7 @@ void main() {
       stdout.writeln(
         "❌ ${_tr(en: "Omi cannot heal this project (assistant disabled). Fix manually:", es: "Omi no puede sanar el proyecto (asistente desactivado). Corrige manualmente:")}",
       );
-      _printMachineErrors(errors);
+      _printMachineErrors(workingErrors);
       return;
     }
 
@@ -991,7 +1019,7 @@ void main() {
       stdout.writeln(
         "❌ ${_tr(en: "Omi self-heal requires OMEGA_AI_PROVIDER=openai or gemini.", es: "La sanación con Omi requiere OMEGA_AI_PROVIDER=openai o gemini.")}",
       );
-      _printMachineErrors(errors);
+      _printMachineErrors(workingErrors);
       return;
     }
 
@@ -999,12 +1027,12 @@ void main() {
       stdout.writeln(
         "❌ ${_tr(en: "No API key for the assistant (OMEGA_AI_API_KEY, or OMEGA_AI_GEMINI_API_KEY when using gemini). Omi cannot auto-fix.", es: "Falta clave API del asistente (OMEGA_AI_API_KEY, u OMEGA_AI_GEMINI_API_KEY con gemini). Omi no puede corregir solo.")}",
       );
-      _printMachineErrors(errors);
+      _printMachineErrors(workingErrors);
       return;
     }
 
     final maxPasses = int.tryParse(env["OMEGA_AI_HEAL_MAX_PASSES"] ?? "") ?? 3;
-    var currentErrors = errors;
+    var currentErrors = workingErrors;
 
     for (var pass = 0; pass < maxPasses; pass++) {
       if (pass > 0) {
@@ -1261,14 +1289,18 @@ void main() {
 
     final errorContext = StringBuffer();
     final filesToFix = <String>{};
+    final errCountByFile = <String, int>{};
+    final errDetailByFile = <String, List<String>>{};
 
     for (final errLine in errors) {
       final parts = errLine.split("|");
       if (parts.length > 7) {
         final rel = _normalizeAnalyzerPathToProjectRelative(parts[3], root);
-        errorContext.writeln("- $rel:${parts[4]} -> ${parts[7]}");
+        final detail = "L${parts[4]}: ${parts[7]}";
         if (rel.startsWith("lib/") || rel.startsWith("test/")) {
           filesToFix.add(rel);
+          errCountByFile[rel] = (errCountByFile[rel] ?? 0) + 1;
+          errDetailByFile.putIfAbsent(rel, () => []).add(detail);
         }
       }
     }
@@ -1277,10 +1309,37 @@ void main() {
 
     _omegaHealIncludeModuleEventsFiles(root, errors, filesToFix);
 
-    final sortedRel = filesToFix.toList()..sort();
+    final envHeal = Platform.environment;
+    final maxFiles =
+        int.tryParse(envHeal["OMEGA_AI_HEAL_MAX_FILES"] ?? "")?.clamp(4, 60) ??
+        28;
+    final maxChars =
+        int.tryParse(envHeal["OMEGA_AI_HEAL_MAX_CONTEXT_CHARS"] ?? "") ??
+        90000;
+
+    final sortedRel = filesToFix.toList()
+      ..sort((a, b) {
+        final ca = errCountByFile[a] ?? 0;
+        final cb = errCountByFile[b] ?? 0;
+        if (cb != ca) return cb.compareTo(ca);
+        return a.compareTo(b);
+      });
+
+    errorContext.writeln(
+      "SUMMARY (by file, most errors first): ${sortedRel.map((p) => '$p(${errCountByFile[p] ?? 0})').join(', ')}",
+    );
+    for (final rel in sortedRel.take(12)) {
+      final lines = errDetailByFile[rel];
+      if (lines == null || lines.isEmpty) continue;
+      errorContext.writeln("— $rel:");
+      for (final d in lines.take(10)) {
+        errorContext.writeln("  $d");
+      }
+    }
+
     final filesContent = StringBuffer();
-    for (final relPosix in sortedRel.take(40)) {
-      if (filesContent.length > 120000) break;
+    for (final relPosix in sortedRel.take(maxFiles)) {
+      if (filesContent.length > maxChars) break;
       final localPath =
           "$root${Platform.pathSeparator}${relPosix.replaceAll("/", Platform.pathSeparator)}";
       final file = File(localPath);
@@ -1545,12 +1604,16 @@ Return only JSON. No markdown fences.
     const healSystem =
         "Output one JSON object only: keys = project-relative paths, values = full fixed Dart file contents. Fix Flutter + omega_architecture analyzer errors using ONLY the user message (IMPORTS, OMEGA API blocks, PACKAGE GROUND TRUTH, affected files). Do not invent Omega APIs, scope members, or package imports — mirror attached examples. Align FLOW_ID, behavior actionIds with agent switch strings, flow contracts, app_runtime_ids enums, omega_setup ctor calls and imports. package:omega_architecture where Omega types are used. No duplicate import lines. No invalid JSON string escapes (single backslash before dollar).";
 
+    final healTimeoutSec =
+        (int.tryParse(envHeal["OMEGA_AI_HEAL_TIMEOUT_SEC"] ?? "") ?? 120)
+            .clamp(45, 300);
+
     final rawContent = await _OmegaAiRemote.completeChat(
       system: healSystem,
       user: prompt,
       temperature: 0.15,
       jsonObject: true,
-      timeout: const Duration(seconds: 120),
+      timeout: Duration(seconds: healTimeoutSec),
     );
     if (rawContent == null || rawContent.isEmpty) return null;
 
@@ -2560,6 +2623,29 @@ String _omegaPatchOmegaSetupColdStart(
     );
   }
   return s;
+}
+
+/// Applies the same deterministic `omega_setup.dart` fixes as [registerInOmegaSetup] (dedupe
+/// `agents:`, cold-start fields). Returns `true` if the file was rewritten.
+bool _omegaTryDeterministicOmegaSetupHeal(String root) {
+  final setupPath = _path(root, ["lib", "omega", "omega_setup.dart"]);
+  final f = File(setupPath);
+  if (!f.existsSync()) return false;
+  try {
+    final pkg = getPackageName(root);
+    var c = f.readAsStringSync();
+    final before = c;
+    c = _omegaDedupeOmegaSetupAgentsList(c);
+    c = _omegaPatchOmegaSetupColdStart(c, pkg, root);
+    c = _omegaDedupeDuplicateImportLines(c);
+    c = _omegaNormalizeOmegaSetupAgentFinalSpacing(c);
+    if (c == before) return false;
+    f.writeAsStringSync(c);
+    _formatFile(setupPath);
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 void registerInOmegaSetup(
@@ -4098,6 +4184,23 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
     );
     stdout.writeln(
       "  OMEGA_AI_STRICT_POSTCHECK       true = if full-module output fails checks, skip writing Omi files and use default template",
+    );
+    stdout.writeln("");
+    stdout.writeln("Self-heal (dart analyze + Omi) tuning:");
+    stdout.writeln(
+      "  OMEGA_AI_HEAL_MAX_PASSES        max AI fix rounds (default: 3)",
+    );
+    stdout.writeln(
+      "  OMEGA_AI_HEAL_MAX_FILES         max lib/ files sent per heal call (default: 28, clamped 4–60); sorted by error count",
+    );
+    stdout.writeln(
+      "  OMEGA_AI_HEAL_MAX_CONTEXT_CHARS cap on pasted file bytes in heal prompt (default: 90000)",
+    );
+    stdout.writeln(
+      "  OMEGA_AI_HEAL_TIMEOUT_SEC       remote heal request timeout (default: 120, clamped 45–300)",
+    );
+    stdout.writeln(
+      "  OMEGA_AI_HEAL_PUB_ADD           false = skip dart pub add for missing packages",
     );
     stdout.writeln("");
     stdout.writeln("PowerShell example (OpenAI):");
