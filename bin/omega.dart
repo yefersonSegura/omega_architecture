@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-const String _version = "0.0.33";
+import 'omega_heal_catalog.dart';
+
+const String _version = "1.0.4";
 const String _docUrl = "https://yefersonsegura.com/proyects/omega/";
 
 void _openInBrowser(String urlOrPath) {
@@ -731,6 +733,8 @@ class OmegaCreateAppCommand {
       Directory.current = originalCwd;
     }
 
+    _omegaFinalizeOmegaSetupAfterCreateApp(projectRoot);
+
     stdout.writeln("");
     stdout.writeln(
       _tr(
@@ -1380,90 +1384,6 @@ void main() {
         }
       } catch (_) {}
     }
-    final agentParamError = errors.any(
-      (e) =>
-          e.contains("named parameter 'agent'") ||
-          e.contains('named parameter "agent"') ||
-          e.contains("parameter 'agent' is required"),
-    );
-    final omegaSetupAgentHealRecipe = agentParamError
-        ? """
-
-HEAL RECIPE — analyzer says missing required named parameter `agent` (usually in lib/omega/omega_setup.dart):
-- A *Page widget constructor has `required SomeAgent agent`. You MUST NOT use `const ThatPage()` or `ThatPage()` without arguments.
-- In createOmegaConfig(OmegaChannel channel): (1) import the agent Dart file; (2) add `final myModuleAgent = MyModuleAgent(channel);` or `MyModuleAgent(channel: channel);` if ctor uses named channel (read *_agent.dart); (3) put `myModuleAgent` in `agents: <OmegaAgent>[..., myModuleAgent]` once; (4) set route `builder: (context) => ThatPage(agent: myModuleAgent)` (same variable reference). Match Page class name ↔ Agent class name (e.g. ProductCatalogPage ↔ ProductCatalogAgent).
-- If *Module*Flow has `required this.agent` / passes agent to [OmegaFlow.uiScopeAgent]: use the SAME `myModuleAgent` variable in `flows: [..., MyModuleFlow(channel: channel, agent: myModuleAgent)]` — do not omit `myModuleAgent` from the `agents:` list.
-"""
-        : "";
-
-    final flowContextFakeApiError = errors.any(
-      (e) =>
-          e.contains("getAgentViewState") ||
-          e.contains("isn't defined for the type 'OmegaFlowContext'"),
-    );
-    final omegaFlowContextHealRecipe = flowContextFakeApiError
-        ? """
-
-HEAL RECIPE — OmegaFlowContext has no getAgentViewState (and no agent API):
-- Replace with data from ctx.intent: use flowManager.handleIntent(OmegaIntent.fromName(UserAuthIntent.start, payload: UserAuthCredentials(email: e, password: p))) from the UI, then in onIntent: final creds = ctx.intent?.payloadAs<UserAuthCredentials>(); channel.emitTyped(UserAuthRequestedEvent(email: creds?.email ?? '', password: creds?.password ?? '')); OR store fields in ctx.memory on prior intents.
-- **FORBIDDEN on [OmegaChannel] / [OmegaChannelNamespace]:** `channel.emit(ctx.intent!.name, payload: ctx.intent!.payload)` — [OmegaEventBus.emit] is **`void emit(OmegaEvent event)`** only (one positional). There is **no** named `payload:` on the channel. **RIGHT:** `channel.emit(OmegaEvent.fromName(MyEvent.requested, payload: ctx.intent?.payloadAs<MyPayload>()));` or `channel.emitTyped(...)` / wrap with `OmegaIntent.fromName` inside `OmegaEvent.fromName` for navigation. **Do not** paste [OmegaAgent.emit]'s `(String name, {payload})` API onto `channel`.
-- Compare intents with intent?.name == UserAuthIntent.start.name, not intent == UserAuthIntent.start.
-"""
-        : "";
-
-    final omegaSetupUndefinedFlowAgentError = errors.any((e) {
-      if (!e.contains("omega_setup.dart")) return false;
-      if (!e.contains("isn't defined") && !e.contains("undefined_function")) {
-        return false;
-      }
-      return e.contains("Flow") ||
-          e.contains("Agent") ||
-          RegExp(r"'\w+Flow'").hasMatch(e) ||
-          RegExp(r"'\w+Agent'").hasMatch(e);
-    });
-    final omegaSetupFlowAgentImportRecipe = omegaSetupUndefinedFlowAgentError
-        ? """
-
-HEAL RECIPE — lib/omega/omega_setup.dart: "The function 'SomeFlow' isn't defined" / undefined Flow or Agent (InvalidType):
-- Flow and Agent are CLASSES in other files — Dart reports "function isn't defined" when the import is missing or the name is wrong.
-- Add imports at the top (path from lib/omega/omega_setup.dart): e.g. module `news` in lib/news/ → `import '../news/news_flow.dart';` … OR `import 'package:THE_EXACT_PUBSPEC_NAME/news/news_flow.dart';` where THE_EXACT_PUBSPEC_NAME is the `name:` field from this project's pubspec.yaml (see APP PUBSPEC block in the heal prompt when present — never invent delivery_app-style names).
-- In `flows: <OmegaFlow>[...]` each entry must be a CONSTRUCTOR CALL: `NewsFlow(channel)` or `NewsFlow(channel.namespace('news'))` — exactly matching the constructor in news_flow.dart. NEVER put bare `NewsFlow` without `(...)` in the list; NEVER call Flow like a top-level function.
-- In `agents: <OmegaAgent>[...]` same: `NewsAgent(channel)` (or named args per *_agent.dart).
-- If the symbol name does not match the class in the file (e.g. NewsFlow vs NewFlow), rename to match the class declared in *_flow.dart.
-"""
-        : "";
-
-    final navigationEnumHealError = errors.any(
-      (e) =>
-          e.contains("navigationIntent") ||
-          e.contains("constant named 'navigation") ||
-          (e.contains("There's no constant named") &&
-              e.contains("navigation") &&
-              e.contains("Event")),
-    );
-    final navigationEnumHealRecipe = navigationEnumHealError
-        ? """
-
-HEAL RECIPE — navigationIntent missing on module Event enum:
-- OmegaEvent.fromName(??? , payload: OmegaIntent.fromName(...)) for [OmegaNavigator] requires an OmegaEventName whose string is exactly navigation.intent. Add member `navigationIntent` with `OmegaEventNameDottedCamel` on your *Event enum, OR import `omega/app_semantics.dart` and use `AppEvent.navigationIntent`. Inner payload: real enum case (e.g. UserAuthIntent.navigateRegister) whose `.name` matches the route (navigate.*).
-"""
-        : "";
-
-    final undefinedEventEnumHealError = errors.any(
-      (e) =>
-          (e.contains("undefined_enum_constant") ||
-              e.contains("There's no constant named")) &&
-          (e.contains("Event") || e.contains("_event")),
-    );
-    final undefinedEventEnumHealRecipe = undefinedEventEnumHealError
-        ? """
-
-HEAL RECIPE — no constant named 'X' in '*Event' (or agent.emit misuse):
-- Every MyModuleEvent.foo must exist on the enum in *_events.dart*. Add the case with the correct wire string, OR change the UI/agent to use existing cases (requested, succeeded, failed, navigationIntent).
-- OmegaAgent.emit first parameter is String: use emit(MyEvent.requested.name, payload: ...) NOT emit(MyEvent.requested) and NOT emit(MyEvent.inventedCase). From pages, prefer scope.channel.emit(OmegaEvent.fromName(MyEvent.requested, payload: ...)) so behavior rules using ctx.event?.name match.
-"""
-        : "";
-
     final pubspecDepsHint = _omegaHealPubspecDependenciesBlock(root);
     var appPubspecHealHint = "";
     try {
@@ -1474,116 +1394,10 @@ HEAL RECIPE — no constant named 'X' in '*Event' (or agent.emit misuse):
       }
     } catch (_) {}
 
-    final missingOptionalPackageHealError = errors.any((e) {
-      final s = e.toLowerCase();
-      return (s.contains("target of uri doesn't exist") ||
-              s.contains("couldn't find package")) &&
-          (s.contains("equatable") ||
-              s.contains("intl") ||
-              s.contains("intl.dart"));
-    });
-    final inventedOmegaViewStateHealError = errors.any(
-      (e) =>
-          e.contains("OmegaViewState") ||
-          (e.contains("can only extend other classes") &&
-              e.contains("_events.dart")) ||
-          (e.contains("can only mix in mixins and classes") &&
-              e.contains("_events.dart")),
+    final healCatalogRecipes = OmegaHealCatalog.promptBlockForErrors(
+      errors,
+      OmegaAiCommand._omegaAiPackageRoot(),
     );
-    final viewStateStreamHealError = errors.any(
-      (e) => e.contains("viewStateStream") && e.contains("isn't defined"),
-    );
-    final optionalPackagesAndStateHealRecipe =
-        (missingOptionalPackageHealError ||
-            inventedOmegaViewStateHealError ||
-            viewStateStreamHealError)
-        ? """
-
-HEAL RECIPE — optional pub packages + invented Omega types (common AI mistakes):
-- package:equatable / Equatable: If URI missing or mixin errors in *_events.dart*, REMOVE `import 'package:equatable/equatable.dart';`, remove `extends Equatable`, `with EquatableMixin`, `@immutable` workarounds. Use plain `class MyViewState { final ...; const MyViewState(...); copyWith(...) }` like the omega CLI template — no third-party equality in events files.
-- package:intl / DateFormat: If URI missing, REMOVE intl import. Replace DateFormat with simple formatting: e.g. `\${date.year}-\${date.month.toString().padLeft(2,'0')}-\${date.day.toString().padLeft(2,'0')}` or `date.toLocal().toString()` — do NOT add intl to pubspec in JSON output (user may add it later manually).
-- OmegaViewState: type DOES NOT EXIST in omega_architecture. Replace `class X extends OmegaViewState` with plain `class X` (module view state) matching OmegaStatefulAgent<MyViewState>.
-- viewStateStream undefined: use `stateStream` on OmegaStatefulAgent (same stream). Replace `.viewStateStream` → `.stateStream`. Ensure *Agent extends OmegaStatefulAgent<TState>.
-"""
-        : "";
-
-    final missingModuleTypesHealError = errors.any((e) {
-      final viewOrEvent =
-          e.contains("ViewState") ||
-          e.contains("ImageCaptured") ||
-          e.contains("ImageProcessed") ||
-          RegExp(r"The name '\w+Event'").hasMatch(e) ||
-          RegExp(r"'[^']+Event' isn't a type").hasMatch(e);
-      if (!viewOrEvent) return false;
-      return e.contains("isn't a type") ||
-          e.contains("Undefined name") ||
-          e.contains("isn't defined for the type");
-    });
-    final missingModuleTypesHealRecipe = missingModuleTypesHealError
-        ? """
-
-HEAL RECIPE — missing module ViewState / typed events (analyzer: name isn't a type / isn't a type argument):
-- The module’s `lib/<folder>/<folder>_events.dart` is the single place to define: (1) `enum …Intent` / `enum …Event` implementing OmegaIntentName / OmegaEventName, (2) **plain** `class …ViewState` with every field the Page and Agent reference (`isLoading`, `error`, `imagePath`, `recognitionResult`, …), `copyWith`, and `static const idle = …ViewState(…);` for `OmegaStatefulAgent` initialState — NEVER extend OmegaViewState (type does not exist).
-- For each missing `…ImageCapturedEvent` / `…ProcessedEvent` / similar: add `class … implements OmegaTypedEvent { const …({…}); @override String get name => …Event.<matchingEnum>.name; … }` and add the enum case to `…Event` if needed.
-- In *_agent.dart*: **never** write `this.SomeEvent(...)` or `agent.SomeEvent(...)` as if it were a method — the error "The method 'SomeEvent' isn't defined for the type '…Agent'" means that mistake. Use `channel.emitTyped(SomeEvent(...))` or `channel.emit(OmegaEvent.fromName(…Event.case, payload: …))`.
-- Wire imports: *_agent.dart*, *_behavior.dart*, *_flow.dart*, *_page.dart* must `import '…/<folder>_events.dart'` (correct relative path). Return the FULL updated *_events.dart* in JSON whenever you add types.
-"""
-        : "";
-
-    final fakePayloadInterfaceHealError = errors.any(
-      (e) =>
-          e.contains("OmegaIntentPayload") || e.contains("OmegaEventPayload"),
-    );
-    final fakePayloadInterfaceHealRecipe = fakePayloadInterfaceHealError
-        ? """
-
-HEAL RECIPE — invented Omega “payload” marker types (undefined class / bad implements):
-- Remove `implements OmegaIntentPayload`, `implements OmegaEventPayload`, or both from any DTO used as `payload:` on `OmegaIntent.fromName` / `OmegaEvent.fromName`. **Those types are not in** package:omega_architecture — only **extension** APIs (`payloadAs<T>()`) exist on [OmegaIntent] / [OmegaEvent].
-- Keep the class as plain `final` fields + const ctor; flows use `ctx.intent?.payloadAs<YourDto>()` / `ctx.event?.payloadAs<YourDto>()`.
-"""
-        : "";
-
-    final channelEmitWrongShapeHealError = errors.any((e) {
-      final s = e.toLowerCase();
-      final omegaEventMismatch =
-          s.contains("omegaevent") &&
-          (s.contains("string") ||
-              s.contains("'string'") ||
-              s.contains("assigned to parameter type"));
-      final noPayloadOnEmit = s.contains("payload") &&
-          (s.contains("isn't defined") || s.contains("isnt defined")) &&
-          (s.contains("named parameter") || s.contains("undefined_named"));
-      final tooManyPositionals =
-          s.contains("too many positional") &&
-          (s.contains("emit") ||
-              s.contains("_flow.dart") ||
-              s.contains("omega_channel"));
-      return omegaEventMismatch || noPayloadOnEmit || tooManyPositionals;
-    });
-    final channelEmitWrongShapeHealRecipe = channelEmitWrongShapeHealError
-        ? """
-
-HEAL RECIPE — [OmegaChannel.emit] / [OmegaEventBus.emit] wrong call shape (analyzer: String vs OmegaEvent / undefined named payload):
-- **[OmegaChannel] / namespace views:** **`void emit(OmegaEvent event)`** — **exactly one** positional argument. **FORBIDDEN:** `channel.emit(someString, payload: …)`, `channel.emit(ctx.intent!.name, payload: ctx.intent!.payload)`, or any BLoC-style “name + payload” on the channel — that API is **[OmegaAgent.emit]** (`void emit(String name, {dynamic payload})`), **not** the bus.
-- **RIGHT (forward intent as bus event):** pick the **enum case** for the bus name and wrap in [OmegaEvent.fromName]:
-  `channel.emit(OmegaEvent.fromName(MyModuleEvent.requested, payload: ctx.intent?.payloadAs<MyPayload>()));`
-  or `channel.emitTyped(MyTypedEvent(...))` which internally builds one [OmegaEvent].
-- If you only need to re-broadcast the same intent wire as an event (rare), still build an [OmegaEvent]: e.g. match behavior with a dedicated `MyModuleEvent.intentForwarded` + `payload: ctx.intent` or unwrap with `payloadAs` — do not pass raw `ctx.intent!.name` as the first arg to `channel.emit`.
-"""
-        : "";
-
-    final nullableReceiverHealError = errors.any(
-      (e) =>
-          e.contains("can't be unconditionally accessed") ||
-          e.contains("unchecked_use_of_nullable_value"),
-    );
-    final nullableReceiverHealRecipe = nullableReceiverHealError
-        ? """
-
-HEAL RECIPE — nullable state in UI (`can't be unconditionally accessed` / unchecked_use_of_nullable_value):
-- In `OmegaAgentBuilder` / `StreamBuilder` callbacks, if `state` is `T?`, first guard: `if (state == null) return const SizedBox.shrink();` (or `CircularProgressIndicator`), then use `state!` or `final s = state!;` and only then read `s.isLoading`, `s.error`, etc.
-"""
-        : "";
 
     final prompt =
         """
@@ -1597,20 +1411,10 @@ HEAL — phased mindset: prefer the smallest coherent fix per file (imports / mi
 
 ANALYZER ERRORS:
 ${errorContext.toString()}
-
+$healCatalogRecipes
 AFFECTED FILE CONTENTS:
 ${filesContent.toString()}
 $routeAgentHealHints
-$omegaSetupAgentHealRecipe
-$omegaFlowContextHealRecipe
-$omegaSetupFlowAgentImportRecipe
-$navigationEnumHealRecipe
-$undefinedEventEnumHealRecipe
-$optionalPackagesAndStateHealRecipe
-$missingModuleTypesHealRecipe
-$fakePayloadInterfaceHealRecipe
-$channelEmitWrongShapeHealRecipe
-$nullableReceiverHealRecipe
 $pubspecDepsHint$appPubspecHealHint
 HEAL — PUB: The CLI may run `dart pub add <pkg>` before this call when analyzer reports missing package: URIs (unless OMEGA_AI_HEAL_PUB_ADD=false). After that, PROJECT PUBSPEC lists those packages — you MAY import them. Prefer removing unused imports over leaving broken URIs.
 $healContextBlock
@@ -2403,9 +2207,11 @@ bool _omegaFlowDartRequiresSharedAgent(String flowSource, String pascal) {
 String _omegaUpgradeOmegaRouteForAgent(
   String content,
   String pascal,
-  String agentVar,
-) {
-  final id = RegExp.escape(pascal);
+  String agentVar, {
+  String? routeId,
+}) {
+  final rid = routeId ?? pascal;
+  final id = RegExp.escape(rid);
   final page = RegExp.escape("${pascal}Page");
   final re = RegExp(
     r"OmegaRoute\s*\(\s*id:\s*'" +
@@ -2420,7 +2226,7 @@ String _omegaUpgradeOmegaRouteForAgent(
     final insidePage = m[2]!.trim();
     if (insidePage.contains('agent:')) return m[0]!;
     if (insidePage.isNotEmpty) return m[0]!;
-    return "OmegaRoute(id: '$pascal', builder: ($builderParam) => "
+    return "OmegaRoute(id: '$rid', builder: ($builderParam) => "
         "${pascal}Page(agent: $agentVar))";
   });
 }
@@ -2556,8 +2362,50 @@ String _omegaDedupeOmegaSetupAgentsList(String content) {
   return out;
 }
 
+/// [OmegaNavigator] resolves `navigate.login` / `navigate.home` to route ids **`login`** / **`home`**.
+/// Ecosystem registration used to emit Pascal ids (`Auth`, `Home`), which breaks cold navigation.
+String _omegaNormalizeAuthHomeRouteIdsForNavigator(String content) {
+  var s = content;
+  if (s.contains('AuthFlow(') || s.contains('AuthAgent(')) {
+    s = s.replaceAllMapped(
+      RegExp(r'''OmegaRoute\(\s*id:\s*'Auth'\s*,'''),
+      (m) => "OmegaRoute(id: 'login',",
+    );
+    s = s.replaceAllMapped(
+      RegExp(r'OmegaRoute\(\s*id:\s*"Auth"\s*,'),
+      (m) => 'OmegaRoute(id: "login",',
+    );
+  }
+  if (s.contains('HomeFlow(') || s.contains('HomeAgent(')) {
+    s = s.replaceAllMapped(
+      RegExp(r'''OmegaRoute\(\s*id:\s*'Home'\s*,'''),
+      (m) => "OmegaRoute(id: 'home',",
+    );
+    s = s.replaceAllMapped(
+      RegExp(r'OmegaRoute\(\s*id:\s*"Home"\s*,'),
+      (m) => 'OmegaRoute(id: "home",',
+    );
+  }
+  return s;
+}
+
+/// Route id registered in [omega_setup] for [OmegaNavigator] (not always PascalCase module name).
+String _omegaNavRouteIdForModulePascal(String pascal) {
+  switch (pascal) {
+    case 'Auth':
+      return 'login';
+    case 'Home':
+      return 'home';
+    default:
+      return pascal;
+  }
+}
+
 /// Stricter than [OmegaValidateCommand.validateProjectRoot] heuristics: only auto-patch cold
 /// start when `navigate.login` can work (**route id `login`**) and the shell is multi-route.
+///
+/// [content] should already be passed through [_omegaNormalizeAuthHomeRouteIdsForNavigator]
+/// inside [_omegaPatchOmegaSetupColdStart] so legacy `id: 'Auth'` has become `login`.
 bool _omegaSetupQualifiesForColdStartAutoPatch(String content) {
   if (RegExp(r'\binitialFlowId\s*:').hasMatch(content) &&
       RegExp(r'\binitialNavigationIntent\s*:').hasMatch(content)) {
@@ -2624,8 +2472,11 @@ String _omegaPatchOmegaSetupColdStart(
   String pkg,
   String projectRoot,
 ) {
-  if (!_omegaSetupQualifiesForColdStartAutoPatch(content)) return content;
-  var s = content;
+  var s = _omegaNormalizeAuthHomeRouteIdsForNavigator(content);
+  final hasBothInitial = RegExp(r'\binitialFlowId\s*:').hasMatch(s) &&
+      RegExp(r'\binitialNavigationIntent\s*:').hasMatch(s);
+  if (hasBothInitial) return s;
+  if (!_omegaSetupQualifiesForColdStartAutoPatch(s)) return s;
   final semanticsImportRe = RegExp(
     "import\\s+['\"]package:${RegExp.escape(pkg)}/omega/app_semantics\\.dart['\"]",
   );
@@ -2693,6 +2544,30 @@ bool _omegaTryDeterministicOmegaSetupHeal(String root) {
   }
 }
 
+/// Last pass after `omega create app` wiring (Omi JSON, multiple `g ecosystem`, etc.):
+/// normalizes Auth/Home route ids for [OmegaNavigator] and inserts cold-start fields when needed.
+void _omegaFinalizeOmegaSetupAfterCreateApp(String projectRoot) {
+  final setupPath = _path(projectRoot, ["lib", "omega", "omega_setup.dart"]);
+  final f = File(setupPath);
+  if (!f.existsSync()) return;
+  try {
+    final pkg = getPackageName(projectRoot);
+    var c = f.readAsStringSync();
+    final before = c;
+    c = _omegaPatchOmegaSetupColdStart(c, pkg, projectRoot);
+    c = _omegaDedupeDuplicateImportLines(c);
+    if (c == before) return;
+    f.writeAsStringSync(c);
+    _formatFile(setupPath);
+    stdout.writeln(
+      _tr(
+        en: "Normalized omega_setup (login/home route ids + cold start if applicable).",
+        es: "omega_setup normalizado (ids login/home + arranque en frío si aplica).",
+      ),
+    );
+  } catch (_) {}
+}
+
 void registerInOmegaSetup(
   String name,
   String path,
@@ -2715,7 +2590,9 @@ void registerInOmegaSetup(
   }
 
   var content = setupFile.readAsStringSync();
+  content = _omegaNormalizeAuthHomeRouteIdsForNavigator(content);
   final pascal = toPascalCase(name);
+  final navRouteId = _omegaNavRouteIdForModulePascal(pascal);
   final nameLower = name.toLowerCase();
   final agentVar = _omegaAgentInstanceVarName(pascal);
   final pagePath =
@@ -2902,11 +2779,12 @@ void registerInOmegaSetup(
       );
     }
 
-    // Registrar ruta por defecto para el nuevo módulo
-    if (!content.contains("OmegaRoute(id: '$pascal'")) {
+    // Registrar ruta por defecto para el nuevo módulo (Auth/Home → ids que entiende [OmegaNavigator])
+    if (!content.contains("OmegaRoute(id: '$navRouteId'") &&
+        !content.contains("OmegaRoute(id: '$pascal'")) {
       final routeEntry = pageNeedsAgent && registerAgentEffective
-          ? "      OmegaRoute(id: '$pascal', builder: (context) => ${pascal}Page(agent: $agentVar)),"
-          : "      OmegaRoute(id: '$pascal', builder: (context) => const ${pascal}Page()),";
+          ? "      OmegaRoute(id: '$navRouteId', builder: (context) => ${pascal}Page(agent: $agentVar)),"
+          : "      OmegaRoute(id: '$navRouteId', builder: (context) => const ${pascal}Page()),";
       if (content.contains("routes: <OmegaRoute>[")) {
         content = content.replaceFirst(
           "routes: <OmegaRoute>[",
@@ -2929,7 +2807,12 @@ void registerInOmegaSetup(
   }
 
   if (registerAgentEffective && pageNeedsAgent) {
-    content = _omegaUpgradeOmegaRouteForAgent(content, pascal, agentVar);
+    content = _omegaUpgradeOmegaRouteForAgent(
+      content,
+      pascal,
+      agentVar,
+      routeId: navRouteId,
+    );
   }
 
   content = _omegaDedupeOmegaSetupAgentsList(content);
@@ -4258,6 +4141,9 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
     );
     stdout.writeln(
       "  OMEGA_AI_HEAL_PUB_ADD           false = skip dart pub add for missing packages",
+    );
+    stdout.writeln(
+      "  OMEGA_HEAL_CATALOG              false = skip tool/omega_heal_catalog.yaml recipes in heal prompt",
     );
     stdout.writeln("");
     stdout.writeln("PowerShell example (OpenAI):");

@@ -1,3 +1,8 @@
+## 1.0.4
+
+- **CLI `omega create app`:** Tras generar módulos y `main.dart`, se aplica un paso final sobre **`lib/omega/omega_setup.dart`**: renombrar rutas legacy **`Auth` → `login`** y **`Home` → `home`** (contrato [OmegaNavigator] con `AppIntent.navigateLogin` / `navigateHome`) e insertar **`initialFlowId` + `initialNavigationIntent`** cuando el setup califica (Auth + varias rutas). **`registerInOmegaSetup`** registra ya **`login` / `home`** para los módulos Auth y Home.
+- **Sanación / IA:** Catálogo **`tool/omega_heal_catalog.yaml`** — reglas `match_groups` + textos HEAL; el CLI los inyecta tras “ANALYZER ERRORS”. **`bin/omega_heal_catalog.dart`** carga el YAML desde la raíz del paquete (`OMEGA_PACKAGE_ROOT` / script). **`OMEGA_HEAL_CATALOG=false`** desactiva; dependencia **`yaml`**. Incluye (entre otras): emit del canal, **`fromName` String vs enum**, payloads falsos (`OmegaIntentPayload`), **`omega_setup` sin `agent`**, **`OmegaFlowContext` sin APIs inventadas**, imports Flow/Agent en setup, **`navigationIntent`**, enum Event / `emit` del agente, equatable/intl/`OmegaViewState`/`viewStateStream`, tipos faltantes en `*_events.dart`, nullable en UI. Las recetas equivalentes dejaron de duplicarse en **`bin/omega.dart`** (solo quedan hints dinámicos del validador + pubspec).
+
 ## 1.0.3
 
 - **CLI / IA (`bin/omega.dart`):** Reglas y receta de heal para no confundir **`OmegaChannel.emit(OmegaEvent)`** con **`OmegaAgent.emit(String, {payload})`**; reforzar **`OmegaEvent.fromName`** (enum + `payload:` / puente desde `ctx.intent?.payloadAs`).
