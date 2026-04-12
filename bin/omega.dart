@@ -1455,6 +1455,7 @@ You fix a Flutter app that uses the published package omega_architecture (not lo
 
 ${OmegaAiCommand._omegaAiOmegaSourceOfTruth}
 HEAL: change only what the analyzer and the sources above require — do not refactor toward invented APIs.
+HEAL — phased mindset: prefer the smallest coherent fix per file (imports / missing types / one wiring bug) instead of rewriting large unrelated regions “all at once” unless errors demand it.
 
 ANALYZER ERRORS:
 ${errorContext.toString()}
@@ -5169,12 +5170,10 @@ PROJECT PUBSPEC NAME (mandatory — read before any import line that uses packag
 - FORBIDDEN: inventing an id from the product description (delivery_app, shop, etc.) or placeholder text.
 - Prefer relative imports between files in lib/$lower/ (e.g. import '${lower}_events.dart';). Use package:$pkgId/omega/app_runtime_ids.dart (or app_semantics.dart) when importing lib/omega/* from a feature module.
 
-STEPWISE (follow in your reasoning; still return one JSON object with all keys at the end):
-1) events — enums + ViewState; omega_architecture only.
-2) behavior — rules; sibling import '${lower}_events.dart'; only.
-3) agent — if using AppAgentId: import 'package:$pkgId/omega/app_runtime_ids.dart'; exactly; then sibling imports.
-4) flow — same for AppFlowId; same package string **$pkgId**.
-5) page — verify every package: line is only omega_architecture or **$pkgId**.
+STEPWISE — build in phases (still ONE JSON reply with all keys, but do not design everything in parallel):
+- Treat this as a pipeline, not a single blob: complete **(1) events** end-to-end (intents, events, ViewState, typed payloads) before you invent any behavior rule names. Then **(2) behavior** (every OmegaAgentReaction actionId) before **(3) agent** onAction switch strings — those strings must match behavior exactly. Then **(4) flow** (contract lists, onIntent/onEvent names) only using names already in events + what behavior/flow emit. Then **(5) page** last — only OmegaScope / getFlow / intents & events you already defined.
+- WRONG: writing the page or flow first and back-filling events; adding flow steps that reference event names not in *_events.dart*; behavior actionIds that do not exist as case "..." in the agent.
+- RIGHT: after each phase, mentally cross-check wire strings and actionIds against the previous file; then emit the next file. Prefer the smallest feature that satisfies the instruction in this pass — no extra screens, deps, or enums “for later”.
 
 ${OmegaAiCommand._omegaAiOmegaSourceOfTruth}
 
@@ -5215,7 +5214,7 @@ ${currentFiles.entries.map((e) => "--- FILE: ${e.key} ---\n${e.value}").join("\n
     late final String aiSystemContent;
     if (pageOnly) {
       aiSystemContent =
-          "You output exactly one JSON object (json_object mode). UI-ONLY mode: keys reasoning + page (+ optional response) only. NEVER events/agent/flow/behavior. Output valid Dart (Flutter) source only — not Kotlin, Swift, TypeScript, or pseudocode. Follow ONLY Omega APIs and patterns from package:omega_architecture/omega_architecture.dart plus the user prompt (PACKAGE GROUND TRUTH + rules); do not invent scope getters, flow APIs, or alternate packages. The page MUST import package:omega_architecture/omega_architecture.dart and package:flutter/material.dart so OmegaScope and types resolve. If the page references the module agent type (e.g. ${moduleName}Agent) or OmegaAgentBuilder<${moduleName}Agent,...>, add import '../${lower}_agent.dart' the same way as events (example: auth_page imports ../auth_agent.dart). OmegaScope, getFlow, StreamBuilder, OmegaIntent.fromName using ONLY existing intents from the reference files. If you emit any import package:THIS_APP/..., THIS_APP must be exactly **$pkgId** from the user prompt PROJECT PUBSPEC NAME block. No prose outside JSON.";
+          "You output exactly one JSON object (json_object mode). UI-ONLY mode: keys reasoning + page (+ optional response) only. NEVER events/agent/flow/behavior — this is a **single-step** task: only the page file. Output valid Dart (Flutter) source only — not Kotlin, Swift, TypeScript, or pseudocode. Follow ONLY Omega APIs and patterns from package:omega_architecture/omega_architecture.dart plus the user prompt (PACKAGE GROUND TRUTH + rules); do not invent scope getters, flow APIs, or alternate packages. The page MUST import package:omega_architecture/omega_architecture.dart and package:flutter/material.dart so OmegaScope and types resolve. If the page references the module agent type (e.g. ${moduleName}Agent) or OmegaAgentBuilder<${moduleName}Agent,...>, add import '../${lower}_agent.dart' the same way as events (example: auth_page imports ../auth_agent.dart). OmegaScope, getFlow, StreamBuilder, OmegaIntent.fromName using ONLY existing intents from the reference files. If you emit any import package:THIS_APP/..., THIS_APP must be exactly **$pkgId** from the user prompt PROJECT PUBSPEC NAME block. No prose outside JSON.";
       prompt =
           """
 UI-ONLY REDESIGN for Omega module '$moduleName' ($lower).
@@ -5225,7 +5224,7 @@ $contextBlock
 $filesContextBlock
 $packageContextBlock
 OUTPUT JSON RULES:
-1. Required string keys: "reasoning" (1-5 lines), "page" (complete Dart for ${moduleName}Page — file path conceptually: ui/${lower}_page.dart).
+1. Required string keys: "reasoning" (2-5 lines: confirm you only adjusted UI against existing module contracts — no new intents/events), "page" (complete Dart for ${moduleName}Page — file path conceptually: ui/${lower}_page.dart).
 2. Optional: "response" (duplicate of "page").
 3. FORBIDDEN: do not include keys "events", "behavior", "agent", or "flow" in the JSON at all.
 4. Page must use: import 'package:flutter/material.dart'; import 'package:omega_architecture/omega_architecture.dart'; import '../${lower}_events.dart'; if the screen uses type ${moduleName}Agent or OmegaAgentBuilder<${moduleName}Agent,...> you MUST add import '../${lower}_agent.dart'; (otherwise Undefined class ${moduleName}Agent).
@@ -5241,7 +5240,7 @@ Return only one JSON object. No markdown fences. No text outside JSON.
 """;
     } else {
       aiSystemContent =
-          "You are a Senior Flutter Developer writing Dart (Flutter) only. You output exactly one JSON object (json_object mode) with string values only. Include a concise \"reasoning\" (1-5 lines, user’s language). Every code value MUST be valid Dart — never Kotlin, Swift, TypeScript, or pseudocode. Use ONLY Omega APIs from package:omega_architecture/omega_architecture.dart and the patterns in the user prompt (MASTER CHECKLIST, templates, PACKAGE GROUND TRUTH); do not invent Omega types, scope members, agent methods, or internal package paths. You MUST satisfy the MASTER CHECKLIST BY FILE for events, behavior, agent, flow, and page so all five artifacts + setup wiring are coherent (same FLOW_ID, behavior actionIds = agent switch strings, flow contract matches real emits). When the app uses lib/omega/app_runtime_ids.dart, wire AppFlowId/AppAgentId in agent and flow files and keep enum bodies updated. Every file MUST import 'package:omega_architecture/omega_architecture.dart' where Omega types are used; page also needs flutter/material. The page that references ${moduleName}Agent MUST import '../${lower}_agent.dart'. Do NOT invent OmegaViewState. Behavior: addRule/OmegaAgentBehaviorRule only; agent: onAction with string cases; flow: contract + onIntent/onEvent; page: OmegaScope + kickoff. For any import package:THIS_APP/... the identifier THIS_APP must be exactly **$pkgId** from the user prompt PROJECT PUBSPEC NAME block (never a marketing slug). No prose outside JSON.";
+          "You are a Senior Flutter Developer writing Dart (Flutter) only. You output exactly one JSON object (json_object mode) with string values only. Include \"reasoning\" in the user’s language as **numbered steps 1→5** matching STEPWISE (events → behavior → agent → flow → page) — short lines per step; do not collapse into one vague paragraph. Every code value MUST be valid Dart — never Kotlin, Swift, TypeScript, or pseudocode. Use ONLY Omega APIs from package:omega_architecture/omega_architecture.dart and the patterns in the user prompt (MASTER CHECKLIST, templates, PACKAGE GROUND TRUTH); do not invent Omega types, scope members, agent methods, or internal package paths. You MUST satisfy the MASTER CHECKLIST BY FILE for events, behavior, agent, flow, and page so all five artifacts + setup wiring are coherent (same FLOW_ID, behavior actionIds = agent switch strings, flow contract matches real emits). When the app uses lib/omega/app_runtime_ids.dart, wire AppFlowId/AppAgentId in agent and flow files and keep enum bodies updated. Every file MUST import 'package:omega_architecture/omega_architecture.dart' where Omega types are used; page also needs flutter/material. The page that references ${moduleName}Agent MUST import '../${lower}_agent.dart'. Do NOT invent OmegaViewState. Behavior: addRule/OmegaAgentBehaviorRule only; agent: onAction with string cases; flow: contract + onIntent/onEvent; page: OmegaScope + kickoff. For any import package:THIS_APP/... the identifier THIS_APP must be exactly **$pkgId** from the user prompt PROJECT PUBSPEC NAME block (never a marketing slug). No prose outside JSON.";
       prompt =
           """
 Generate COMPLETE and FUNCTIONAL Dart (Flutter) code only — not Kotlin, Swift, TypeScript, or pseudocode — for an Omega Architecture module named '$moduleName' ($lower).
@@ -5275,7 +5274,7 @@ CRITICAL RULES:
 2. NEVER use internal paths like 'package:omega_architecture/omega/core/...' or relative imports into the package.
 3. Class names use '$moduleName' (PascalCase). File-level imports for sibling files: '${lower}_events.dart' or '../${lower}_events.dart' from ui/. If the page uses type ${moduleName}Agent or OmegaAgentBuilder<${moduleName}Agent,...>, it MUST also import '../${lower}_agent.dart' (see example/lib/auth/ui/auth_page.dart + ../auth_agent.dart).
 4. Return ONE JSON object. Every value MUST be a JSON string (no nested objects for code). Required keys:
-   - "reasoning": 1-8 short lines in natural language (Spanish if the user wrote in Spanish). Must state: FLOW_ID string used; first-load path (handleIntent vs channel emit); confirm behavior actionIds match agent switch cases; confirm every `package:` import for this app uses **$pkgId** (not a guessed name). Brief UI/layout note. No markdown fences.
+   - "reasoning": 6-12 short lines in natural language (Spanish if the user wrote in Spanish). MUST be numbered **1)** through **5)** for phases: events → behavior → agent → flow → page (one line each: what you locked in that phase). Then add: FLOW_ID; first-load path (handleIntent vs channel emit); confirm behavior actionIds = agent switch cases; every `package:` for this app is **$pkgId**; brief UI note. No markdown fences.
    - "events", "behavior", "agent", "flow", "page": full Dart file contents as strings (same as before).
    - "response" (optional): if the user asked for a single "template" or "código de pantalla", you MAY put the same full Dart as "page" here too so tools can read one field; if omitted, "page" alone is enough.
 5. ENUMS: implement OmegaIntentName / OmegaEventName only (abstract name contracts). NEVER write implements OmegaIntent or implements OmegaEvent on an enum. NEVER call OmegaEventName('...') or OmegaIntentName('...') — those types cannot be instantiated; use `enum MyIntent implements OmegaIntentName { navigateRegister('navigate.register'); ... }` then OmegaIntent.fromName(MyIntent.navigateRegister).
