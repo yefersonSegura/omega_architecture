@@ -1,22 +1,11 @@
-## 1.0.5
-
-- **CLI / IA (`bin/omega.dart`):** MASTER CHECKLIST y plantilla `omega g ecosystem` documentan dependencias **extra** en el flujo (p. ej. `offlineQueue`, repos): no son agentes; se crean una vez en `createOmegaConfig` y se pasan nombradas al constructor; el ecosistema generado por defecto solo añade `channel` + `agent`.
-
-## 1.0.4
-
-- **Example:** `AuthFlow`, `ProviderFlow` and `OrdersFlow` take `{required channel, required agent}` (and `OrdersFlow` also `offlineQueue`); each overrides [OmegaFlow.uiScopeAgent]. Added `OrdersAgent` + `orders_behavior.dart` and `AppAgentId.orders`. `omega_setup` wires one instance per agent into `agents:` and into the matching flow.
-
-## 1.0.3
-
-- **CLI `registerInOmegaSetup`:** If `*_flow.dart` declares `required this.agent` or `required ModuleAgent agent`, the setup now adds a single `final moduleAgent = ModuleAgent(channel)`, includes it in `agents:`, and registers `ModuleFlow(channel: channel, agent: moduleAgent)` (same variable). Heal recipe notes the same. Example `omega_setup.dart` documents the pattern.
-
-## 1.0.2
-
-- **[OmegaFlowManager.getFlowFlexible]:** resolves a flow when the id matches a registered key ignoring ASCII case (e.g. route `UserInterface` vs enum wire `userInterface`). **[OmegaFlowExpressionBuilder]** uses it so [OmegaFlow.uiScopeAgent] / expressions still apply when ids differ only by casing. **[OmegaFlowManager.registeredFlowIds]** for debugging. Debug logs when no flow matches or when `uiScopeAgent` is null but subtree may need scope.
-
 ## 1.0.1
 
 - **[OmegaFlow.uiScopeAgent]:** optional getter (default `null`). When a flow subclass returns its primary UI [OmegaAgent], **[OmegaFlowExpressionBuilder]** wraps the `builder` result in **[OmegaAgentScope]** so **[OmegaScopedAgentBuilder]** resolves the agent without wrapping the whole route. Override in flows that own one agent for the screen (same instance the flow uses).
+- **[OmegaFlowManager.getFlowFlexible]:** resolves a flow when the id matches a registered key ignoring ASCII case (e.g. route `UserInterface` vs enum wire `userInterface`). **[OmegaFlowExpressionBuilder]** uses it so [OmegaFlow.uiScopeAgent] / expressions still apply when ids differ only by casing. **[OmegaFlowManager.registeredFlowIds]** for debugging. Debug logs when no flow matches or when `uiScopeAgent` is null but subtree may need scope.
+- **CLI `registerInOmegaSetup`:** If `*_flow.dart` declares `required this.agent` or `required ModuleAgent agent`, the setup now adds a single `final moduleAgent = ModuleAgent(channel)`, includes it in `agents:`, and registers `ModuleFlow(channel: channel, agent: moduleAgent)` (same variable). Heal recipe notes the same. Example `omega_setup.dart` documents the pattern.
+- **Example:** `AuthFlow`, `ProviderFlow` and `OrdersFlow` take `{required channel, required agent}` (and `OrdersFlow` also `offlineQueue`); each overrides [OmegaFlow.uiScopeAgent]. Added `OrdersAgent` + `orders_behavior.dart` and `AppAgentId.orders`. `omega_setup` wires one instance per agent into `agents:` and into the matching flow.
+- **CLI / IA (`bin/omega.dart`):** MASTER CHECKLIST y plantilla `omega g ecosystem` documentan dependencias **extra** en el flujo (p. ej. `offlineQueue`, repos): no son agentes; se crean una vez en `createOmegaConfig` y se pasan nombradas al constructor; el ecosistema generado por defecto solo añade `channel` + `agent`.
+
 
 ## 1.0.0
 
