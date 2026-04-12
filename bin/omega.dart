@@ -2405,6 +2405,133 @@ bool _omegaSetupHasFlowChannelConstruction(String content, String pascal) {
   return RegExp(r"\b" + RegExp.escape(name) + r"\s*\(").hasMatch(content);
 }
 
+/// Removes duplicate bare agent variable entries (`authAgent,` twice) inside `agents:`.
+String _omegaDedupeOmegaSetupAgentsList(String content) {
+  String dedupeInner(String inner) {
+    var s = inner;
+    for (var i = 0; i < 12; i++) {
+      final next = s.replaceAllMapped(
+        RegExp(r'(\b(\w+)\s*,)(?:\s*\2\s*,)+', multiLine: true),
+        (mm) => mm.group(1)!,
+      );
+      if (next == s) break;
+      s = next;
+    }
+    return s;
+  }
+
+  var out = content.replaceFirstMapped(
+    RegExp(r'(agents:\s*<OmegaAgent>\s*\[)([\s\S]*?)(\]\s*[,)])', multiLine: true),
+    (m) => '${m[1]}${dedupeInner(m.group(2)!)}${m[3]}',
+  );
+  if (out == content) {
+    out = content.replaceFirstMapped(
+      RegExp(r'(agents:\s*\[)([\s\S]*?)(\]\s*[,)])', multiLine: true),
+      (m) => '${m[1]}${dedupeInner(m.group(2)!)}${m[3]}',
+    );
+  }
+  return out;
+}
+
+/// Same heuristics as [OmegaValidateCommand.validateProjectRoot] login/home block.
+bool _omegaSetupQualifiesForColdStartAutoPatch(String content) {
+  if (RegExp(r'\binitialFlowId\s*:').hasMatch(content) &&
+      RegExp(r'\binitialNavigationIntent\s*:').hasMatch(content)) {
+    return false;
+  }
+  final agentsBlock = RegExp(
+    r'agents:\s*<OmegaAgent>\s*\[([\s\S]*?)\]\s*[,)]',
+    multiLine: true,
+  ).firstMatch(content);
+  final routesBlock = RegExp(
+    r'routes:\s*<OmegaRoute>\s*\[([\s\S]*?)\]\s*[,)]',
+    multiLine: true,
+  ).firstMatch(content);
+  final agentCtorReg = RegExp(
+    r"(\w+)Agent\s*\(\s*(?:channel\s*:\s*)?channel\s*[,\)]",
+  );
+  final routeIdReg = RegExp(
+    r'''OmegaRoute(?:\.typed<[^>]+>)?\(\s*id:\s*['"]([^'"]+)['"]''',
+  );
+  final agentNames = <String>[];
+  final routeIds = <String>[];
+  var bareAgentRefs = <String>[];
+  if (agentsBlock != null) {
+    final inner = agentsBlock.group(1)!;
+    for (final m in agentCtorReg.allMatches(inner)) {
+      agentNames.add(m.group(1)!);
+    }
+    bareAgentRefs = OmegaValidateCommand._omegaSetupListCommaEntries(inner);
+  }
+  if (routesBlock != null) {
+    final inner = routesBlock.group(1)!;
+    for (final m in routeIdReg.allMatches(inner)) {
+      routeIds.add(m.group(1)!);
+    }
+  }
+  final looksAuthApp =
+      content.contains('AuthFlow(') ||
+      content.contains('AuthAgent(') ||
+      routeIds.any(
+        (id) =>
+            id.toLowerCase().contains('auth') || id.toLowerCase() == 'login',
+      ) ||
+      agentNames.any((n) => n.toLowerCase() == 'auth');
+  final looksMultiModule = routeIds.length >= 2 ||
+      agentNames.length >= 2 ||
+      bareAgentRefs.length >= 2;
+  return looksAuthApp && looksMultiModule;
+}
+
+/// Inserts [initialFlowId] + [initialNavigationIntent] when the setup looks like Auth + multi-route but the AI omitted cold start.
+String _omegaPatchOmegaSetupColdStart(String content, String pkg) {
+  if (!_omegaSetupQualifiesForColdStartAutoPatch(content)) return content;
+  var s = content;
+  final semanticsImportRe = RegExp(
+    "import\\s+['\"]package:${RegExp.escape(pkg)}/omega/app_semantics\\.dart['\"]",
+  );
+  final semanticsAnyRe = RegExp(
+    "import\\s+['\"].*app_semantics\\.dart['\"]",
+  );
+  if (!semanticsImportRe.hasMatch(s) && !semanticsAnyRe.hasMatch(s)) {
+    s = "import 'package:$pkg/omega/app_semantics.dart';\n$s";
+  }
+  var flowExpr = "'authFlow'";
+  if (s.contains('AppFlowId.authFlow')) {
+    flowExpr = 'AppFlowId.authFlow.id';
+    final runtimeImportRe = RegExp(
+      "import\\s+['\"]package:${RegExp.escape(pkg)}/omega/app_runtime_ids\\.dart['\"]",
+    );
+    final runtimeAnyRe = RegExp(
+      "import\\s+['\"].*app_runtime_ids\\.dart['\"]",
+    );
+    if (!runtimeImportRe.hasMatch(s) && !runtimeAnyRe.hasMatch(s)) {
+      s = "import 'package:$pkg/omega/app_runtime_ids.dart';\n$s";
+    }
+  }
+  final needFlow = !RegExp(r'\binitialFlowId\s*:').hasMatch(s);
+  final needNav =
+      !RegExp(r'\binitialNavigationIntent\s*:').hasMatch(s);
+  if (!needFlow && !needNav) return s;
+  final flowLine =
+      needFlow ? '    initialFlowId: $flowExpr,\n' : '';
+  final navLine = needNav
+      ? '    initialNavigationIntent: OmegaIntent.fromName(AppIntent.navigateLogin),\n'
+      : '';
+  if (RegExp(r'return\s+OmegaConfig\s*\(\s*\n').hasMatch(s)) {
+    s = s.replaceFirstMapped(
+      RegExp(r'return\s+OmegaConfig\s*\(\s*\n'),
+      (m) => '${m[0]}$flowLine$navLine',
+    );
+  } else {
+    s = s.replaceFirstMapped(
+      RegExp(r'return\s+OmegaConfig\s*\(\s*'),
+      (m) => '${m[0]}\n$flowLine$navLine',
+    );
+  }
+  return s;
+}
+
 void registerInOmegaSetup(
   String name,
   String path,
@@ -2644,6 +2771,8 @@ void registerInOmegaSetup(
     content = _omegaUpgradeOmegaRouteForAgent(content, pascal, agentVar);
   }
 
+  content = _omegaPatchOmegaSetupColdStart(content, pkg);
+  content = _omegaDedupeOmegaSetupAgentsList(content);
   content = _omegaDedupeDuplicateImportLines(content);
   content = _omegaNormalizeOmegaSetupAgentFinalSpacing(content);
 
