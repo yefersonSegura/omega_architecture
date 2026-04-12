@@ -662,7 +662,6 @@ class OmegaCreateAppCommand {
       OmegaInitCommand.run([]);
 
       // 4. Setup modules with AI if requested
-      String? firstModule;
       if (kickstart != null) {
         stdout.writeln(
           "✨ ${_tr(en: "Omi is kickstarting your app: $kickstart", es: "Omi arranca tu app: $kickstart")}...",
@@ -682,10 +681,6 @@ class OmegaCreateAppCommand {
           },
         );
 
-        if (modules.isNotEmpty) {
-          firstModule = modules.first;
-        }
-
         for (final module in modules) {
           stdout.writeln(
             "🏗️ ${_tr(en: "Generating module: $module", es: "Generando modulo: $module")}...",
@@ -697,6 +692,7 @@ class OmegaCreateAppCommand {
             asJson: false,
             useProviderApi: useProviderApi,
             toTempFile: false,
+            runPostValidate: false,
           );
           if (!coachOk) {
             _err(
@@ -724,7 +720,7 @@ class OmegaCreateAppCommand {
       );
 
       // 5. Setup clean main.dart
-      _setupCleanMain(projectRoot, appName, initialModule: firstModule);
+      _setupCleanMain(projectRoot, appName);
 
       // 6. Setup clean widget_test.dart
       _setupCleanTest(projectRoot, appName);
@@ -735,16 +731,21 @@ class OmegaCreateAppCommand {
       Directory.current = originalCwd;
     }
 
+    stdout.writeln("");
+    stdout.writeln(
+      _tr(
+        en: "Running omega validate (OmegaConfig + cold start checks)...",
+        es: "Ejecutando omega validate (OmegaConfig + comprobaciones de arranque)...",
+      ),
+    );
+    OmegaValidateCommand.validateProjectRoot(projectRoot);
+
     stdout.writeln("\n✨ ${_tr(en: "App ready!", es: "App lista!")}");
     stdout.writeln("  cd $appName");
     stdout.writeln("  flutter run");
   }
 
-  static void _setupCleanMain(
-    String root,
-    String appName, {
-    String? initialModule,
-  }) {
+  static void _setupCleanMain(String root, String appName) {
     // Usamos el directorio actual para mayor robustez en la ruta
     final libDir = Directory(
       "${Directory.current.path}${Platform.pathSeparator}lib",
@@ -754,7 +755,6 @@ class OmegaCreateAppCommand {
 
     if (mainFile.existsSync()) mainFile.deleteSync();
 
-    final initialFlowId = initialModule != null ? "'$initialModule'" : "null";
     mainFile.writeAsStringSync('''
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -782,7 +782,7 @@ void main() async {
     OmegaScope(
       channel: runtime.channel,
       flowManager: runtime.flowManager,
-      initialFlowId: $initialFlowId,
+      initialFlowId: runtime.initialFlowId,
       initialNavigationIntent: runtime.initialNavigationIntent,
       child: OmegaApp(navigator: runtime.navigator),
     ),
@@ -2859,6 +2859,20 @@ class OmegaValidateCommand {
       return;
     }
 
+    if (!validateProjectRoot(root)) exit(1);
+  }
+
+  /// Validates [root] (Flutter app with `lib/omega/omega_setup.dart`): structure, duplicates, login/home cold start hints, route vs *Page agent wiring. Prints messages; does not [exit] — returns `false` on failure.
+  static bool validateProjectRoot(String root) {
+    final setupPath = "$root/lib/omega/omega_setup.dart";
+    final setupFile = File(setupPath);
+    if (!setupFile.existsSync()) {
+      _err("omega_setup.dart not found.");
+      stdout.writeln("  Looked at: ${_absPath(setupPath)}");
+      stdout.writeln("  Run: omega init");
+      return false;
+    }
+
     final content = setupFile.readAsStringSync();
     var ok = true;
 
@@ -3021,7 +3035,7 @@ class OmegaValidateCommand {
       stdout.writeln("");
       stdout.writeln("Validate failed.");
     }
-    if (!ok) exit(1);
+    return ok;
   }
 
   /// Scans `lib/**.dart` for `*Page` classes whose constructor has `required …Agent agent`.
@@ -3484,6 +3498,7 @@ OMEGA — NAVIGATION FROM A BUTTON (channel + OmegaNavigator — copy this shape
 OMEGA — lib/main.dart (entrypoint — copy package example/lib/main.dart line-for-line structure; do not invent):
 - **Imports:** `package:flutter/foundation.dart`, `package:flutter/material.dart`, `package:omega_architecture/omega_architecture.dart`, `import 'omega/omega_setup.dart';` (relative from `lib/main.dart`). **FORBIDDEN:** `package:omega_architecture/omega/...` internal paths.
 - **main() async:** (1) If `kIsWeb && Uri.base.queryParameters['omega_inspector'] == '1'`, `runApp(MaterialApp(..., home: const OmegaInspectorReceiver())); return;` (2) `final runtime = OmegaRuntime.bootstrap(createOmegaConfig);` where `createOmegaConfig` is `OmegaConfig Function(OmegaChannel)` from `omega_setup.dart`. (3) Optional VM inspector: `if (kDebugMode && !kIsWeb) { await OmegaInspectorServer.start(runtime.channel, runtime.flowManager); }` (4) `runApp(OmegaScope(channel: runtime.channel, flowManager: runtime.flowManager, initialFlowId: runtime.initialFlowId, initialNavigationIntent: runtime.initialNavigationIntent, child: MyApp(navigator: runtime.navigator)));`
+- **OmegaScope cold start (do not skip):** **`initialFlowId: runtime.initialFlowId`** and **`initialNavigationIntent: runtime.initialNavigationIntent`** are **both required** whenever the app uses **`MaterialApp(home: OmegaInitialRoute(...))`** (standard shell). **FORBIDDEN:** any **string literal** on `OmegaScope` for `initialFlowId` (e.g. `'Auth'`, `'authFlow'`, `'Home'`) — those must come **only** from `OmegaConfig` via `OmegaRuntime` so they stay aligned with `createOmegaConfig`. **FORBIDDEN:** omitting **`initialNavigationIntent`** on `OmegaScope` while using `OmegaInitialRoute` (first route is undefined).
 - **MyApp:** `StatelessWidget` with `final OmegaNavigator navigator`; `MaterialApp(navigatorKey: navigator.navigatorKey, title: ..., theme: ..., home: OmegaInitialRoute(child: const RootHandler(showInspector: true)));` — **`OmegaInitialRoute`** reads startup navigation from **[OmegaScope.initialNavigationIntent]** (set from `runtime`); do **not** pass `OmegaIntent?` through `MyApp` constructors. **`RootHandler`** (exported from `omega_architecture`) wraps **[OmegaFlowActivator]** + debug AppBar; use **`showInspector: true`** when you want **[OmegaInspectorLauncher]** on web in debug. Use **`RootHandler(wrapWithScaffold: false)`** when each route provides its own `Scaffold`.
 - **FORBIDDEN:** `MaterialApp` with only `initialRoute: '/'` / `routes: {'/': ...}` as the sole Omega shell — registered [OmegaRoute] ids are not `/`. Use `home:` + [OmegaNavigator] + [OmegaInitialRoute].
 - **FORBIDDEN:** hand-rolled `_RootHandler` + `WidgetsBinding.instance.addPostFrameCallback` to emit the first `navigation.intent` if [OmegaConfig.initialNavigationIntent] + [OmegaInitialRoute] already define startup navigation (duplicate or races).
@@ -3682,6 +3697,7 @@ APP SHELL — LOGIN + HOME (mandatory whenever you create or extend a whole app:
 - **`OmegaConfig` is incomplete without cold start:** When the app includes **Auth/Login + Home**, the `return OmegaConfig(` **MUST** include **`initialFlowId:`** (same string as the **Auth** flow’s `super(id: ...)`, e.g. `AppFlowId.authFlow.id` or `'authFlow'`) **and** **`initialNavigationIntent: OmegaIntent.fromName(AppIntent.navigateLogin)`**. Omitting either leaves the app opening on the wrong screen or with no first navigation — **FORBIDDEN** for standard products. Import `app_semantics.dart` for `AppIntent` / `AppEvent`; import `app_runtime_ids.dart` when using `AppFlowId`.
 - **Route ids vs navigator (critical):** [OmegaNavigator] resolves `navigate.{destination}` by stripping the **first** `navigate.` prefix and looking up **`OmegaRoute(id: destination)`** (destination may contain dots). So for `AppIntent.navigateLogin` (wire `navigate.login`) the login route id **must be exactly** `login` — **WRONG:** `OmegaRoute(id: 'Auth', ...)` for the login page. For `AppIntent.navigateHome` use **`id: 'home'`**. For any other `AppIntent.navigateFoo…`, **`OmegaRoute.id` must match `AppIntent.navigateFoo….name` with the leading `navigate.` removed** — e.g. `navigateDeliveryDetail` → **`delivery.detail`**. **AppIntent spelling:** `OmegaIntent.fromName(AppIntent.x)` requires **`x` to exist on the enum** — WRONG: `navigateOrderDetails` vs declared `navigateOrderDetail` (analyzer: no constant named …).
 - **Cold start order:** `initialFlowId` = auth flow; `initialNavigationIntent` = `navigateLogin` so the **first visible route is Login**, not Home — mirror `example/lib/omega/omega_setup.dart` + `OmegaInitialRoute` in `example/lib/main.dart`.
+- **`lib/main.dart` must forward `runtime` only:** [OmegaScope] uses **`initialFlowId: runtime.initialFlowId`** and **`initialNavigationIntent: runtime.initialNavigationIntent`** — **never** duplicate cold-start values as string literals in `main.dart` (they drift from `OmegaConfig`); **never** omit either field when `home:` is `OmegaInitialRoute`.
 - **After successful login:** the **Auth flow or Auth agent** MUST emit `OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateHome))` when credentials validate (demo: accept non-empty fields). Do not require a manual second tap to reach Home.
 - **Home page UX:** When the app has multiple modules (Tracking, Orders, …), the **Home** screen must offer **clear, attractive navigation** to each: e.g. `ListTile` / `Card` with **leading icons**, short titles, subtitles, `FilledButton.tonal` or `NavigationRail` for a polished shell — not a bare `Text('Home')`. Each destination should `channel.emit(OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateXxx)))` using the correct **`AppIntent`** case whose wire matches the target route id.
 - **Duplicates:** Never list the same agent variable twice in `agents:` or duplicate `OmegaRoute(id: ...)` — `omega validate` fails; re-read the list before emitting JSON.
@@ -3693,7 +3709,7 @@ APP SHELL — LOGIN + HOME (mandatory whenever you create or extend a whole app:
 HEAL — OMEGA API (fix analyzer errors; mirror PACKAGE GROUND TRUTH examples):
 - createOmegaConfig: `agents:` / `flows:` use constructor calls only (never bare `MyFlow` without `(...)`). One agent instance per module; reuse the same variable in `MyFlow(channel: c, agent: thatAgent)` when the flow exposes `uiScopeAgent`. No duplicate identical import lines. **routes:** each `OmegaRoute` `id:` **globally unique** in `routes:` — never two blocks with `id: 'UserManagement'` or two `id: 'OrderManagement'`. **agents:** list each variable **once** — WRONG: `agents: [ userAgent, orderAgent, orderAgent ]`; **flows:** one ctor line per flow type — WRONG: two `UserManagementFlow(...)`. Run **`omega validate`** from app root; it fails on duplicate route ids, duplicate agent list entries, and duplicate flow types inside the lists.
 - Typed ids: if `lib/omega/app_runtime_ids.dart` exists, `super(id: AppFlowId.X.id)` / `AppAgentId.X.id` must match an enum member; import `package:<THIS_APP>/omega/app_runtime_ids.dart` with THIS_APP from the APP PUBSPEC block.
-- OmegaScope: `.channel`, `.flowManager`, `.initialFlowId`, `.initialNavigationIntent` — no agentManager. Use `getFlow` + `StreamBuilder`, or pass `agent` into the Page, or `OmegaAgentScope` / `Flow.uiScopeAgent` + shared agent in setup. **`lib/main.dart`:** mirror `_omegaAiMainDartEntry` / example `main.dart` (OmegaScope passes `initialNavigationIntent`; `MaterialApp.home` uses `OmegaInitialRoute` + `RootHandler`).
+- OmegaScope: `.channel`, `.flowManager`, `.initialFlowId`, `.initialNavigationIntent` — no agentManager. Use `getFlow` + `StreamBuilder`, or pass `agent` into the Page, or `OmegaAgentScope` / `Flow.uiScopeAgent` + shared agent in setup. **`lib/main.dart`:** mirror `_omegaAiMainDartEntry` / example `main.dart` — **`initialFlowId` + `initialNavigationIntent` from `runtime.` only** (no `'Auth'` / `'authFlow'` literals on `OmegaScope`); `MaterialApp.home` uses `OmegaInitialRoute` + `RootHandler`.
 - `OmegaFlowActivator`: only `flowId` + `child` + optional `useSwitchTo` — no `onActivate` / callbacks. `OmegaFlowManager`: no `getAgent` — remove invented manager→agent bridges. `OmegaScope`: no `agentManager` / `getAgent` — use `widget.agent`, `OmegaAgentScope`, or `uiScopeAgent` + `OmegaScopedAgentBuilder`.
 - Navigation: `OmegaIntent.fromName` takes an **AppIntent** / **ModuleIntent enum constant**, never a string like `'navigate.home'`; outer `AppEvent.navigationIntent` (see `_omegaAiNavigationChannelEmit`).
 - handleIntent reaches running flows’ onIntent; agents and behavior react to **channel** events — emit `OmegaEvent.fromName(...)` / `emitTyped` for patterns that use `ctx.event` (lists, navigation). `OmegaIntent.fromName(MyEnum.member)` — enum constant, not String, not `.name`.
@@ -5547,6 +5563,8 @@ CRITICAL RULES:
 11. Intent payload classes (passed to OmegaIntent.fromName(..., payload: YourPayload(...))): plain Dart only — NOT OmegaTypedEvent. Named arguments when constructing the payload MUST use the **same identifiers as the class fields** (e.g. field `userName` ⇒ argument `userName: controller.text`). WRONG: declaring `final String? userName` but calling with `name:` — that is a different parameter and breaks the analyzer. Do not reuse the word "name" for a user display name unless the field is literally named `name`.
 12. If the JSON includes **`lib/omega/omega_setup.dart`**: `OmegaConfig` MUST include **`initialFlowId:`** (auth/login flow id) **and** **`initialNavigationIntent: OmegaIntent.fromName(AppIntent.navigateLogin)`** when the app has login+home. Login route: **`OmegaRoute(id: 'login', ...)`** (not `Auth` — navigator matches `navigate.login` → id **`login`**). Home route: **`id: 'home'`**. On valid login, auth flow/agent emits **`navigateHome`** via `AppEvent.navigationIntent`. **HomePage** must expose attractive navigation (cards / list tiles / rail) to every other module route. Never duplicate the same agent in `agents:` or the same `id:` twice in `routes:`.
 13. **`AppIntent` + routes:** Every `OmegaIntent.fromName(AppIntent.someCase)` must use a **`someCase` that exists** in `app_semantics.dart` (exact spelling — no `navigateOrderDetails` vs `navigateOrderDetail` mix-ups). Every such navigation target needs **`OmegaRoute(id: '<segment after navigate.>', …)`** where the id matches the navigator rule (DottedCamel → dotted wire; e.g. `navigateDeliveryDetail` → id **`delivery.detail`**). If you emit a navigate intent, register the matching route in the same JSON or state it explicitly in **reasoning**.
+14. If the JSON includes **`lib/main.dart`** (or you describe the host entry): **[OmegaScope]** MUST use **`initialFlowId: runtime.initialFlowId`** and **`initialNavigationIntent: runtime.initialNavigationIntent`** after **`OmegaRuntime.bootstrap(createOmegaConfig)`** — **FORBIDDEN** string literals on `OmegaScope` for cold start (e.g. `initialFlowId: 'Auth'`) and **FORBIDDEN** omitting **`initialNavigationIntent`** when `MaterialApp` uses **`OmegaInitialRoute`**. Single source of truth: **`OmegaConfig`** in `omega_setup.dart`; `main.dart` only forwards **`runtime`**.
+15. **CLI post-check:** `omega ai coach module` / `omega ai coach redesign` runs **`omega validate`** on the app root after a successful pass (when `lib/omega/omega_setup.dart` exists). **`omega create app`** runs one final **`omega validate`** after modules + `main.dart`. Your emitted **`OmegaConfig`** must pass those checks (**`initialFlowId`**, **`initialNavigationIntent`**, **`login`/`home` route ids** when applicable, no duplicate `agents:`/`flows:`/`routes:` entries).
 
 UI DESIGN (apply to the 'page' value only — maximize quality; the structural snippet below is NOT the final UI):
 $_omegaAiUiDesignStandards
@@ -5898,6 +5916,9 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
 
     /// When true (`omega ai coach redesign`), only `ui/*_page.dart` is regenerated; agent/flow/behavior/events stay as-is.
     bool uiOnly = false,
+
+    /// When false, skips [OmegaValidateCommand.validateProjectRoot] at the end (e.g. `omega create app` kickstart runs one final validate after all modules + `main.dart`).
+    bool runPostValidate = true,
   }) async {
     String moduleName;
     String cleanFeature = feature;
@@ -5923,6 +5944,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     final requiredArtifacts = _coachRequiredArtifacts(moduleName);
     final checks = _coachValidationChecks();
     final insights = <String>[];
+    var validateOk = true;
     var mode = "offline";
 
     Map<String, String>? aiGeneratedCode;
@@ -6152,6 +6174,25 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
     }
     Directory.current = originalCwd;
 
+    if (hasSetup && runPostValidate) {
+      stdout.writeln("");
+      stdout.writeln(
+        _tr(
+          en: "Running omega validate (OmegaConfig, cold start, duplicates)...",
+          es: "Ejecutando omega validate (OmegaConfig, arranque en frio, duplicados)...",
+        ),
+      );
+      validateOk = OmegaValidateCommand.validateProjectRoot(appRoot);
+      if (!validateOk) {
+        insights.add(
+          _tr(
+            en: "omega validate failed — fix omega_setup.dart (e.g. initialFlowId, initialNavigationIntent, routes), then run: dart run omega_architecture:omega validate",
+            es: "omega validate fallo — corrige omega_setup.dart (p. ej. initialFlowId, initialNavigationIntent, rutas) y ejecuta: dart run omega_architecture:omega validate",
+          ),
+        );
+      }
+    }
+
     final createdFiles = expectedFiles
         .where((p) => File(p).existsSync())
         .toList();
@@ -6177,6 +6218,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
           "createdFiles": createdFiles.map(_absPath).toList(),
           "validationChecks": checks,
           "insights": insights,
+          "validateOk": validateOk,
         }),
         toTempFile: toTempFile,
         kind: "coach_module",
@@ -6231,6 +6273,14 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
         out.writeln("- $i");
       }
     }
+    out
+      ..writeln("")
+      ..writeln(
+        "## ${_tr(en: "Post-generation: omega validate", es: "Post-generacion: omega validate")}",
+      )
+      ..writeln(
+        "- ${_tr(en: "Result", es: "Resultado")}: `${validateOk ? "OK" : "FAILED"}`",
+      );
     _emitAiOutput(
       content: out.toString(),
       toTempFile: toTempFile,
