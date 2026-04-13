@@ -46,10 +46,10 @@ Output from commands appears in the **Omega Studio** output channel.
 
 ## Requirements
 
-1. **[`omega_architecture`](https://pub.dev/packages/omega_architecture)** available as the **`omega`** executable (e.g. `dart pub global activate omega_architecture` and `omega` on your `PATH`).  
+1. **[`omega_architecture`](https://pub.dev/packages/omega_architecture)** installed globally (`dart pub global activate …` or `flutter pub global activate …` from pub.dev or Git). **Omega Studio** runs the **`omega` / `omega.bat`** shim under Pub’s global **`bin`** (Pub does not support `dart`/`flutter pub global run` for Flutter-dependent packages). Without `omega` on `PATH`, call that shim by full path or fix `PATH` (see [README — Troubleshooting](https://github.com/yefersonSegura/omega_architecture/blob/main/README.md#troubleshooting-omega-command-not-found)).  
 2. Open the **root folder** of your Flutter app as the workspace (the folder that contains `pubspec.yaml`).
 
-> If the editor cannot find `dart` / `flutter`, configure **Dart: Flutter SDK** / **Dart: Sdk Path** in Settings—the extension inherits the same environment as other Dart tooling.
+> If the editor cannot find `dart` / `flutter`, configure **Dart: Flutter SDK** / **Dart: Sdk Path** in Settings—the extension inherits the same environment as other Dart tooling. If commands still fail, run **`dart pub global activate omega_architecture`** again with the same SDK as the IDE and restart the window.
 
 ---
 

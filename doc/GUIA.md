@@ -703,17 +703,18 @@ dart pub global activate --source path .
 ```
 
 #### Configuración del PATH
-Para que el sistema reconozca el comando `omega` desde cualquier directorio, debes añadir la carpeta de binarios globales de Dart a tu sistema.
+Para que el sistema reconozca el comando `omega` desde cualquier directorio, debes añadir la carpeta **`bin`** del caché global de Pub (donde Pub instala `omega.bat` tras `dart pub global activate`).
 
-**Windows:**
-1. Presiona la tecla **Windows** y escribe: `variables de entorno`.
-2. Selecciona **"Editar las variables de entorno del sistema"**.
-3. Haz clic en el botón **"Variables de entorno..."**.
-4. En **"Variables de usuario"**, busca **`Path`** y haz clic en **"Editar"**.
-5. Haz clic en **"Nuevo"** y pega: `%LOCALAPPDATA%\Pub\Cache\bin`
-6. Acepta todo y **REINICIA EL TERMINAL**.
+**Windows**
+- Carpeta a añadir al **`Path` del usuario**: **`%LOCALAPPDATA%\Pub\Cache\bin`**.  
+  En el explorador de archivos suele ser **`C:\Users\<tu_usuario>\AppData\Local\Pub\Cache\bin`** — es la misma que indica Pub en el aviso *«installs executables into … which is not on your path»* si aún no está en el PATH.
+1. Tecla **Windows**, busca **`variables de entorno`**.
+2. Abre **Editar las variables de entorno del sistema** → **Variables de entorno…** *o* **Editar las variables de entorno de tu cuenta** (según el diálogo que ofrezca tu Windows).
+3. En **Variables de usuario**, selecciona **`Path`** → **Editar** → **Nuevo**.
+4. Pega **`%LOCALAPPDATA%\Pub\Cache\bin`** (o la ruta completa terminando en `\Pub\Cache\bin`).
+5. Acepta todo y **cierra todas las ventanas de terminal**; abre una **nueva** y prueba `where omega` o `omega --help`.
 
-**macOS / iOS / Linux:**
+**macOS / Linux:**
 1. Abre tu archivo de configuración de shell (ej: `~/.zshrc`, `~/.bashrc`).
 2. Añade esta línea al final:
    ```bash

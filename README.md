@@ -55,6 +55,55 @@ dart run omega_architecture:omega init
 
 ---
 
+## Troubleshooting: omega command not found
+
+`dart pub global activate …` installs a launcher into Pub’s **global `bin`**. If the shell says **`omega: command not found`** (common on **Windows** and **Git Bash**), the directory is usually not on **`PATH`**, or the terminal was opened **before** you fixed `PATH`.
+
+1. **Confirm the package is active**  
+   `dart pub global list` — you should see `omega_architecture`.
+
+2. **Confirm the launcher exists**  
+   - **Windows (cmd):** `dir "%LOCALAPPDATA%\Pub\Cache\bin\omega.bat"`  
+   - **PowerShell:** `Test-Path "$env:LOCALAPPDATA\Pub\Cache\bin\omega.bat"`  
+   - **Git Bash:** `ls "/c/Users/$USER/AppData/Local/Pub/Cache/bin/omega"` (adjust drive/user if needed).
+
+3. **Put Pub’s global `bin` on your `PATH`**, then open a **new** terminal (otherwise Windows prints *`omega` is not recognized…* even right after a successful `dart pub global activate`).
+
+   **Windows**
+   - Pub installs shims such as `omega.bat` under **`%LOCALAPPDATA%\Pub\Cache\bin`**, which is the same folder Pub mentions in the warning *“installs executables into … which is not on your path”* — for example  
+     **`C:\Users\<YourWindowsUser>\AppData\Local\Pub\Cache\bin`**.
+   - Add **that directory** to your **user** **`Path`** (not only system-wide if your user `Path` overrides expectations):
+     1. Press **Win**, search **environment variables**, open **Edit the system environment variables** → **Environment Variables…**, *or* **Edit environment variables for your account**.
+     2. Under **User variables for …**, select **`Path`** → **Edit** → **New**.
+     3. Enter **`%LOCALAPPDATA%\Pub\Cache\bin`** (or paste the full path Pub showed, ending in `\Pub\Cache\bin`).
+     4. **OK** all dialogs, then **close every** cmd / PowerShell / IDE terminal and open a **new** one.
+   - Verify: **`where omega`** (cmd) should list `omega.bat`, or run **`omega --help`**.
+
+   **macOS / Linux:** `export PATH="$PATH:$HOME/.pub-cache/bin"` in `~/.zshrc` / `~/.bashrc`, or your shell’s equivalent.
+
+4. **Git Bash on Windows** often does not pick up a freshly edited Windows `PATH` until **Cursor/VS Code / Terminal is fully restarted**. If it still fails, append Pub’s `bin` explicitly (use your real username):
+
+   ```bash
+   export PATH="$PATH:/c/Users/YOUR_USER/AppData/Local/Pub/Cache/bin"
+   ```
+
+5. **Without `omega` on `PATH` (after global activate)** — Pub does **not** support **`dart pub global run`** nor **`flutter pub global run`** for packages that depend on the Flutter SDK (same error: *“requires the Flutter SDK, which is unsupported for global executables”*). Use one of these:
+
+   - **Windows (cmd):** run the shim by full path, from your app root:
+
+     ```bat
+     "%LOCALAPPDATA%\Pub\Cache\bin\omega.bat" validate
+     ```
+
+   - **Any OS:** add Pub’s global `bin` to `PATH` (step 3 above), then use `omega …` as usual.
+
+   - **From a project** that lists `omega_architecture` in `pubspec.yaml`: `dart run omega_architecture:omega …` (uses that app’s Flutter toolchain).
+
+6. **Multiple Dart / Flutter installs (FVM, etc.)**  
+   Use **`where flutter`** / **`which flutter`** and run **`flutter pub global activate …`** with the same toolchain you use for your apps. Activating with one SDK and running the shim with another can break.
+
+---
+
 ## AI kickstart (optional)
 
 Describe the product once; the CLI can scaffold agents, flows, behavior, and pages (requires provider config and network when using `--provider-api`):

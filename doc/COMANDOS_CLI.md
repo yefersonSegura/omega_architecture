@@ -16,8 +16,44 @@ dart run omega_architecture:omega ai --help
 | Forma | Cuándo usarla |
 |--------|----------------|
 | `dart run omega_architecture:omega <comando> …` | Proyecto que ya tiene `omega_architecture` en `pubspec.yaml` (recomendado en CI y equipos). |
-| `dart pub global activate omega_architecture` y luego `omega …` | Comando `omega` en el PATH (ver [README](../README.md#1-global-activation)). |
+| `dart pub global activate omega_architecture` y luego `omega …` | Comando `omega` en el **PATH** (ver [README — Troubleshooting](../README.md#troubleshooting-omega-command-not-found)). |
+| Ruta completa al shim (p. ej. Windows: `%LOCALAPPDATA%\Pub\Cache\bin\omega.bat`) + argumentos | Si no quieres tocar el PATH: es la misma instalación global que `omega …`. **`dart` / `flutter pub global run` no sirven** para este paquete (Pub lo rechaza). |
 | `dart run bin/omega.dart …` | Solo al trabajar **dentro del repo** del paquete. |
+
+### Si tras `dart pub global activate …` la terminal **no reconoce `omega`**
+
+Suele ser **PATH** o terminal abierta **antes** de corregir variables.
+
+1. Comprueba: `dart pub global list` (debe salir `omega_architecture`).
+2. Comprueba que exista el lanzador: en Windows, carpeta típica  
+   **`%LOCALAPPDATA%\Pub\Cache\bin`** → archivo **`omega.bat`**.  
+   Es la misma ruta que muestra Pub al activar si avisa *«which is not on your path»*; en disco suele verse como  
+   **`C:\Users\<tu_usuario>\AppData\Local\Pub\Cache\bin`** (equivale a `%LOCALAPPDATA%\Pub\Cache\bin`).
+3. **Windows — variable de entorno `Path` (usuario)**  
+   Sin este paso, cmd responde *«omega no se reconoce…»* aunque la activación global haya sido correcta.
+   1. Tecla **Windows**, busca **variables de entorno** y abre **Editar las variables de entorno de tu cuenta** (o **Editar las variables de entorno del sistema** → **Variables de entorno…**).
+   2. En **Variables del usuario para …**, selecciona **`Path`** → **Editar** → **Nuevo**.
+   3. Pega **`%LOCALAPPDATA%\Pub\Cache\bin`** (o la ruta completa que te dio Pub, terminando en `\Pub\Cache\bin`).
+   4. **Aceptar** en todas las ventanas, **cierra todas las terminales** (cmd, PowerShell, terminal del IDE) y abre una **nueva**.
+   5. Comprueba: `where omega` debería listar `omega.bat`, o ejecuta `omega --help`.  
+   **Git Bash:** a veces no recoge el PATH de Windows hasta reiniciar el IDE; si hace falta:  
+   `export PATH="$PATH:/c/Users/TU_USUARIO/AppData/Local/Pub/Cache/bin"`
+4. **Sin `omega` en el PATH:** Pub **no** permite ni `dart pub global run omega_architecture:omega …` ni `flutter pub global run …` (mensaje *«requires the Flutter SDK, which is unsupported for global executables»*). Opciones:
+
+   - **Windows (cmd),** desde la raíz del proyecto Flutter:
+
+     ```bat
+     "%LOCALAPPDATA%\Pub\Cache\bin\omega.bat" validate
+     "%LOCALAPPDATA%\Pub\Cache\bin\omega.bat" doctor
+     ```
+
+   - O añade `%LOCALAPPDATA%\Pub\Cache\bin` al PATH y usa `omega validate` como siempre.
+
+   - En un **app** con `omega_architecture` en dependencias: `dart run omega_architecture:omega validate`.
+
+   Activación desde **Git:** `dart pub global activate --source git https://github.com/yefersonSegura/omega_architecture.git`
+
+5. Si usas **FVM** u otro Dart distinto al del sistema, activa y ejecuta con **el mismo** `dart` (`which dart` / `where dart`).
 
 **Directorio de trabajo**
 
@@ -93,7 +129,7 @@ dart run omega_architecture:omega g flow Profile
 
 ### `validate`
 
-Analiza `lib/omega/omega_setup.dart` y coherencia con páginas (`*Page` y parámetro `agent` en rutas). Opcionalmente una carpeta inicial de búsqueda (monorepo). Falla si hay **dos rutas con el mismo `OmegaRoute(id: …)`**, si en `agents: <OmegaAgent>[...]` aparece **dos veces la misma variable** (p. ej. `orderManagementAgent` duplicado) o **dos constructores `FooAgent(channel)`** del mismo módulo, o si en `flows:` hay **dos líneas del mismo `FooFlow(...)`**. Con **rutas y flows** registrados, exige **`initialFlowId`** y **`initialNavigationIntent`**. Acepta listas de rutas como `routes: <OmegaRoute>[...]` o `routes: [...]`.
+Analiza `lib/omega/omega_setup.dart` y coherencia con páginas (`*Page` y parámetro `agent` en rutas). Opcionalmente una carpeta inicial de búsqueda (monorepo). **Antes** de comprobar, intenta **correcciones deterministas** (mismo paso que la sanación Omi): deduplicar entradas en listas, y si hay **rutas y flows** pero faltan **`initialFlowId` / `initialNavigationIntent`**, insertarlos (inferencia desde el primer flow y las rutas; puede añadir un **`AppIntent.navigate…`** en `app_semantics.dart` si hace falta). Falla si hay **dos rutas con el mismo `OmegaRoute(id: …)`**, si en `agents:` aparece **dos veces la misma variable** o **dos constructores `FooAgent(channel)`** del mismo módulo, o si en `flows:` hay **dos líneas del mismo `FooFlow(...)`**. Con **rutas y flows** registrados, exige **`initialFlowId`** y **`initialNavigationIntent`** (tras el paso automático). Acepta listas tipadas o sin tipo: `agents: [...]`, `flows: [...]`, `routes: [...]`.
 
 ```bash
 dart run omega_architecture:omega validate

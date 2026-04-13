@@ -2401,47 +2401,128 @@ String _omegaNavRouteIdForModulePascal(String pascal) {
   }
 }
 
-/// Stricter than [OmegaValidateCommand.validateProjectRoot] heuristics: only auto-patch cold
-/// start when `navigate.login` can work (**route id `login`**) and the shell is multi-route.
-///
-/// [content] should already be passed through [_omegaNormalizeAuthHomeRouteIdsForNavigator]
-/// inside [_omegaPatchOmegaSetupColdStart] so legacy `id: 'Auth'` has become `login`.
-bool _omegaSetupQualifiesForColdStartAutoPatch(String content) {
-  if (RegExp(r'\binitialFlowId\s*:').hasMatch(content) &&
-      RegExp(r'\binitialNavigationIntent\s*:').hasMatch(content)) {
-    return false;
-  }
-  final routesBlock = RegExp(
-    r'routes:\s*<OmegaRoute>\s*\[([\s\S]*?)\]\s*[,)]',
-    multiLine: true,
-  ).firstMatch(content);
+/// Inner text of `routes:` / `flows:` (same patterns as [OmegaValidateCommand.validateProjectRoot]).
+String? _omegaSetupRoutesInner(String content) => RegExp(
+      r'routes:\s*(?:<OmegaRoute>\s*)?\[([\s\S]*?)\]\s*[,)]',
+      multiLine: true,
+    ).firstMatch(content)?.group(1);
+
+String? _omegaSetupFlowsInner(String content) => RegExp(
+      r'flows:\s*(?:<OmegaFlow>\s*)?\[([\s\S]*?)\]\s*[,)]',
+      multiLine: true,
+    ).firstMatch(content)?.group(1);
+
+List<String> _omegaSetupCollectRouteIds(String? routesInner) {
+  if (routesInner == null) return [];
   final routeIdReg = RegExp(
     r'''OmegaRoute(?:\.typed<[^>]+>)?\(\s*id:\s*['"]([^'"]+)['"]''',
   );
-  final routeIds = <String>[];
-  if (routesBlock != null) {
-    final inner = routesBlock.group(1)!;
-    for (final m in routeIdReg.allMatches(inner)) {
-      routeIds.add(m.group(1)!);
-    }
-  }
-  final hasLoginRoute = routeIds.any((id) => id == 'login');
-  if (!hasLoginRoute) return false;
-  if (routeIds.length < 2) return false;
-
-  final looksAuthApp =
-      content.contains('AuthFlow(') ||
-      content.contains('AuthAgent(') ||
-      routeIds.any((id) => id == 'Auth' || id.toLowerCase() == 'auth');
-  return looksAuthApp;
+  return [for (final m in routeIdReg.allMatches(routesInner)) m.group(1)!];
 }
 
-/// Reads `AuthFlow` / `super(id: …)` when possible so [initialFlowId] matches the real flow.
-String _omegaInferAuthInitialFlowIdExpr(String projectRoot, String setupContent) {
+List<String> _omegaSetupCollectFlowCtorNames(String? flowsInner) {
+  if (flowsInner == null) return [];
+  return [
+    for (final m in RegExp(r'(\w+)Flow\s*\(').allMatches(flowsInner)) m.group(1)!,
+  ];
+}
+
+/// Maps [OmegaRoute] id to a plausible [AppIntent] member (`navigate*`).
+String _omegaRouteIdToNavigateIntentMember(String routeId) {
+  if (routeId == 'login') return 'navigateLogin';
+  if (routeId == 'home') return 'navigateHome';
+  if (routeId == 'root') return 'navigateRoot';
+  final parts = routeId.split('.');
+  final pascal = parts
+      .map((e) {
+        if (e.isEmpty) return '';
+        return '${e[0].toUpperCase()}${e.length > 1 ? e.substring(1) : ''}';
+      })
+      .join();
+  return 'navigate$pascal';
+}
+
+Set<String> _omegaReadAppIntentMemberNames(String projectRoot) {
+  final f = File(_path(projectRoot, ['lib', 'omega', 'app_semantics.dart']));
+  if (!f.existsSync()) return {};
+  String text;
+  try {
+    text = f.readAsStringSync();
+  } catch (_) {
+    return {};
+  }
+  final block = RegExp(
+    r'enum\s+AppIntent\s+with\s+OmegaIntentNameDottedCamel\s+implements\s+OmegaIntentName\s*\{([^}]*)\}',
+    multiLine: true,
+  ).firstMatch(text);
+  if (block == null) return {};
+  final inner = block.group(1)!;
+  final out = <String>{};
+  for (final m in RegExp(r'\b(navigate\w+)\b').allMatches(inner)) {
+    out.add(m.group(1)!);
+  }
+  return out;
+}
+
+/// Ensures [member] exists on [AppIntent] (e.g. after inferring from route id).
+bool _omegaAppendAppIntentMemberIfMissing(String projectRoot, String member) {
+  final path = _path(projectRoot, ['lib', 'omega', 'app_semantics.dart']);
+  final file = File(path);
+  if (!file.existsSync()) return false;
+  var text = file.readAsStringSync();
+  if (RegExp(r'\b' + RegExp.escape(member) + r'\b').hasMatch(text)) {
+    return false;
+  }
+  final block = RegExp(
+    r'(enum\s+AppIntent\s+with\s+OmegaIntentNameDottedCamel\s+implements\s+OmegaIntentName\s*\{)([\s\S]*?)(\n\})',
+    multiLine: true,
+  ).firstMatch(text);
+  if (block == null) return false;
+  final inner = block.group(2)!;
+  final newInner = '${inner.trimRight()}\n  $member,\n';
+  text = text.replaceFirst(
+    block.group(0)!,
+    '${block.group(1)!}$newInner${block.group(3)!}',
+  );
+  file.writeAsStringSync(text);
+  _formatFile(path);
+  return true;
+}
+
+/// Picks an [AppIntent] member that matches a registered route, or appends one to [app_semantics.dart].
+String _omegaEnsureNavigateIntentMember(
+  String projectRoot,
+  List<String> routeIds,
+) {
+  if (routeIds.isEmpty) return 'navigateRoot';
+  final cases = _omegaReadAppIntentMemberNames(projectRoot);
+  for (final rid in routeIds) {
+    final m = _omegaRouteIdToNavigateIntentMember(rid);
+    if (cases.contains(m)) return m;
+  }
+  final inferred = _omegaRouteIdToNavigateIntentMember(routeIds.first);
+  if (cases.contains(inferred)) return inferred;
+  _omegaAppendAppIntentMemberIfMissing(projectRoot, inferred);
+  return inferred;
+}
+
+/// Reads first registered flow’s `super(id: …)` so [initialFlowId] matches the real flow.
+String _omegaInferEntryFlowIdExpr(
+  String projectRoot,
+  String flowsInner,
+  String setupContent,
+) {
   if (setupContent.contains('AppFlowId.authFlow')) {
     return 'AppFlowId.authFlow.id';
   }
+  final fm = RegExp(r'(\w+)Flow\s*\(').firstMatch(flowsInner);
+  if (fm == null) {
+    return "'mainFlow'";
+  }
+  final name = fm.group(1)!;
+  final lower = name[0].toLowerCase() + name.substring(1);
   final candidates = <String>[
+    _path(projectRoot, ['lib', lower, '${lower}_flow.dart']),
     _path(projectRoot, ['lib', 'auth', 'auth_flow.dart']),
     _path(projectRoot, ['lib', 'Auth', 'auth_flow.dart']),
   ];
@@ -2460,13 +2541,31 @@ String _omegaInferAuthInitialFlowIdExpr(String projectRoot, String setupContent)
         multiLine: true,
       ).firstMatch(text);
       if (mStr != null) return "'${mStr.group(1)}'";
+      final mStr2 = RegExp(
+        r'super\s*\(\s*id:\s*"([^"]+)"\s*',
+        multiLine: true,
+      ).firstMatch(text);
+      if (mStr2 != null) return '"${mStr2.group(1)}"';
     } catch (_) {}
   }
-  return "'authFlow'";
+  return "'${lower}Flow'";
+}
+
+/// True when [OmegaConfig] is missing cold-start fields but has routes + flows (same idea as validate).
+bool _omegaSetupQualifiesForColdStartAutoPatch(String content) {
+  if (RegExp(r'\binitialFlowId\s*:').hasMatch(content) &&
+      RegExp(r'\binitialNavigationIntent\s*:').hasMatch(content)) {
+    return false;
+  }
+  final routesInner = _omegaSetupRoutesInner(content);
+  final flowsInner = _omegaSetupFlowsInner(content);
+  final routeIds = _omegaSetupCollectRouteIds(routesInner);
+  final flowNames = _omegaSetupCollectFlowCtorNames(flowsInner);
+  return routeIds.isNotEmpty && flowNames.isNotEmpty;
 }
 
 /// Inserts [initialFlowId] + [initialNavigationIntent] when the setup qualifies (see
-/// [_omegaSetupQualifiesForColdStartAutoPatch]) — typically Auth-style apps with route id `login`.
+/// [_omegaSetupQualifiesForColdStartAutoPatch]): any app with routes + flows, not only Auth.
 String _omegaPatchOmegaSetupColdStart(
   String content,
   String pkg,
@@ -2486,7 +2585,8 @@ String _omegaPatchOmegaSetupColdStart(
   if (!semanticsImportRe.hasMatch(s) && !semanticsAnyRe.hasMatch(s)) {
     s = "import 'package:$pkg/omega/app_semantics.dart';\n$s";
   }
-  final flowExpr = _omegaInferAuthInitialFlowIdExpr(projectRoot, s);
+  final flowsInner = _omegaSetupFlowsInner(s) ?? '';
+  final flowExpr = _omegaInferEntryFlowIdExpr(projectRoot, flowsInner, s);
   if (flowExpr.contains('AppFlowId.')) {
     final runtimeImportRe = RegExp(
       "import\\s+['\"]package:${RegExp.escape(pkg)}/omega/app_runtime_ids\\.dart['\"]",
@@ -2498,6 +2598,8 @@ String _omegaPatchOmegaSetupColdStart(
       s = "import 'package:$pkg/omega/app_runtime_ids.dart';\n$s";
     }
   }
+  final routeIds = _omegaSetupCollectRouteIds(_omegaSetupRoutesInner(s));
+  final navMember = _omegaEnsureNavigateIntentMember(projectRoot, routeIds);
   final needFlow = !RegExp(r'\binitialFlowId\s*:').hasMatch(s);
   final needNav =
       !RegExp(r'\binitialNavigationIntent\s*:').hasMatch(s);
@@ -2505,7 +2607,7 @@ String _omegaPatchOmegaSetupColdStart(
   final flowLine =
       needFlow ? '    initialFlowId: $flowExpr,\n' : '';
   final navLine = needNav
-      ? '    initialNavigationIntent: OmegaIntent.fromName(AppIntent.navigateLogin),\n'
+      ? '    initialNavigationIntent: OmegaIntent.fromName(AppIntent.$navMember),\n'
       : '';
   if (RegExp(r'return\s+OmegaConfig\s*\(\s*\n').hasMatch(s)) {
     s = s.replaceFirstMapped(
@@ -3046,6 +3148,17 @@ class OmegaValidateCommand {
       return false;
     }
 
+    if (_omegaTryDeterministicOmegaSetupHeal(root)) {
+      stdout.writeln(
+        _tr(
+          en:
+              "Applied deterministic omega_setup fixes (dedupe lists, cold-start fields, AppIntent if needed). Re-validating.",
+          es:
+              "Se aplicaron correcciones deterministas en omega_setup (listas, arranque en frío, AppIntent si hace falta). Revalidando.",
+        ),
+      );
+    }
+
     final content = setupFile.readAsStringSync();
     var ok = true;
 
@@ -3065,11 +3178,11 @@ class OmegaValidateCommand {
 
     // Duplicates: scope to agents:/flows:/routes: list bodies (AI often repeats variable or id:).
     final agentsBlock = RegExp(
-      r'agents:\s*<OmegaAgent>\s*\[([\s\S]*?)\]\s*[,)]',
+      r'agents:\s*(?:<OmegaAgent>\s*)?\[([\s\S]*?)\]\s*[,)]',
       multiLine: true,
     ).firstMatch(content);
     final flowsBlock = RegExp(
-      r'flows:\s*<OmegaFlow>\s*\[([\s\S]*?)\]\s*[,)]',
+      r'flows:\s*(?:<OmegaFlow>\s*)?\[([\s\S]*?)\]\s*[,)]',
       multiLine: true,
     ).firstMatch(content);
     // Accept `routes: <OmegaRoute>[...]` or `routes: [...]` (both appear in real apps).
@@ -3877,7 +3990,7 @@ COHERENCE SELF-TEST (model should mentally verify before answering):
   static const String _omegaAiColdStartShell = r'''
 COLD START + ROUTES (whenever you emit or describe full-app wiring: `lib/omega/omega_setup.dart`, `lib/main.dart`, `lib/omega/app_semantics.dart`, kickstart modules, or JSON):
 
-- **`OmegaConfig` MUST define cold start for real apps:** **`initialFlowId:`** — same string as the **entry** flow’s `super(id: …)` (the flow that should be **active** on launch). **`initialNavigationIntent:`** — **`OmegaIntent.fromName(AppIntent.<entry>)`** so **[OmegaInitialRoute]** can push the **first** screen. **Both** are required whenever you ship **`MaterialApp(home: OmegaInitialRoute(...))`** + registered routes; omitting either leaves startup undefined. Values must also be passed on **[OmegaScope]** from **`runtime.initialFlowId` / `runtime.initialNavigationIntent`** (never ad-hoc string literals in `main.dart` that drift from `OmegaConfig`).
+- **`OmegaConfig` MUST define cold start for real apps:** **`initialFlowId:`** — same string as the **entry** flow’s `super(id: …)` (the flow that should be **active** on launch). **`initialNavigationIntent:`** — **`OmegaIntent.fromName(AppIntent.<entry>)`** so **[OmegaInitialRoute]** can push the **first** screen. **Both** are required whenever **`routes:` and `flows:` are non-empty** (and whenever you ship **`MaterialApp(home: OmegaInitialRoute(...))`** + registered routes); omitting either leaves startup undefined and breaks **`omega validate`**. Values must also be passed on **[OmegaScope]** from **`runtime.initialFlowId` / `runtime.initialNavigationIntent`** (never ad-hoc string literals in `main.dart` that drift from `OmegaConfig`).
 - **You do NOT prescribe Login + Home:** the human/product defines screens (auth-only, single-screen tool, game menu, etc.). Your job is to keep **flow id**, **`AppIntent`** cases, **`OmegaRoute.id`**, and the two **initial*** fields **mutually consistent**.
 - **Route ids vs navigator (critical):** [OmegaNavigator] resolves `navigate.{destination}` by stripping the **first** `navigate.` prefix and looking up **`OmegaRoute(id: destination)`**. Example: `AppIntent.navigateRoot` → wire `navigate.root` → route id **`root`**. For any `AppIntent.navigateFoo…`, **`OmegaRoute.id`** must equal that remainder (keep inner dots). **WRONG:** `OmegaRoute(id: 'Auth', …)` when the intent wire expects **`login`** — ids must match the contract, not Pascal module folder names unless they match the wire.
 - **`lib/main.dart`:** mirror **`_omegaAiMainDartEntry`** / package example — `OmegaRuntime.bootstrap`, **`OmegaScope`** with both initial fields from **`runtime`**, **`OmegaInitialRoute`** + **`RootHandler`**.
@@ -6021,7 +6134,7 @@ CRITICAL RULES:
 9. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
 10. JSON string values that contain Dart: in JSON a backslash may only introduce the usual escapes (quote, another backslash, slash, b, f, n, r, t, or u plus four hex digits). Any other backslash-plus-character (including before a dollar sign, space, or letters) is invalid and breaks jsonDecode (FormatException: unrecognized string escape). Avoid lone backslashes in embedded Dart; use concatenation or double each literal backslash per JSON rules. The CLI repairs some invalid escapes before decode; still emit valid JSON when possible.
 11. Intent payload classes (passed to OmegaIntent.fromName(..., payload: YourPayload(...))): **plain Dart only** — NOT [OmegaTypedEvent]. **FORBIDDEN:** `implements OmegaIntentPayload`, `implements OmegaEventPayload`, or both — **those types are not in** package:omega_architecture (undefined class). Optional: `extends Equatable` only if pubspec has `equatable` and you avoid fake omega `implements`. Named arguments when constructing the payload MUST match **field names** (e.g. `userName:` not `name:` when the field is `userName`).
-12. If the JSON includes **`lib/omega/omega_setup.dart`**: `OmegaConfig` MUST include **`initialFlowId:`** (entry flow’s `super(id: …)` wire) **and** **`initialNavigationIntent:`** as **`OmegaIntent.fromName(AppIntent.<entry>)`** matching the **first** route you register (e.g. **`navigateRoot` → `OmegaRoute(id: 'root', …)`**). When the product uses auth-style navigation, add **`navigate.login` → id `login`**, **`navigate.home` → id `home`**, etc., and keep intents ↔ routes aligned. Never duplicate the same agent in `agents:` or the same `id:` twice in `routes:`.
+12. If the JSON includes **`lib/omega/omega_setup.dart`**: `OmegaConfig` MUST include **`initialFlowId:`** (entry flow’s `super(id: …)` wire) **and** **`initialNavigationIntent:`** as **`OmegaIntent.fromName(AppIntent.<entry>)`** matching a registered **`OmegaRoute(id: …)`** (same order as product: often the first route). **Never omit either field when `routes:` and `flows:` are non-empty** — `omega validate` fails; the CLI may auto-insert them, but your JSON should already be complete. Examples: **`navigateRoot` → `OmegaRoute(id: 'root', …)`**; auth-style **`navigate.login` / `login`**, **`navigate.home` / `home`**. Never duplicate the same agent in `agents:` or the same `id:` twice in `routes:`.
 13. **`AppIntent` + routes:** Every `OmegaIntent.fromName(AppIntent.someCase)` must use a **`someCase` that exists** in `app_semantics.dart` (exact spelling — no `navigateOrderDetails` vs `navigateOrderDetail` mix-ups). Every such navigation target needs **`OmegaRoute(id: '<segment after navigate.>', …)`** where the id matches the navigator rule (DottedCamel → dotted wire; e.g. `navigateDeliveryDetail` → id **`delivery.detail`**). If you emit a navigate intent, register the matching route in the same JSON or state it explicitly in **reasoning**.
 14. If the JSON includes **`lib/main.dart`** (or you describe the host entry): **[OmegaScope]** MUST use **`initialFlowId: runtime.initialFlowId`** and **`initialNavigationIntent: runtime.initialNavigationIntent`** after **`OmegaRuntime.bootstrap(createOmegaConfig)`** — **FORBIDDEN** string literals on `OmegaScope` for cold start (e.g. `initialFlowId: 'Auth'`) and **FORBIDDEN** omitting **`initialNavigationIntent`** when `MaterialApp` uses **`OmegaInitialRoute`**. Single source of truth: **`OmegaConfig`** in `omega_setup.dart`; `main.dart` only forwards **`runtime`**.
 15. **CLI post-check:** `omega ai coach module` / `omega ai coach redesign` runs **`omega validate`** on the app root after a successful pass (when `lib/omega/omega_setup.dart` exists). **`omega create app`** runs one final **`omega validate`** after modules + `main.dart`. Your emitted **`OmegaConfig`** must pass those checks (**`initialFlowId`**, **`initialNavigationIntent`**, every **`AppIntent.navigate…`** ↔ **`OmegaRoute.id`**, no duplicate `agents:`/`flows:`/`routes:` entries).
