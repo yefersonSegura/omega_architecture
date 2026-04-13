@@ -1,5 +1,4 @@
 ## 1.0.5
-
 - **CLI `omega validate` + arranque en frío:** Antes de analizar, aplica correcciones deterministas en `omega_setup.dart` (deduplicar listas, **`initialFlowId` / `initialNavigationIntent`** cuando hay rutas y flows). El parche ya no exige app tipo Auth + varias rutas: infiere el primer flow (`super(id:…)`), el intent desde los **`OmegaRoute(id:…)`** y el **`AppIntent`**, y puede **añadir un `navigate…` en `app_semantics.dart`** si falta. Prompts de IA reforzados para no omitir esos campos en JSON.
 - **Documentación (Windows / PATH):** README, `doc/COMANDOS_CLI.md` y `doc/GUIA.md` detallan añadir **`%LOCALAPPDATA%\Pub\Cache\bin`** (ruta expandida típica `C:\Users\<usuario>\AppData\Local\Pub\Cache\bin`) al **Path del usuario**, cierre de terminales y comprobación con `where omega` / `omega --help`.
 - **Docs / Omega Studio:** Pub **no** admite `dart pub global run` ni `flutter pub global run` para paquetes con dependencia de Flutter; sin `omega` en PATH hay que usar el shim (`omega.bat` / ruta completa) o `dart run omega_architecture:omega` desde un proyecto. Omega Studio solo invoca ese shim en `Pub/Cache/bin` (búsqueda ampliada en Windows).

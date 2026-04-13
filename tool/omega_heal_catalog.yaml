@@ -22,6 +22,48 @@ recipes:
         or `channel.emitTyped(MyTypedEvent(...))` which internally builds one [OmegaEvent].
       - If you only need to re-broadcast the same intent wire as an event (rare), still build an [OmegaEvent]: e.g. match behavior with a dedicated `MyModuleEvent.intentForwarded` + `payload: ctx.intent` or unwrap with `payloadAs` — do not pass raw `ctx.intent!.name` as the first arg to `channel.emit`.
 
+  - id: flow_onintent_emit_requested_for_event_based_behavior
+    priority: 26
+    match_groups:
+      - all_of: [_flow.dart, onintent]
+        any_of: [isloading, loading, empty]
+      - all_of: [handleintent, behavior]
+        any_of: [ctx.event, ctx.intent]
+    body: |
+      HEAL RECIPE — data never loads / agent “does nothing” after `flowManager.handleIntent(*Start)`:
+      - [OmegaFlowManager.handleIntent] only calls **`OmegaFlow.onIntent`**. The **agent** listens to **`channel.events`**; behavior rules that use **`ctx.event?.name == SomeEvent.*Requested.name`** never see the intent unless the **flow** forwards it.
+      - In **`*_flow.dart` `onIntent`**, when you match `*Start` / profileStart, **MUST** `channel.emit(OmegaEvent.fromName(MyEvent.whateverRequested, payload: …))` (same names as in `*_events.dart`) — **or** call **`agent.receiveIntent(intent)`** if rules use **`ctx.intent`** only.
+      - **FORBIDDEN:** empty `onIntent` for start while behavior only matches bus events — results in endless loading.
+      - **Login / credential screens:** do **not** auto-fire login `handleIntent` in `initState`; user tap / submit should send login intent unless the spec explicitly requires demo auto-login.
+
+  - id: omega_navigator_route_id_wire_not_module_pascal
+    priority: 27
+    match_groups:
+      - all_of: [omeganavigator]
+        any_of: [route not found, not found]
+      - all_of: [looking up route, destination]
+      - all_of: [route, not found]
+        any_of: [profile, settings, omeganavigator]
+    body: |
+      HEAL RECIPE — [OmegaNavigator] *Route 'x' not found* (runtime / debug console) after `channel.emit(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateY))`:
+      - [OmegaNavigator] takes **`intent.name`** (e.g. `navigate.profile`), strips the **`navigate.`** prefix, and looks up **`OmegaRoute(id: <remainder>)`** — **case-sensitive** map key.
+      - **`AppIntent.navigateProfile` → remainder `profile`** → you MUST register **`OmegaRoute(id: 'profile', …)`**, NOT **`id: 'Profile'`** (PascalCase module folder names are wrong unless the wire literally expects that spelling — it does not for standard DottedCamel intents).
+      - Same: **`navigateSettings` → id `'settings'`**; **`navigateRoot` → `'root'`**; **`navigateDeliveryDetail` → `'delivery.detail'`** (dotted id when the intent has multiple camel segments).
+      - Fix **`lib/omega/omega_setup.dart`** `routes:` ids to match wires; keep **`AppIntent`** cases in `app_semantics.dart` in sync. Do not confuse **flow id** / **folder name** with **route id**.
+
+  - id: flow_contract_emitted_expression_types_not_emitted_event_names
+    priority: 28
+    match_groups:
+      - all_of: [emittedeventnames]
+      - all_of: [named parameter, isn't defined]
+        any_of: [emittedeventnames, OmegaFlowContract, omega_flow_contract]
+      - all_of: [emittedeventnames, isn't defined]
+    body: |
+      HEAL RECIPE — [OmegaFlowContract]: wrong parameter name **emittedEventNames** (analyzer: named parameter isn't defined):
+      - **[OmegaFlowContract]** (see `lib/omega/contracts/omega_flow_contract.dart`) has **three** named parameters: **`listenedEventNames`** (bus event wires the flow reacts to), **`acceptedIntentNames`** (intent wires), and **`emittedExpressionTypes`** (strings passed to **`emitExpression(...)`** in the flow — UI “expression types” like `'loading'`, `'success'`, `'error'`, or `'workflow.step'`).
+      - **There is no `emittedEventNames`.** Rename **`emittedEventNames:`** → **`emittedExpressionTypes:`** and keep the set as **expression type strings**, not raw event enum names, unless you really meant to declare **listened** bus events — then use **`listenedEventNames:`** with `SomeEvent.foo.name` values.
+      - Example: `OmegaFlowContract(listenedEventNames: {AppEvent.x.name}, acceptedIntentNames: {AppIntent.y.name}, emittedExpressionTypes: {'idle', 'loading', 'done'})` or `OmegaFlowContract.fromTyped(..., emittedExpressionTypes: ['loading', 'error'])`.
+
   - id: from_name_string_not_enum
     priority: 29
     match_groups:
