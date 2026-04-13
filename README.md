@@ -4,487 +4,114 @@
   <img src="assets/omega_logo.svg" alt="Omega Architecture Logo" width="220">
 </p>
 
-[![pub package](https://img.shields.io/pub/v/omega_architecture.svg)](https://pub.dev/packages/omega_architecture) [![documentation](https://img.shields.io/badge/docs-API%20%26%20web-blue)](https://pub.dev/documentation/omega_architecture/latest)
+[![pub package](https://img.shields.io/pub/v/omega_architecture.svg)](https://pub.dev/packages/omega_architecture)
+[![documentation](https://img.shields.io/badge/docs-API%20%26%20web-blue)](https://pub.dev/documentation/omega_architecture/latest)
 
-A reactive, agent-based architecture framework for Flutter applications.
+**Omega** is a reactive, agent-based architecture for **Flutter**: your screens stay thin, business rules live in **flows** and **agents**, and everything talks through one **event channel**. You get predictable navigation, easier testing, and a CLI that scaffolds features and optional **AI** helpers when you want them.
 
-**What Omega does:** Business logic lives in **agents** and **flows** that communicate through a central **event channel**. The UI only emits **intents** (e.g. "login", "navigate to home") and reacts to **events** and **expressions**; it does not call domain methods or hold navigation state. A **FlowManager** routes intents to the active flow(s); a **navigator** turns navigation intents into screens. So you get a clear separation: UI → intents/events → flows and agents → expressions/navigation → UI. For a **guided tour with examples** of each component, see **[doc/GUIA.md](doc/GUIA.md)**.
+---
 
-## Quick Start
+## Why teams pick Omega
 
-### 1. Global Activation
-Open your terminal and run:
+| You want… | Omega gives you… |
+|-----------|------------------|
+| UI that does not own business logic | **Intents** from the UI; **flows** decide what happens next |
+| One place to “hear” the app | **`OmegaChannel`** for events; agents subscribe and react |
+| Safer refactors | **Typed events / intents**, optional **contracts** (debug warnings) |
+| Debug weird state | **Inspector** (overlay, launcher, or browser + VM Service) and **time-travel** traces |
+| Speed when starting features | **`omega g ecosystem`** + optional **`omega ai coach …`** |
+
+---
+
+## Install in 60 seconds
+
+**Option A — global CLI** (run `omega` from any folder):
 
 ```bash
-# From pub.dev (once published)
 dart pub global activate omega_architecture
-
-# Or from Git (current)
-dart pub global activate --source git https://github.com/yefersonSegura/omega_architecture.git
+# Bleeding edge from the repository:
+# dart pub global activate --source git https://github.com/yefersonSegura/omega_architecture.git
 ```
 
-#### Configuring the PATH
-To use the `omega` command from any directory, you must add the Dart SDK's global binaries folder to your system's PATH.
-
-**Windows:**
-1. Open **Start**, search for **"Environment Variables"** and select **"Edit the system environment variables"**.
-2. Click **"Environment Variables..."**.
-3. Under **"User variables"**, find **`Path`** and click **"Edit"**.
-4. Click **"New"** and add: `%LOCALAPPDATA%\Pub\Cache\bin`
-5. Click **OK** on all windows and **restart your terminal**.
-
-**macOS / Linux:**
-1. Open your shell configuration file (e.g., `~/.zshrc`, `~/.bashrc`, or `~/.bash_profile`).
-2. Add the following line at the end:
-   ```bash
-   export PATH="$PATH":"$HOME/.pub-cache/bin"
-   ```
-3. Save the file and run `source ~/.zshrc` (or your specific file) or restart the terminal.
-
-### 2. Create your first App
-Once activated, you can use the `omega` command from anywhere:
+Add Pub’s global `bin` to your `PATH` (Windows: `%LOCALAPPDATA%\Pub\Cache\bin` · macOS/Linux: `$HOME/.pub-cache/bin`), then:
 
 ```bash
-# Basic setup
-omega create app my_awesome_app
-
-# Advanced AI-powered setup (requires OMEGA_AI_API_KEY)
-omega create app my_ai_app --kickstart "a delivery app with real-time tracking" --provider-api
+omega create app my_app
+cd my_app && flutter run
 ```
 
----
-
-## Creating a New App
-
-Omega allows you to bootstrap a full Flutter project with the architecture pre-configured in one step.
-
-### 1. Preparation (AI Mode only)
-If you want to use the **AI Kickstart** to generate your app's business logic, you need to set up your OpenAI API key:
-
-**Windows (PowerShell):**
-```powershell
-setx OMEGA_AI_ENABLED "true"
-setx OMEGA_AI_PROVIDER "openai"
-setx OMEGA_AI_API_KEY "sk-..."
-```
-
-**macOS / Linux:**
-```bash
-export OMEGA_AI_ENABLED="true"
-export OMEGA_AI_PROVIDER="openai"
-export OMEGA_AI_API_KEY="sk-..."
-```
-
-### 2. Execution
-
-#### Standard Mode (No AI logic)
-Creates a clean Flutter project with `omega_architecture` installed and a clean bootstrap.
-```bash
-omega create app my_project
-```
-
-#### AI Kickstart Mode
-The AI will analyze your description and generate real agents, flows, behaviors, and UI pages tailored to your idea.
-```bash
-omega create app my_project --kickstart "a dashboard for crypto with price alerts" --provider-api
-```
-
-### 3. Verification
-```bash
-cd my_project
-flutter run
-```
-
----
-
-## Features
-
-- **Reactive Agents** — Autonomous entities that react to system events and direct messages.
-- **Stateful Agents (optional)** — [OmegaStatefulAgent<TState>] lets an agent expose a typed reactive `viewState` stream for UI/widgets without changing the core event/intent model.
-- **Behavior Engine** — Decoupled logic using rules and conditions to determine agent reactions.
-- **Event-Driven** — Global communication through `OmegaChannel`.
-- **Flow Management** — Orchestrate complex state transitions and business logic flows; run one or multiple flows at once.
-- **Workflow Flows (optional)** — [OmegaWorkflowFlow] adds step-based orchestration (`defineStep`, `startAt`, `next`, `failStep`) for complex multi-step processes such as checkout/onboarding while keeping [OmegaFlow] as the default.
-- **Semantic Intents** — High-level abstraction for user or system requests. Optional **typed names** via [OmegaEventName]/[OmegaIntentName] and [OmegaEvent.fromName]/[OmegaIntent.fromName] to avoid magic strings and ease refactors. **Typed events (recommended):** define a class implementing [OmegaTypedEvent] (e.g. `LoginRequestedEvent(email, password)`) and emit with `channel.emitTyped(LoginRequestedEvent(...))`; listeners use `event.payloadAs<LoginRequestedEvent>()` for full type safety. **Typed payload when reading:** use the `payloadAs<T>()` extension on [OmegaEvent], [OmegaIntent], and [OmegaFlowExpression] to get a safely cast payload. See the [example](example/lib/omega/app_semantics.dart) and [GUIA § Eventos tipados](doc/GUIA.md) for full usage.
-- **Persistence & restore** — Serialize [OmegaAppSnapshot] to JSON and restore on launch ([toJson]/[fromJson], [OmegaFlowManager.restoreFromSnapshot], optional [OmegaSnapshotStorage]).
-- **Typed routes** — Use `OmegaRoute.typed<T>` so the route builder receives the intent payload as `T?`; or `routeArguments<T>(context)` when you don't use typed. See the [example](example/lib/omega/omega_setup.dart) (home route with `LoginSuccessPayload`).
-- **Declarative contracts** — Optional [OmegaFlowContract] and [OmegaAgentContract] declare which events a flow listens to, which intents it accepts, and which expression types it emits (and for agents: events and intents). In **debug** mode Omega warns in the console when something is received or emitted that is not in the contract. **Example:** The [example](example/) app implements contracts in [AuthFlow](example/lib/auth/auth_flow.dart) and [AuthAgent](example/lib/auth/auth_agent.dart); run `cd example && flutter run` to see them in action. See [doc/CONTRACTS.md](doc/CONTRACTS.md).
-- **Time-travel** — [OmegaTimeTravelRecorder] records channel events and an initial snapshot; [OmegaRecordedSession] holds them. Replay a session (or replay up to an event index) to restore state and re-emit events for debugging or demos. See [doc/TIME_TRAVEL.md](doc/TIME_TRAVEL.md).
-- **CLI** — Scaffold setup, validation, traces, AI-assisted coach, and more. **Developer reference (Spanish):** [doc/COMANDOS_CLI.md](doc/COMANDOS_CLI.md).
-
-**Documentation:**  
-- **[doc/COMANDOS_CLI.md](doc/COMANDOS_CLI.md)** — CLI command reference for developers (how to run, quick table, `ai coach`, traces, inspector).  
-- **[doc/GUIA.md](doc/GUIA.md)** — What each Omega component does, with **code examples** (channel, event, intent, agent, flow, manager, scope, navigator, routes, persistence, inspector). Start here to see how everything fits together.  
-- **Documentation** — [API reference](https://pub.dev/documentation/omega_architecture/latest) (pub.dev). Full web doc (architecture, comparison, CLI, inspector): `yefersonsegura.com/proyects/omega/`. Local copy: [presentation/index.html](presentation/index.html). Run `dart run omega_architecture:omega doc` to open the doc in the browser.  
-- **[doc/ARQUITECTURA.md](doc/ARQUITECTURA.md)** — Technical reference for each component.  
-- **[doc/COMPARATIVA.md](doc/COMPARATIVA.md)** — When to choose Omega; full comparison table.  
-- **[doc/TESTING.md](doc/TESTING.md)** — Testing agents and flows without Flutter.  
-- **[doc/CONTRACTS.md](doc/CONTRACTS.md)** — Declarative contracts for flows and agents (events, intents, expression types); debug-time validation. The [example](example/) app is the reference implementation (AuthFlow, AuthAgent).
-- **[doc/TIME_TRAVEL.md](doc/TIME_TRAVEL.md)** — Record and replay sessions; time-travel to a previous event index for debugging or demos.
-- **[doc/ROADMAP.md](doc/ROADMAP.md)** — Long-term vision.
-
-## Core Concepts
-
-| Concept | Description |
-|--------|-------------|
-| **OmegaAgent** | Building block of the architecture. Has an ID, a channel, and a behavior engine. |
-| **OmegaStatefulAgent** | Optional typed reactive agent state (`viewState` + `stateStream`) for UI updates. |
-| **OmegaAgentBehaviorEngine** | Evaluates events/intents and returns reactions (actions to run). |
-| **OmegaChannel** | Event bus. Agents and flows subscribe to `events` and use `emit()` to publish. |
-| **OmegaFlow** | Business flow with states (idle, running, paused, etc.). Orchestrates UI and agents. |
-| **OmegaWorkflowFlow** | Optional step-based process flow for advanced workflow engines. |
-| **OmegaFlowManager** | Registers flows, routes intents to running flows, and activates/pauses them. |
-
-## Getting Started
-
-Add the dependency to your `pubspec.yaml`:
+**Option B — add to an existing Flutter app** in `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  omega_architecture: ^0.0.27
+  omega_architecture: ^1.0.4
 ```
 
-## Omega CLI
-
-The CLI helps you bootstrap Omega in your app and generate new ecosystems. **Concise reference for developers (Spanish):** [doc/COMANDOS_CLI.md](doc/COMANDOS_CLI.md).
-
-### How to run
-
-From a project that depends on `omega_architecture`:
+Then from your **app root**:
 
 ```bash
-dart run omega_architecture:omega <command> [options] [arguments]
+dart run omega_architecture:omega init
 ```
 
-Or by path (from the `omega_architecture` repo):
+---
+
+## AI kickstart (optional)
+
+Describe the product once; the CLI can scaffold agents, flows, behavior, and pages (requires provider config and network when using `--provider-api`):
 
 ```bash
-dart run bin/omega.dart <command> [options] [arguments]
+export OMEGA_AI_ENABLED=true
+export OMEGA_AI_PROVIDER=openai
+export OMEGA_AI_API_KEY=sk-...
+omega create app my_store --kickstart "e-commerce with cart and checkout" --provider-api
 ```
 
-**Important:** The CLI runs in **your app’s** project (the host app that depends on `omega_architecture`). It uses the current directory to find your project root. **`omega init`** creates `lib/omega/omega_setup.dart` in your app. **`omega g ecosystem`** creates the ecosystem files in the **directory where you open the terminal** (current working directory), then finds `omega_setup.dart` in your project and registers the new agent and flow there. You own the setup and add your own routes.
-
-### Commands (list)
-
-Each command is listed below with **why** (purpose), **instruction**, **concept**, and **example** (success or failure where applicable). Global options: `-h`, `--help` · `-v`, `--version`.
+Plain **`omega create app my_store`** still gives you Flutter + Omega wired up, without AI-generated modules.
 
 ---
 
-#### doc
+## Mental model (one paragraph)
 
-**Why:** Open the official docs from the terminal without searching the web or bookmarking the URL.
+The **UI** sends **intents** (“log in”, “open settings”). The **`OmegaFlowManager`** delivers those intents to the right **flow(s)**. **Flows** coordinate steps and talk to **agents** through the **`OmegaChannel`**. **Agents** run domain logic via a **behavior engine**. Flows emit **expressions** (loading, success, navigation, etc.) and the UI rebuilds with **`OmegaBuilder`** or your navigator. Nothing in the widget tree needs to call repositories directly.
 
-**Instruction:** `dart run omega_architecture:omega doc`
-
-**Concept:** Opens the official Omega web documentation in the browser. Does not create or modify files.
-
-**Example (success):** `Opening documentation: http://yefersonsegura.com/proyects/omega/`
+For a **walkthrough with code for each piece**, see **[doc/GUIA.md](doc/GUIA.md)**.
 
 ---
 
-#### inspector
+## Framework capabilities (with tiny examples)
 
-**Why:** Debug a running Flutter app (desktop/mobile) through the Dart VM Service using the same Omega Inspector UI as the hosted page, without hunting the URL manually.
-
-**Instruction:** `dart run omega_architecture:omega inspector`
-
-**Concept:** Opens the local Omega Inspector HTML in the browser. You paste or connect to your app’s VM Service URL (debug mode). See [doc/INSPECTOR.md](doc/INSPECTOR.md) and the Inspector subsection later in this README for web/embed details.
-
-**Example:** Run your app with `flutter run`, then run `omega inspector` and connect to the VM link printed in the console.
-
----
-
-#### init
-
-**Why:** Your app needs one central place to register routes, agents and flows; `init` creates that file so you don’t have to write the boilerplate by hand.
-
-**Instruction (both forms):**
-
-- `dart run omega_architecture:omega init` — creates `lib/omega/omega_setup.dart` only if it does not exist. If the file already exists, the CLI reports an error (so you do not overwrite by mistake).
-- `dart run omega_architecture:omega init --force` — overwrites the existing file. Use when you want to reset or regenerate the setup from scratch.
-
-**Concept:** Creates `lib/omega/omega_setup.dart` in your app with an empty `OmegaConfig` (agents, flows, routes). Run from app root. By default the command is safe (no overwrite); use `--force` only when you intend to replace the current file.
-
-**Example (success):**
-```
-Omega setup created.
-  Project root: C:\...\my_app
-  File: C:\...\my_app\lib\omega\omega_setup.dart
-```
-
-**Example (failure):** `Error: omega_setup.dart already exists. Use --force to overwrite.`
-
----
-
-#### g ecosystem
-
-**Why:** A full feature (e.g. Auth, Orders) usually needs an agent, a flow, a behavior and a page; this command creates all four and wires them in `omega_setup.dart` so you can focus on logic instead of boilerplate.
-
-**Instruction:** `dart run omega_architecture:omega g ecosystem <Name>`
-
-**Concept:** Generates agent, flow, behavior and page **in the current directory**, then registers agent and flow in `omega_setup.dart`. Run from the folder where you want the files. Requires `omega init` first.
-
-**Example (success):**
-```
-Creating in current directory: C:\...\my_app\lib
-Ecosystem Auth created.
-  Path: C:\...\my_app\lib\auth
-Registered Auth (agent, flow) in omega_setup.dart
-```
-
-**Example (failure):** `Error: omega_setup.dart not found. Run from app root: omega init`
-
----
-
-#### g agent
-
-**Why:** Sometimes you need only a new agent (and its behavior) for an existing flow or a feature that doesn’t need a full ecosystem; this avoids generating an extra flow and page.
-
-**Instruction:** `dart run omega_architecture:omega g agent <Name>`
-
-**Concept:** Generates only agent + behavior in the current directory. Updates only the agent import and registration in `omega_setup.dart` (does not touch the flow).
-
-**Example (success):** `Agent Orders created. Path: C:\...\my_app\lib\orders`
-
----
-
-#### g flow
-
-**Why:** When you need only a new flow (orchestrator) without a new agent or page, this creates just the flow and registers it in `omega_setup.dart` without touching the rest.
-
-**Instruction:** `dart run omega_architecture:omega g flow <Name>`
-
-**Concept:** Generates only flow in the current directory. Updates only the flow import and registration in `omega_setup.dart` (does not touch the agent).
-
-**Example (success):** `Flow Profile created. Path: C:\...\my_app\lib\profile`
-
----
-
-#### validate
-
-**Why:** Catches setup mistakes (missing config, duplicate agent/flow ids) before you run the app, so you can fix them quickly and avoid runtime errors.
-
-**Instruction:** `dart run omega_architecture:omega validate [path]`
-
-**Concept:** Checks `omega_setup.dart`: `createOmegaConfig`, `OmegaConfig`, `agents:`, and no duplicate agent/flow ids. Starts from bash directory (or optional path).
-
-**Example (success):**
-```
-Valid.
-  File: C:\...\my_app\lib\omega\omega_setup.dart
-  Agents: 2, Flows: 3
-```
-
-**Example (failure):** `Error: Duplicate flow registration: Auth. Remove duplicate XFlow(channel) from omega_setup.dart.`
-
----
-
-#### trace
-
-**Why:** Recorded sessions (events + snapshot) can be saved as JSON; `trace view` and `trace validate` let you inspect or validate those files from the CLI (debugging, CI, or sharing a bug report) without running the app.
-
-**Instruction:** `dart run omega_architecture:omega trace view <file.json>` · `dart run omega_architecture:omega trace validate <file.json>`
-
-**Concept:** A **trace** is a JSON file with a recorded session (channel events and optional initial snapshot). It is built by **OmegaTimeTravelRecorder** in your app when you call `stopRecording()`; the developer chooses where to save the JSON (e.g. path_provider on mobile, download on web). `trace view` shows a summary (events count, snapshot). `trace validate` checks the structure; exit 0 if valid, 1 otherwise. Used for debugging, reproducing bugs, or sharing a case.
-
-**Export example:** After `stopRecording()`, use `jsonEncode(session.toJson())` to get a string, then write it to a file (mobile: `path_provider` + `File.writeAsString`; web: blob + `<a download>`). See [doc/TIME_TRAVEL.md](doc/TIME_TRAVEL.md) § “Export session to JSON (trace file)” for full code.
-
-**Example view (success):**
-```
-Trace: C:\...\trace.json
-  Events: 42
-  Initial snapshot: yes
-```
-
-**Example validate (success):** `Valid trace file. Path: C:\...\trace.json`
-
-**Example (failure):** `Error: Invalid trace structure (expected 'events' list and optional 'initialSnapshot').`
-
----
-
-#### doctor [path]
-
-**Why:** One command to see if your Omega setup is valid, how many agents/flows you have, and optional hints (e.g. flows/agents without a contract), so you can fix issues before they cause problems at runtime.
-
-**Instruction (both forms):**
-
-- `dart run omega_architecture:omega doctor` — uses the current directory (bash CWD) to find the app root.
-- `dart run omega_architecture:omega doctor <path>` — starts the search from the given path (e.g. `omega doctor example` when you are at the package root and want to check the `example/` app).
-
-**Concept:** Project health: validates `omega_setup.dart`, counts agents and flows, optionally lists flows/agents without a contract (recommendation). By default it starts from the current directory; in a real project there is no `example/` folder. If you are in `lib/`, it looks for the `omega/` folder there. The optional `<path>` tells the CLI where to start looking (useful in repos that have an `example/` or multiple apps).
-
-**Example (success):**
-```
-Directorio (bash): C:\...\my_app\lib
-Omega Doctor
-  Setup: C:\...\my_app\lib\omega\omega_setup.dart
-  Agents: 2, Flows: 3
-
-Health check passed.
-```
-
----
-
-#### create app <Name>
-
-**Why:** Bootstrap a professional Flutter project with Omega in seconds, including a clean startup sequence and optionally AI-generated business logic tailored to your idea.
-
-**Instruction:** `omega create app my_new_app [--kickstart "app description"] [--provider-api]`
-
-**Concept:** Orchestrates `flutter create`, adds the `omega_architecture` dependency, runs `omega init`, and replaces the default `main.dart` with a clean Omega-ready entry point (`OmegaRuntime.bootstrap` + `OmegaScope`). If `--kickstart` is provided, the CLI uses AI to analyze your description and generate all necessary ecosystem modules (agents, flows, behavior, UI) with custom logic. This command must be run **outside** existing Flutter projects (it is a project creator).
-
-**Example:**
-```bash
-# Basic setup
-omega create app my_store
-
-# Advanced AI kickstart (requires OMEGA_AI_API_KEY)
-omega create app my_store --kickstart "an e-commerce with cart and stripe" --provider-api
-```
-
----
-
-**Example (errors):**
-```
-Error: Duplicate flow registration: Auth.
-  Remove duplicate XFlow(channel) from omega_setup.dart.
-Fix the issues above and run omega doctor again.
-```
-
-**Example (optional warnings):**
-```
-Optional (contracts):
-  Flow without contract: ...\lib\orders\orders_flow.dart
-  Agent without contract: ...\lib\provider\provider_agent.dart
-  Tip: add a contract getter for clearer semantics and debug warnings.
-Health check passed.
-```
-
----
-
-#### ai
-
-**Why:** Analyze recorded traces faster with an AI-assisted diagnostic flow, while keeping a zero-cost offline mode as default/fallback.
-
-**Instruction (main forms):**
-
-- `dart run omega_architecture:omega ai doctor` — checks AI setup (`OMEGA_AI_ENABLED`, provider, model, base URL, API key).
-- `dart run omega_architecture:omega ai env` — prints supported environment variables and examples.
-- `dart run omega_architecture:omega ai explain <file.json>` — heuristic diagnosis from trace; by default writes a styled temp report and opens it.
-- `dart run omega_architecture:omega ai explain <file.json> --json` — same diagnosis in machine-readable JSON.
-- `dart run omega_architecture:omega ai explain <file.json> --provider-api` — tries provider API (currently OpenAI) and falls back to offline if config/network fails.
-- `dart run omega_architecture:omega ai explain <file.json> --stdout` — print output directly in console (skip temp file).
-- `dart run omega_architecture:omega ai coach start "<feature>"` — guided implementation plan (steps + required artifacts + validation checks); temp file by default.
-- `dart run omega_architecture:omega ai coach audit "<feature>"` — audits current project for feature gaps (files, setup wiring, contracts, tests) and returns score/findings/gaps.
-- `dart run omega_architecture:omega ai coach module "<feature or Name: description>"` — generates or evolves a full module with AI. Flags: `--template basic|advanced`, `--provider-api`, `--json`, `--stdout`, optional `--module` / `-m` to pin the module name.
-- `dart run omega_architecture:omega ai coach redesign "<Module: UI change>"` — **UI only:** regenerates `ui/*_page.dart`; leaves events, agent, flow, and behavior unchanged. Same optional flags as `module` where applicable (`--template`, `--provider-api`, etc.).
-
-**Concept:** `ai explain` reads the same trace format used by `omega trace` (`events` list + optional `initialSnapshot`). In offline mode it reports top events, namespaces and heuristic checks (errors/failures/repetition). With `--provider-api`, it uses environment configuration and returns provider output when available; fallback is automatic to keep the command resilient. While waiting for provider responses, the CLI shows a progress status in terminal.
-
-`ai coach start` helps you design features in Omega with architecture-first guidance. `ai coach audit` evaluates a real project state for a feature and highlights concrete gaps to close. `ai coach module` goes beyond simple scaffolding by using templates optimized for the latest Omega patterns. `ai coach redesign` is the safe path to refresh only the page widget when the rest of the module is already correct.
-
-**Future capabilities (WIP):**
-- `ai coach fix-gaps` — Automatically create missing files and wiring detected by audit.
-- `ai coach generate-tests` — Generate real test cases by analyzing flow and agent logic.
-- `ai suggest-contracts` — Analyze logic and propose declarative contract definitions.
-- `ai compare-traces` — Explain behavioral differences between two recorded sessions.
-- `ai review-architecture` — Senior-level architectural report (couplings, naming, complexity).
-
-**Language behavior:** provider and offline outputs are localized by system locale (`Platform.localeName`) and can be overridden with `OMEGA_AI_LANG` / `OMEGA_AI_LANGUAGE`.
-
-**Environment variables (AI):**
-
-- `OMEGA_AI_ENABLED` (`true|false`, default `false`)
-- `OMEGA_AI_PROVIDER` (`openai | anthropic | gemini | ollama | none`)
-- `OMEGA_AI_API_KEY` (optional for `ollama`)
-- `OMEGA_AI_MODEL`
-- `OMEGA_AI_BASE_URL` (optional custom endpoint)
-- `OMEGA_AI_LANG` / `OMEGA_AI_LANGUAGE` (optional language override)
-
-**Example (provider):**
-```
-dart run omega_architecture:omega ai explain trace.json --provider-api
-Omega AI Explain (provider-api)
-  Trace: C:\...\trace.json
-  Events: 42
-  ...
-```
-
-**Example (offline JSON):**
-```
-dart run omega_architecture:omega ai explain trace.json --json
-{"trace":"C:\\...\\trace.json","events":42,"mode":"offline",...}
-```
-
-**Example (coach audit):**
-```
-dart run omega_architecture:omega ai coach audit "auth"
-# writes .dart_tool/omega_ai_temp/omega_ai_coach_audit_<timestamp>.md
-```
-
----
-
-### How `g ecosystem` uses omega_setup
-
-1. The CLI resolves your **project root** (directory that contains `pubspec.yaml`).
-2. It looks for **`lib/omega/omega_setup.dart`**. If it doesn’t exist, it prints *"Run 'omega init' first"*.
-3. It creates the ecosystem files in the **current directory**.
-4. It **updates** `omega_setup.dart**: adds imports and registers the agent and flow. **`g agent`** and **`g flow`** update only that artifact’s import and registration. Aliases: `generate` and `create` are equivalent to `g`.
-
-Generated by `omega g ecosystem Auth` (in the directory where you run the command):
-
-- `auth/auth_agent.dart`, `auth/auth_flow.dart`, `auth/auth_behavior.dart`
-- `auth/ui/auth_page.dart`
-- **Updates to `lib/omega/omega_setup.dart`**: the CLI finds this file in your app, refreshes the imports for this ecosystem (correct path), and registers the new **agent** and **flow** in `OmegaConfig` (adds `flows:` if it was missing).
-
-## Usage
-
-### Agent and behavior
+**Channel + event** — publish once, many listeners:
 
 ```dart
-class MyBehavior extends OmegaAgentBehaviorEngine {
+final channel = OmegaChannel();
+channel.emit(const OmegaEvent(id: '1', name: 'greet'));
+```
+
+**Agent + behavior** — rules return reactions; the agent runs actions:
+
+```dart
+class GreetBehavior extends OmegaAgentBehaviorEngine {
   @override
   OmegaAgentReaction? evaluate(OmegaAgentBehaviorContext ctx) {
-    if (ctx.event?.name == "greet") {
-      return const OmegaAgentReaction("sayHello", payload: "Welcome!");
+    if (ctx.event?.name == 'greet') {
+      return const OmegaAgentReaction('sayHello', payload: 'Welcome!');
     }
     return null;
   }
 }
-
-class MyAgent extends OmegaAgent {
-  MyAgent(OmegaChannel channel)
-      : super(id: "my_agent", channel: channel, behavior: MyBehavior());
-
-  @override
-  void onMessage(OmegaAgentMessage msg) {}
-
-  @override
-  void onAction(String action, dynamic payload) {
-    if (action == "sayHello") print(payload);
-  }
-}
-
-void main() {
-  final channel = OmegaChannel();
-  final agent = MyAgent(channel);
-  channel.emit(const OmegaEvent(id: "1", name: "greet"));
-}
 ```
 
-### Flutter: OmegaScope and OmegaBuilder
-
-Wrap your app with `OmegaScope` to provide `OmegaChannel` and `OmegaFlowManager`:
+**Flutter wiring** — scope provides channel + flow manager to the tree:
 
 ```dart
 OmegaScope(
   channel: myChannel,
   flowManager: myFlowManager,
-  child: MyApp(),
-)
+  child: const MyApp(),
+);
 ```
 
-Use `OmegaBuilder` to rebuild UI when specific events occur:
+**UI reacts to one event name** — no `setState` scattered everywhere:
 
 ```dart
 OmegaBuilder(
@@ -492,145 +119,146 @@ OmegaBuilder(
   builder: (context, event) {
     return Text('User: ${event?.payload['name']}');
   },
-)
+);
 ```
 
-### Inspector (debug only)
+**Also included** (details in docs linked below):
 
-In debug you can inspect the channel (last N events) and flow snapshots in three ways:
+- **Stateful agents** — typed `viewState` stream for UI-friendly agent state  
+- **Workflow flows** — multi-step processes (`defineStep`, `next`, …)  
+- **Typed routes** — `OmegaRoute.typed<T>` and `routeArguments<T>`  
+- **Persistence** — `OmegaAppSnapshot` save/restore across launches  
+- **Time-travel** — record channel sessions to JSON, replay for demos or bugs  
+- **Contracts** — declare what each flow/agent may receive or emit; get **debug** warnings when something drifts  
 
-**1. Overlay in the app**
+---
 
-```dart
-if (kDebugMode)
-  Stack(
-    children: [
-      MyContent(),
-      Positioned(right: 0, top: 0, child: OmegaInspector(eventLimit: 20)),
-    ],
-  )
+## Omega CLI — what to run and when
+
+Run from a project that **depends** on `omega_architecture` (or use the globally activated `omega`):
+
+```bash
+dart run omega_architecture:omega <command> [options]
 ```
 
-**2. Launcher button (dialog on desktop/mobile, new window on web)**
+**Important:** `omega init` and `omega g …` look for **`lib/omega/omega_setup.dart`**. Generators write files into the **current working directory** (often `lib/`), then patch `omega_setup.dart` for you.
 
-Add the launcher in the AppBar (or anywhere); in debug it shows a button that opens the Inspector in a dialog (Android/iOS/desktop) or in a new browser tab (web). On web, the app must show `OmegaInspectorReceiver` when the URL has `?omega_inspector=1` (e.g. in `main.dart`: if the query param is set, run only `OmegaInspectorReceiver` as the app). The web receiver uses the same dark dashboard layout as the online inspector (flows sidebar, events list, JSON details panel).
+| Command | When you use it | Example |
+|--------|-------------------|---------|
+| **`doc`** | Open the official site in the browser | `dart run omega_architecture:omega doc` |
+| **`inspector`** | Paste your VM Service URL and inspect flows/events | `dart run omega_architecture:omega inspector` |
+| **`init`** | First-time Omega file in an existing app | `dart run omega_architecture:omega init` |
+| **`init --force`** | Regenerate `omega_setup.dart` (overwrites) | `dart run omega_architecture:omega init --force` |
+| **`g ecosystem <Name>`** | New feature: agent + flow + behavior + page | `cd lib && dart run omega_architecture:omega g ecosystem Orders` |
+| **`g agent <Name>`** | Only a new agent (+ behavior) | `dart run omega_architecture:omega g agent Notifications` |
+| **`g flow <Name>`** | Only a new flow | `dart run omega_architecture:omega g flow Checkout` |
+| **`validate`** | CI or pre-run check of `omega_setup.dart` | `dart run omega_architecture:omega validate` |
+| **`doctor`** | Human-readable health + counts | `dart run omega_architecture:omega doctor` |
+| **`trace view`** | Summarize a saved session JSON | `dart run omega_architecture:omega trace view ./trace.json` |
+| **`trace validate`** | Check trace file shape (exit code for CI) | `dart run omega_architecture:omega trace validate ./trace.json` |
+| **`create app`** | New Flutter app with Omega pre-wired | `omega create app my_app` |
+
+Aliases: `g` = `generate` = `create` for generators.
+
+### AI commands (optional)
+
+| Command | What it does | Example |
+|--------|----------------|---------|
+| **`ai doctor`** | Is AI env configured? | `dart run omega_architecture:omega ai doctor` |
+| **`ai env`** | Print supported env vars | `dart run omega_architecture:omega ai env` |
+| **`ai explain <file.json>`** | Heuristic (or provider) report from a trace | `dart run omega_architecture:omega ai explain trace.json --provider-api` |
+| **`ai coach start`** | Step-by-step plan for a feature | `dart run omega_architecture:omega ai coach start "two-factor auth"` |
+| **`ai coach audit`** | Score gaps in the repo for a feature | `dart run omega_architecture:omega ai coach audit "auth"` |
+| **`ai coach module`** | Generate or evolve a full module | `dart run omega_architecture:omega ai coach module "Orders: list and detail" --provider-api` |
+| **`ai coach redesign`** | Regenerate **UI pages only** for a module | `dart run omega_architecture:omega ai coach redesign "Auth: darker theme"` |
+
+Typical AI env vars: `OMEGA_AI_ENABLED`, `OMEGA_AI_PROVIDER` (`openai`, `anthropic`, `gemini`, `ollama`, `none`), `OMEGA_AI_API_KEY`, `OMEGA_AI_MODEL`, `OMEGA_AI_BASE_URL`. Optional language override: `OMEGA_AI_LANG` / `OMEGA_AI_LANGUAGE`.
+
+---
+
+## Inspector (debug only)
+
+Three common patterns:
+
+1. **Overlay** — `OmegaInspector(eventLimit: 20)` in a `Stack`  
+2. **Launcher** — `OmegaInspectorLauncher()` in an `AppBar` (dialog or web tab)  
+3. **Browser + VM** — `OmegaInspectorServer.start` prints a URL; or run **`omega inspector`** and paste the VM Service URL from `flutter run`  
 
 ```dart
 if (kDebugMode)
   AppBar(
-    title: Text('My App'),
+    title: const Text('My App'),
     actions: [OmegaInspectorLauncher()],
   )
 ```
 
-**3. Online Inspector (VM Service + web)**
+**Local (embedded)** — flows sidebar, event list, JSON detail:
 
-On Android/iOS/desktop you can debug the app from the PC using the hosted Inspector page. `OmegaInspectorServer.start` registers a VM Service extension and prints a URL like:
+![Local Inspector](assets/inspector_local.png)
 
-```text
-http://yefersonsegura.com/projects/omega/inspector.html#<encoded-VM-URL>
-```
+**Online (same UI in the browser + VM Service)**:
 
-Open that URL in a desktop browser and the page will auto-connect to your running app; alternatively, copy the raw VM Service URL that Flutter prints (e.g. `http://127.0.0.1:PORT/TOKEN=/`) and paste it in the Inspector input. You can also run:
+![Online Inspector](assets/inpector_online.png)
+
+Full copy-paste steps: **[doc/INSPECTOR.md](doc/INSPECTOR.md)**. Release builds stay lean (Inspector is guarded by `kDebugMode`).
+
+---
+
+## Flow activation & persistence (cheat sheet)
+
+- **Several flows listening:** `flowManager.activate('flowId')` for each.  
+- **One “main” flow:** `flowManager.switchTo('flowId')` pauses the others.  
+- **Save / restore:** `flowManager.getAppSnapshot().toJson()` → persist → `OmegaAppSnapshot.fromJson` → `flowManager.restoreFromSnapshot(snapshot)`.  
+
+---
+
+## Example app
+
+The **`example/`** project is the reference: login UI, **AuthFlow**, **AuthAgent**, typed payloads, contracts, and routes.
 
 ```bash
-dart run omega_architecture:omega inspector
+cd example && flutter run
 ```
 
-which opens the same hosted Inspector so you only have to paste the hash or VM Service URL from the app logs.
+Key files: [omega_setup.dart](example/lib/omega/omega_setup.dart), [auth_flow.dart](example/lib/auth/auth_flow.dart), [auth_agent.dart](example/lib/auth/auth_agent.dart), [auth_page.dart](example/lib/auth/ui/auth_page.dart).
 
-All Inspector widgets and the server are no-op in release (`kDebugMode` guards). See the [example](example/) app for full usage; [doc/INSPECTOR.md](doc/INSPECTOR.md) has a copy-paste guide and troubleshooting.
+---
 
-#### Inspector UIs (local vs online)
+## Documentation index
 
-- **Local Inspector (web / overlay)**  
-  When you use `OmegaInspector` inside the app or open the web receiver (`OmegaInspectorReceiver` via `OmegaInspectorLauncher`), you get a dark dashboard embedded in Flutter: sidebar with flows, events list with a small timeline of dots, and a JSON details panel for the selected event/flow.
+| Doc | Use it for |
+|-----|------------|
+| [doc/GUIA.md](doc/GUIA.md) | Guided tour + examples per component |
+| [doc/COMANDOS_CLI.md](doc/COMANDOS_CLI.md) | CLI tables and extended command notes |
+| [doc/INSPECTOR.md](doc/INSPECTOR.md) | Inspector setup and troubleshooting |
+| [doc/CONTRACTS.md](doc/CONTRACTS.md) | Declarative flow/agent contracts |
+| [doc/TIME_TRAVEL.md](doc/TIME_TRAVEL.md) | Record / replay sessions |
+| [doc/ARQUITECTURA.md](doc/ARQUITECTURA.md) | Deep technical reference |
+| [doc/COMPARATIVA.md](doc/COMPARATIVA.md) | Comparison with other approaches |
+| [doc/TESTING.md](doc/TESTING.md) | Testing agents and flows |
+| [doc/ROADMAP.md](doc/ROADMAP.md) | Long-term direction |
+| [API on pub.dev](https://pub.dev/documentation/omega_architecture/latest) | Generated API reference |
+| [Web documentation](https://yefersonsegura.com/projects/omega/index-en.html) | Architecture overview and guides |
 
-  ![Local Inspector](assets/inspector_local.png)
+Local presentation bundle: [presentation/index.html](presentation/index.html).
 
-- **Online Inspector (VM Service + web)**  
-  When you open the hosted page `http://yefersonsegura.com/projects/omega/inspector.html#<encoded-VM-URL>`, you see the same layout but running in the browser: connection bar at the top (VM Service URL + auto-connect), flows on the left, events + details on the right. It talks to your running app through the Dart VM Service and works for Android, iOS and desktop.
+---
 
-  ![Online Inspector](assets/inpector_online.png)
-
-### Activating flows
-
-- **Several flows at once:** use `flowManager.activate("flowId")` for each. All stay in `running` and receive intents via `handleIntent`.
-- **Single “main” flow:** use `flowManager.switchTo("flowId")` to activate one and pause the others.
-
-### Persistence (restore on launch)
-
-To save app state and restore it when the user reopens the app:
-
-1. **Serialize:** `final json = flowManager.getAppSnapshot().toJson()` then save (e.g. `jsonEncode(json)` to a file or `SharedPreferences`). Flow `memory` values must be JSON-serializable.
-2. **Restore:** On startup, load the saved map, then `final snapshot = OmegaAppSnapshot.fromJson(jsonDecode(loaded)); flowManager.restoreFromSnapshot(snapshot);`. This restores each flow's memory and activates the previous active flow.
-3. **Optional:** Implement [OmegaSnapshotStorage] (`save` / `load`) with your preferred backend (file, prefs, API) and call it from app lifecycle. See [doc/ARQUITECTURA.md](doc/ARQUITECTURA.md) for details.
-
-### Declarative contracts (optional)
-
-You can declare what each flow and agent is allowed to receive and emit. Override `contract` in your flow or agent and return an [OmegaFlowContract] or [OmegaAgentContract]. In **debug** mode, Omega prints a warning when a flow receives an event or intent not in its contract, or emits an expression type not declared (and similarly for agents). Empty sets mean no constraint; if you don't set a contract, behavior is unchanged.
-
-```dart
-// In your flow
-@override
-OmegaFlowContract? get contract => OmegaFlowContract.fromTyped(
-  listenedEvents: [AppEvent.authLoginSuccess, AppEvent.authLoginError],
-  acceptedIntents: [AppIntent.authLogin, AppIntent.authLogout],
-  emittedExpressionTypes: {'loading', 'success', 'error'},
-);
-
-// In your agent
-@override
-OmegaAgentContract? get contract => OmegaAgentContract.fromTyped(
-  listenedEvents: [AppEvent.authLoginRequest],
-  acceptedIntents: [AppIntent.authLogin],
-);
-```
-
-**Reference:** The [example](example/) app implements contracts in [AuthFlow](example/lib/auth/auth_flow.dart) and [AuthAgent](example/lib/auth/auth_agent.dart)—run `cd example && flutter run` to try it. See **[doc/CONTRACTS.md](doc/CONTRACTS.md)** for full details.
-
-### Lifecycle and dispose
-
-- **OmegaChannel** — Whoever creates it should call `channel.dispose()` when the app is shutting down.
-- **OmegaFlowManager** — Call `flowManager.dispose()` to cancel the subscription used by `wireNavigator`.
-- **OmegaAgent** — Call `agent.dispose()` so the agent unsubscribes from the channel.
-- **OmegaScope** does not dispose anything; the widget that creates `channel` and `flowManager` should call their `dispose()` in its `State.dispose`.
-
-## Example: Authentication flow
-
-A full example lives in the **`example/`** folder. Run it with `cd example && flutter run`. It shows:
-
-1. **UI** — Login screen that emits intents with typed payload (`LoginCredentials`).
-2. **Flow** — Orchestrates login, reads payload with `payloadAs<LoginCredentials>()`, navigates to home with `OmegaIntent.fromName(AppIntent.navigateHome, payload: userData)`.
-3. **Agent** — Performs login logic, emits `LoginSuccessPayload` or `OmegaFailure`.
-4. **Behavior** — Rules that react to auth events/intents.
-5. **Typed route** — Home registered as `OmegaRoute.typed<LoginSuccessPayload>` so the screen receives the payload without casting.
-
-Relevant files:
-
-- [Omega setup (config, routes)](example/lib/omega/omega_setup.dart)
-- [Main entry](example/lib/main.dart)
-- [Auth flow](example/lib/auth/auth_flow.dart)
-- [Auth agent](example/lib/auth/auth_agent.dart)
-- [Login page](example/lib/auth/ui/auth_page.dart)
-- [Home (typed payload)](example/lib/home/home.dart)
-- [Models (LoginCredentials, LoginSuccessPayload)](example/lib/auth/models.dart)
-- [App semantics (AppEvent, AppIntent)](example/lib/omega/app_semantics.dart)
-
-## Project structure
+## Package layout (library)
 
 ```
 lib/
 ├── omega/
-│   ├── core/          # Channel, events, intents, types
-│   ├── agents/        # OmegaAgent, behavior engine, protocol
-│   ├── flows/         # OmegaFlow, OmegaFlowManager, expressions
-│   ├── ui/            # OmegaScope, OmegaBuilder, navigation
-│   └── bootstrap/     # Config, runtime
-├── examples/          # Full examples and feature demos
-└── omega_architecture.dart  # Barrel exports
+│   ├── core/       # Channel, events, intents
+│   ├── agents/     # Agents, behaviors
+│   ├── flows/      # Flows, manager, expressions
+│   ├── ui/         # Scope, builder, navigation helpers
+│   └── bootstrap/  # Config, runtime
+└── omega_architecture.dart
 ```
+
+---
 
 ## License
 
-See [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).

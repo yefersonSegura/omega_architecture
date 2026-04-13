@@ -3700,7 +3700,7 @@ OMEGA — UI LISTENS TO AGENT STATE (read before any OmegaAgentBuilder / OmegaSc
 OMEGA ROLES — Flow vs Agent vs Behavior (do not merge into one class):
 - Flow (OmegaFlow / OmegaWorkflowFlow): Orchestrates one feature or screen journey. Receives flowManager.handleIntent → onIntent; receives channel events → onEvent. Publishes OmegaFlowExpression for UI (StreamBuilder on flow.expressions). May emit channel events to ask agents or trigger navigation. Think: steps, wizard, “where is this feature in the process”. Registered in OmegaConfig; UI uses flowManager.getFlow(flowId) or getFlowFlexible(flowId) with the same id as super(id: ...) in the flow class. Optional override `OmegaAgent? get uiScopeAgent => ...` when the page uses `OmegaFlowExpressionBuilder` + `OmegaScopedAgentBuilder` without wrapping the route in `OmegaAgentScope` — same agent reference as in `OmegaConfig.agents`. **Other ctor params** (offline queue, repos) are **not** agents: inject from `createOmegaConfig` once; see example `OrdersFlow` + `offlineQueue`.
 - Agent (OmegaAgent / OmegaStatefulAgent): Listens to the event bus; OmegaAgentBehaviorEngine maps matching intents/events to action ids; the agent runs onAction (async OK, APIs, channel.emit results). OmegaStatefulAgent adds viewState + setViewState for OmegaAgentBuilder. Agents do not replace flows: often the flow coordinates and the agent does side-effect work (load data, call backend).
-- Behavior (*_behavior.dart*, OmegaAgentBehaviorEngine): Declarative rules only — condition(ctx) → OmegaAgentReaction(actionId, payload). No async, no HTTP, no setViewState. First matching rule wins. The agent implements onAction for each actionId. Keeps the routing table (behavior) separate from execution (agent).
+- Behavior (*_behavior.dart*, OmegaAgentBehaviorEngine): Declarative rules only — condition(ctx) → OmegaAgentReaction(actionId, {payload?} only if onAction needs it). No async, no HTTP, no setViewState. First matching rule wins. The agent implements onAction for each actionId. Keeps the routing table (behavior) separate from execution (agent).
 ''';
 
   /// **User prompt:** workflow steps + `emitExpression`/`failStep` signatures; flow context has no agent shortcuts.
@@ -3727,11 +3727,12 @@ OMEGA AGENT + BEHAVIOR — read the real API before coding (same package):
 - Canonical examples: example/lib/auth/auth_behavior.dart (rules) + example/lib/auth/auth_agent.dart (onAction, setViewState, emit). Generated code must follow that split — not a single fixed "requested → loadMock" pattern; that was only an illustration.
 
 OmegaAgentBehaviorEngine (*_behavior.dart*) — architecture, not a recipe count:
-- Valid shape: (1) constructor calling addRule(OmegaAgentBehaviorRule(...)) one or MANY times — each rule is one condition → one OmegaAgentReaction(actionId, payload: ...). First matching rule wins (registration order matters). (2) OR override evaluate(OmegaAgentBehaviorContext ctx) and return the first matching reaction yourself.
-- API detail: addRule has exactly ONE positional argument — the rule object. WRONG (does not compile): addRule(condition: (ctx) => ..., reaction: (ctx) => ...). RIGHT: addRule(OmegaAgentBehaviorRule(condition: (ctx) => ..., reaction: (ctx) => OmegaAgentReaction('actionId', payload: ...)));
+- Valid shape: (1) constructor calling addRule(OmegaAgentBehaviorRule(...)) one or MANY times — each rule is one condition → one OmegaAgentReaction. First matching rule wins (registration order matters). (2) OR override evaluate(OmegaAgentBehaviorContext ctx) and return the first matching reaction yourself.
+- API detail: addRule has exactly ONE positional argument — the rule object. WRONG (does not compile): addRule(condition: (ctx) => ..., reaction: (ctx) => ...). RIGHT: addRule(OmegaAgentBehaviorRule(condition: (ctx) => ..., reaction: (ctx) => const OmegaAgentReaction('actionId'))); when the agent needs data from the intent/event, add the named argument only then: OmegaAgentReaction('doLogin', payload: ctx.intent?.payloadAs<LoginPayload>() ?? ctx.event?.payloadAs<LoginPayload>() ?? ctx.event?.payload ?? ctx.intent?.payload).
+- **Payload discipline (critical):** [OmegaAgentReaction] uses `const OmegaAgentReaction('id')` or `OmegaAgentReaction('id')` **without** `payload:` when the matching `onAction` case **does not use** `payload` (logout, refresh-without-args, clear, etc.). **Include `payload:`** only when `onAction` reads `payload` for that action (login credentials, selected id, typed DTO). Never emit `payload: null` or a useless placeholder when the agent ignores it — omit the named parameter instead. Align with example/lib/auth/auth_behavior.dart: doLogin carries payload; doLogout does not.
 - Conditions are whatever the module needs: ctx.event?.name == MyEvent.x.name, ctx.intent?.name == MyIntent.y.name, boolean combinations (|| / &&), ctx.intent?.payload is String (or other runtime checks), typed payloads via ctx.event?.payloadAs<MyTypedEvent>() / ctx.intent?.payloadAs<...>() when applicable. Different features ⇒ different rules and different actionIds.
 - Multi-rule style (order/admin modules): one rule for "start or retry or refresh" intents → same reaction (e.g. load list); another rule for a specific intent with payload guard (&& ctx.intent?.payload is String) → reaction with payload passed to onAction; another rule when ctx.event?.name matches a domain event → reaction whose payload is built from ctx.event?.payloadAs<MyShippedEvent>()?.field.
-- Reactions stay small: string action id + optional payload for the agent. No business/async in the behavior file.
+- Reactions stay small: string action id + optional payload only when needed. No business/async in the behavior file.
 
 OmegaStatefulAgent (*_agent.dart*):
 - Base [OmegaAgent] exposes Map<String, dynamic> state — loose key/value bag for behavior rules if needed; it is NOT your typed UI model and has no copyWith for that.
@@ -3790,7 +3791,7 @@ Forbidden: implements OmegaEvent/OmegaIntent on enums; OmegaEventName(...); Omeg
 Purpose: When the bus delivers an event OR a context with intent, decide which agent action runs.
 Must include:
 - `import 'package:omega_architecture/omega_architecture.dart';` + `import '<lower>_events.dart';` (+ app_semantics if rules reference AppEvent/AppIntent).
-- `class <Module>Behavior extends OmegaAgentBehaviorEngine` with constructor calling `addRule(OmegaAgentBehaviorRule(condition: (ctx) => ..., reaction: (ctx) => OmegaAgentReaction('actionId', payload: ...)))` — exactly one OmegaAgentBehaviorRule per addRule positional arg.
+- `class <Module>Behavior extends OmegaAgentBehaviorEngine` with constructor calling `addRule(OmegaAgentBehaviorRule(condition: (ctx) => ..., reaction: (ctx) => OmegaAgentReaction(...)))` — exactly one OmegaAgentBehaviorRule per addRule positional arg. **Reaction payload:** add `payload:` only if the corresponding `onAction` branch uses `payload` for that action id; otherwise use `const OmegaAgentReaction('actionId')` with no `payload` argument (do not pass `payload: null` when unused).
 - Conditions: `ctx.event?.name == <Module>Event.xxx.name`, `ctx.intent?.name == <Module>Intent.yyy.name`, combine with && / ||; use payloadAs<T>() when typed.
 Cross-file rules:
 - Each `OmegaAgentReaction('actionId', ...)` string MUST match a `case "actionId":` (or 'actionId') branch in the agent’s `onAction` — string literals only in switch.
@@ -4123,7 +4124,7 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
       "  OMEGA_AI_SKIP_REMOTE_DOCS       true = do not GET OMEGA_AI_DOCS_URL(S)",
     );
     stdout.writeln(
-      "  OMEGA_AI_STRICT_POSTCHECK       true = if full-module output fails checks, skip writing Omi files and use default template",
+      "  OMEGA_AI_STRICT_POSTCHECK       true = if full-module output fails checks (action ids, flow↔page, behavior↔agent payload, …), skip writing Omi files and use default template",
     );
     stdout.writeln("");
     stdout.writeln("Self-heal (dart analyze + Omi) tuning:");
@@ -4814,6 +4815,221 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
     return s;
   }
 
+  /// Skips a normal Dart `'...'` / `"..."` / `'''...'''` / `"""..."""` literal starting at [i].
+  static int _omegaSkipDartStringLiteral(String s, int i) {
+    if (i >= s.length) return s.length;
+    final q = s[i];
+    if (q != "'" && q != '"') return i;
+    if (i + 2 < s.length && s[i + 1] == q && s[i + 2] == q) {
+      var j = i + 3;
+      while (j + 2 < s.length) {
+        if (s[j] == q && s[j + 1] == q && s[j + 2] == q) {
+          return j + 3;
+        }
+        j++;
+      }
+      return s.length;
+    }
+    var k = i + 1;
+    while (k < s.length) {
+      final ch = s[k];
+      if (ch == r'\') {
+        k += 2;
+        continue;
+      }
+      if (ch == q) {
+        return k + 1;
+      }
+      k++;
+    }
+    return s.length;
+  }
+
+  /// If [s[i]] starts a `//` or `/*` comment, returns index after the comment; otherwise null.
+  static int? _omegaSkipLeadingComment(String s, int i) {
+    if (i + 1 >= s.length || s[i] != '/') {
+      return null;
+    }
+    if (s[i + 1] == '/') {
+      var j = i + 2;
+      while (j < s.length && s[j] != '\n') {
+        j++;
+      }
+      return j;
+    }
+    if (s[i + 1] == '*') {
+      var j = i + 2;
+      while (j + 1 < s.length) {
+        if (s[j] == '*' && s[j + 1] == '/') {
+          return j + 2;
+        }
+        j++;
+      }
+      return s.length;
+    }
+    return null;
+  }
+
+  /// Index of the closing delimiter matching [openCh] at [openIdx], skipping strings and comments.
+  static int? _omegaIndexClosingDelimiter(
+    String s,
+    int openIdx,
+    int openCh,
+    int closeCh,
+  ) {
+    if (openIdx >= s.length || s.codeUnitAt(openIdx) != openCh) {
+      return null;
+    }
+    var depth = 0;
+    var i = openIdx;
+    while (i < s.length) {
+      final com = _omegaSkipLeadingComment(s, i);
+      if (com != null) {
+        i = com;
+        continue;
+      }
+      final c = s.codeUnitAt(i);
+      if (c == 0x27 /* ' */ || c == 0x22 /* " */) {
+        i = _omegaSkipDartStringLiteral(s, i);
+        continue;
+      }
+      if (c == openCh) {
+        depth++;
+        i++;
+        continue;
+      }
+      if (c == closeCh) {
+        depth--;
+        if (depth == 0) {
+          return i;
+        }
+        i++;
+        continue;
+      }
+      i++;
+    }
+    return null;
+  }
+
+  /// Every `OmegaAgentReaction` / `const OmegaAgentReaction` call: action id + inner argument text.
+  static List<({String id, String inner})> _omegaPostGenScanOmegaAgentReactions(
+    String behavior,
+  ) {
+    final out = <({String id, String inner})>[];
+    final head = RegExp(r'\b(?:const\s+)?OmegaAgentReaction\s*\(');
+    for (final m in head.allMatches(behavior)) {
+      final open = behavior.indexOf('(', m.start);
+      if (open < 0) {
+        continue;
+      }
+      final close = _omegaIndexClosingDelimiter(
+        behavior,
+        open,
+        0x28 /* ( */,
+        0x29 /* ) */,
+      );
+      if (close == null || close <= open) {
+        continue;
+      }
+      final inner = behavior.substring(open + 1, close);
+      final idSq = RegExp(r"^\s*'([^']*)'").firstMatch(inner);
+      final idDq = RegExp(r'^\s*"([^"]*)"').firstMatch(inner);
+      final idStr = idSq?.group(1) ?? idDq?.group(1);
+      if (idStr == null) {
+        continue;
+      }
+      out.add((id: idStr.trim(), inner: inner));
+    }
+    return out;
+  }
+
+  /// Per action id: true if any reaction includes a `payload:` argument.
+  static Map<String, bool> _omegaPostGenBehaviorPayloadNamedArg(
+    List<({String id, String inner})> scans,
+  ) {
+    final map = <String, bool>{};
+    for (final r in scans) {
+      if (r.id.isEmpty) {
+        continue;
+      }
+      final has = RegExp(r'\bpayload\s*:').hasMatch(r.inner);
+      map[r.id] = (map[r.id] ?? false) || has;
+    }
+    return map;
+  }
+
+  /// Body of `switch (action) { ... }` (without outer braces), or null.
+  static String? _omegaPostGenOnActionSwitchInner(String agent) {
+    final m = RegExp(r'switch\s*\(\s*action\s*\)\s*\{').firstMatch(agent);
+    if (m == null) {
+      return null;
+    }
+    final openBrace = m.end - 1;
+    if (openBrace < 0 || agent.codeUnitAt(openBrace) != 0x7b /* { */) {
+      return null;
+    }
+    final close = _omegaIndexClosingDelimiter(
+      agent,
+      openBrace,
+      0x7b /* { */,
+      0x7d /* } */,
+    );
+    if (close == null || close <= openBrace) {
+      return null;
+    }
+    return agent.substring(openBrace + 1, close);
+  }
+
+  /// Map `case "id":` / `case 'id':` → case body text until the next case or end of switch inner.
+  static Map<String, String> _omegaPostGenSwitchCaseBodies(String switchInner) {
+    final hits = <({int start, int headerEnd, String id})>[];
+    for (final m in RegExp(r"case\s+'([^']*)'\s*:").allMatches(switchInner)) {
+      hits.add((start: m.start, headerEnd: m.end, id: m.group(1)!));
+    }
+    for (final m in RegExp(r'case\s+"([^"]*)"\s*:').allMatches(switchInner)) {
+      hits.add((start: m.start, headerEnd: m.end, id: m.group(1)!));
+    }
+    hits.sort((a, b) => a.start.compareTo(b.start));
+    final out = <String, String>{};
+    for (var k = 0; k < hits.length; k++) {
+      final id = hits[k].id.trim();
+      if (id.isEmpty) {
+        continue;
+      }
+      final start = hits[k].headerEnd;
+      final end = k + 1 < hits.length ? hits[k + 1].start : switchInner.length;
+      out[id] = switchInner.substring(start, end);
+    }
+    return out;
+  }
+
+  /// Heuristic: [onAction]'s second parameter `payload` is used (not only as a named arg label `payload:`).
+  static bool _omegaPostGenBodyUsesOnActionPayload(String body) {
+    if (body.isEmpty) {
+      return false;
+    }
+    final patterns = <RegExp>[
+      RegExp(r'\(\s*payload\s*\)'),
+      RegExp(r'\(\s*payload\s*,'),
+      RegExp(r',\s*payload\s*\)'),
+      RegExp(r'\bpayload\s*;'),
+      RegExp(r'\bpayload\s*!'),
+      RegExp(r'\bpayload\s*\.'),
+      RegExp(r'\bpayload\s+is\b'),
+      RegExp(r'\bpayload\s+as\b'),
+      RegExp(r'\bpayload\s*\?\?'),
+      RegExp(r'\bpayload\s*\?\.'),
+      RegExp(r'_\w+\s*\(\s*payload\b'),
+      RegExp(r'=\s*payload\s*;'),
+    ];
+    for (final p in patterns) {
+      if (p.hasMatch(body)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   static _OmegaPostGenResult _omegaPostValidateAiModule(
     Map<String, String> files,
     String moduleName,
@@ -4869,6 +5085,44 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
             "$tag Behavior emits OmegaAgentReaction('$id') but agent has no case '$id' (or action == '$id').",
           );
         }
+      }
+
+      final reactionScans = _omegaPostGenScanOmegaAgentReactions(behavior);
+      if (reactionScans.any((t) {
+        return RegExp(r'\bpayload\s*:\s*null\b').hasMatch(t.inner);
+      })) {
+        warnings.add(
+          "$tag OmegaAgentReaction(..., payload: null) — omit the named argument when onAction does not need data.",
+        );
+      }
+      final payloadByAction = _omegaPostGenBehaviorPayloadNamedArg(reactionScans);
+      final switchInner = _omegaPostGenOnActionSwitchInner(agent);
+      if (switchInner != null) {
+        final caseBodies = _omegaPostGenSwitchCaseBodies(switchInner);
+        for (final id in bids) {
+          if (!handled.contains(id)) {
+            continue;
+          }
+          final body = caseBodies[id];
+          if (body == null) {
+            continue;
+          }
+          final uses = _omegaPostGenBodyUsesOnActionPayload(body);
+          final hasP = payloadByAction[id] ?? false;
+          if (uses && !hasP) {
+            errors.add(
+              "$tag OmegaAgentReaction('$id') is missing payload: … while onAction uses the payload parameter — pass ctx.intent?.payloadAs<…>() ?? ctx.event?.payload (see example auth_behavior / auth_agent).",
+            );
+          } else if (hasP && !uses) {
+            warnings.add(
+              "$tag OmegaAgentReaction('$id') includes payload: but the switch case does not use the onAction payload — remove payload: if unnecessary, or use payload in the agent.",
+            );
+          }
+        }
+      } else if (reactionScans.isNotEmpty && bids.isNotEmpty) {
+        warnings.add(
+          "$tag Post-check: behavior ↔ agent payload alignment skipped (no switch(action) in agent).",
+        );
       }
     }
 
@@ -5797,8 +6051,8 @@ FILE TEMPLATES AND RULES (STRUCTURE ONLY - DO NOT COPY PASTE THE UI CONTENT):
   - import '${lower}_events.dart';
   - Every rule MUST be addRule(OmegaAgentBehaviorRule(condition: ..., reaction: ...)) — never addRule(condition: ...) without OmegaAgentBehaviorRule (that is a compile error).
   - class ${moduleName}Behavior extends OmegaAgentBehaviorEngine { ${moduleName}Behavior() { addRule(OmegaAgentBehaviorRule(...)); addRule(OmegaAgentBehaviorRule(...)); /* as many rules as needed */ } }
-  - Patterns: (1) several intents sharing one reaction: condition uses || on ctx.intent?.name == ${moduleName}Intent.${lower}Start.name etc. (2) one intent with typed payload: condition adds && (ctx.intent?.payload is String) or use ctx.intent?.payloadAs<YourPayloadType>() != null. (3) react to channel events: ctx.event?.name == ${moduleName}Event.${lower}Succeeded.name and pass ctx.event?.payloadAs<YourTypedEvent>()?.field into OmegaAgentReaction payload.
-  - reaction: (ctx) => OmegaAgentReaction('distinctActionId', payload: ...) — keep rules declarative; no async. Order rules from more specific to general if needed.
+  - Patterns: (1) several intents sharing one reaction: condition uses || on ctx.intent?.name == ${moduleName}Intent.${lower}Start.name etc. (2) one intent with typed payload: condition adds && (ctx.intent?.payload is String) or use ctx.intent?.payloadAs<YourPayloadType>() != null. (3) react to channel events: ctx.event?.name == ${moduleName}Event.${lower}Succeeded.name and pass ctx.event?.payloadAs<YourTypedEvent>()?.field into OmegaAgentReaction payload when onAction needs it.
+  - reaction: keep rules declarative; no async. **If onAction uses payload for this action:** `OmegaAgentReaction('distinctActionId', payload: ctx.intent?.payloadAs<...>() ?? ctx.event?.payloadAs<...>() ?? ...)`. **If onAction ignores payload:** `const OmegaAgentReaction('distinctActionId')` — no `payload:` key. Order rules from more specific to general if needed.
   - Alternative: override evaluate(OmegaAgentBehaviorContext ctx) synchronously; return OmegaAgentReaction(...) or null.
   - FORBIDDEN: handleEvent, Stream, async*, yield, OmegaAgentMessage, msg.type. Async work and setViewState live in ${moduleName}Agent.onAction (one case per actionId).
 

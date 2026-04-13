@@ -1,4 +1,4 @@
-# Comandos del CLI Omega
+ # Comandos del CLI Omega
 
 Referencia para quien desarrolla con el paquete **omega_architecture**. El ejecutable se declara en `pubspec.yaml` como `omega` (véase `executables`).
 

@@ -1,6 +1,7 @@
-/// Result of a rule: [action] name and [payload]. The agent receives it in [OmegaAgent.onAction].
+/// Result of a rule: [action] name and optional [payload]. The agent receives both in [OmegaAgent.onAction].
 ///
-/// **Example:** `OmegaAgentReaction("login", payload: creds);` → in onAction: action == "login", payload == creds.
+/// Omit [payload] when [onAction] does not need data for that action (e.g. `const OmegaAgentReaction("logout")`).
+/// Pass [payload] when [onAction] uses it (e.g. `OmegaAgentReaction("login", payload: creds)`).
 class OmegaAgentReaction {
   /// Action name (e.g. "login"). In [onAction] you compare by this value.
   final String action;
