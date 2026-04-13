@@ -491,7 +491,7 @@ channel.emit(OmegaEvent.fromName(
 
 **Qué hace:** Crea el canal, el config (agentes, flows, rutas), registra todo y devuelve el runtime. La app usa `runtime.channel`, `runtime.flowManager`, `runtime.navigator`, `runtime.initialFlowId` y opcionalmente **`runtime.initialNavigationIntent`** para montar OmegaScope y el MaterialApp.
 
-`initialFlowId` solo activa el flow en el árbol ([OmegaFlowActivator]); **no** elige la primera [OmegaRoute]. Para la ruta inicial: en `OmegaConfig` pon **`initialNavigationIntent:`** `OmegaIntent.fromName(AppIntent.navigateLogin)` (alineado con `OmegaRoute(id: …)`), pasa **`initialNavigationIntent: runtime.initialNavigationIntent`** en **[OmegaScope]** y usa **`home: OmegaInitialRoute(child: …)`** en el `MaterialApp` (lee el intent del scope; sin parámetros extra en tu `MyApp`). Alternativa: [OmegaInitialNavigationEmitter] con `intent:` explícito.
+`initialFlowId` solo activa el flow en el árbol ([OmegaFlowActivator]); **no** elige la primera [OmegaRoute]. Para la ruta inicial: en `OmegaConfig` pon **`initialNavigationIntent:`** como **`OmegaIntent.fromName(AppIntent.<tuIntentoDeEntrada>)`** de forma que el **wire** `navigate.*` coincida con el **`OmegaRoute(id: …)`** registrado (p. ej. tras `omega init`: **`navigateRoot`** → id **`root`**; en apps con login, **`navigateLogin`** → id **`login`**, etc.). Pasa **`initialNavigationIntent: runtime.initialNavigationIntent`** en **[OmegaScope]** y usa **`home: OmegaInitialRoute(child: …)`** en el `MaterialApp` (lee el intent del scope; sin parámetros extra en tu `MyApp`). Alternativa: [OmegaInitialNavigationEmitter] con `intent:` explícito.
 
 **Ejemplo:**
 

@@ -495,7 +495,7 @@ void printHelp() {
     "  g flow <Name>        Flow only; updates AppFlowId in app_runtime_ids.dart (needs *_agent.dart)",
   );
   stdout.writeln(
-    "  validate             Check omega_setup.dart (structure, duplicates, routes vs *Page agent, login/home cold start when Auth + multi-route)",
+    "  validate             Check omega_setup.dart (structure, duplicates, routes vs *Page agent, cold start initialFlowId + initialNavigationIntent when routes+flows exist)",
   );
   stdout.writeln(
     "  trace [view|validate] [file]  Inspect or validate a recorded trace file (JSON)",
@@ -679,7 +679,7 @@ class OmegaCreateAppCommand {
               final aiModules = await _providerSuggestModules(kickstart);
               if (aiModules != null) return aiModules;
             }
-            return ["Home"]; // Fallback
+            return ["Main"]; // Fallback — neutral name; product modules come from the description when AI is available
           },
         );
 
@@ -1498,7 +1498,7 @@ Return only JSON. No markdown fences.
     if (!_OmegaAiRemote.canCallRemote()) return null;
 
     const system =
-        "You are Omega architecture planner. Return ONLY a comma-separated list of 2-4 core module names (PascalCase) needed for the app description. For user-facing apps, **always** include an **Auth** or **Login** module (cold start / sign-in) and a **Home** or **MainShell** module (post-login screen with global navigation to the rest of the app). No extra text.";
+        "You are Omega architecture planner. Return ONLY a comma-separated list of 2-4 core module names (PascalCase) inferred strictly from the app description. Do **not** assume Login, Auth, or Home unless the description explicitly needs them (games, tools, logged-in-only demos, etc. may omit auth). The host app wires cold start separately: **OmegaConfig** must always define **initialFlowId** (entry flow) and **initialNavigationIntent** (first **OmegaRoute** via **AppIntent** / navigator rules) — that is not your module list; pick modules only from the product text. No extra text.";
     final content = await _OmegaAiRemote.completeChat(
       system: system,
       user: "Description: $description",
@@ -1525,10 +1525,10 @@ enum AppEvent with OmegaEventNameDottedCamel implements OmegaEventName {
   navigationIntent,
 }
 
-/// App-wide intents: e.g. [navigateLogin] → `navigate.login`, [navigateHome] → `navigate.home`.
+/// App-wide intents: add cases as you add routes (wire = lowercased dotted camel).
+/// [navigateRoot] → `navigate.root` → [OmegaRoute] id **`root`** (minimal cold-start intent for greenfield).
 enum AppIntent with OmegaIntentNameDottedCamel implements OmegaIntentName {
-  navigateLogin,
-  navigateHome,
+  navigateRoot,
 }
 ''';
 
@@ -2466,7 +2466,7 @@ String _omegaInferAuthInitialFlowIdExpr(String projectRoot, String setupContent)
 }
 
 /// Inserts [initialFlowId] + [initialNavigationIntent] when the setup qualifies (see
-/// [_omegaSetupQualifiesForColdStartAutoPatch]) so `AppIntent.navigateLogin` is valid.
+/// [_omegaSetupQualifiesForColdStartAutoPatch]) — typically Auth-style apps with route id `login`.
 String _omegaPatchOmegaSetupColdStart(
   String content,
   String pkg,
@@ -2561,8 +2561,8 @@ void _omegaFinalizeOmegaSetupAfterCreateApp(String projectRoot) {
     _formatFile(setupPath);
     stdout.writeln(
       _tr(
-        en: "Normalized omega_setup (login/home route ids + cold start if applicable).",
-        es: "omega_setup normalizado (ids login/home + arranque en frío si aplica).",
+        en: "Normalized omega_setup (route ids + cold start patch if applicable).",
+        es: "omega_setup normalizado (ids de rutas + parche de arranque en frío si aplica).",
       ),
     );
   } catch (_) {}
@@ -2779,7 +2779,7 @@ void registerInOmegaSetup(
       );
     }
 
-    // Registrar ruta por defecto para el nuevo módulo (Auth/Home → ids que entiende [OmegaNavigator])
+    // Register default route for the new module (id from wire / navigator rules via _omegaNavRouteIdForModulePascal)
     if (!content.contains("OmegaRoute(id: '$navRouteId'") &&
         !content.contains("OmegaRoute(id: '$pascal'")) {
       final routeEntry = pageNeedsAgent && registerAgentEffective
@@ -3035,7 +3035,7 @@ class OmegaValidateCommand {
     if (!validateProjectRoot(root)) exit(1);
   }
 
-  /// Validates [root] (Flutter app with `lib/omega/omega_setup.dart`): structure, duplicates, login/home cold start hints, route vs *Page agent wiring. Prints messages; does not [exit] — returns `false` on failure.
+  /// Validates [root] (Flutter app with `lib/omega/omega_setup.dart`): structure, duplicates, cold start (`initialFlowId` / `initialNavigationIntent`) when routes+flows exist, route vs *Page agent wiring. Prints messages; does not [exit] — returns `false` on failure.
   static bool validateProjectRoot(String root) {
     final setupPath = "$root/lib/omega/omega_setup.dart";
     final setupFile = File(setupPath);
@@ -3072,8 +3072,9 @@ class OmegaValidateCommand {
       r'flows:\s*<OmegaFlow>\s*\[([\s\S]*?)\]\s*[,)]',
       multiLine: true,
     ).firstMatch(content);
+    // Accept `routes: <OmegaRoute>[...]` or `routes: [...]` (both appear in real apps).
     final routesBlock = RegExp(
-      r'routes:\s*<OmegaRoute>\s*\[([\s\S]*?)\]\s*[,)]',
+      r'routes:\s*(?:<OmegaRoute>\s*)?\[([\s\S]*?)\]\s*[,)]',
       multiLine: true,
     ).firstMatch(content);
 
@@ -3146,27 +3147,19 @@ class OmegaValidateCommand {
       ok = false;
     }
 
-    // Login + home cold start: catches common AI mistakes (missing OmegaConfig fields, wrong route ids).
-    final looksAuthApp = content.contains('AuthFlow(') ||
-        content.contains('AuthAgent(') ||
-        routeIds.any(
-          (id) =>
-              id.toLowerCase().contains('auth') ||
-              id.toLowerCase() == 'login',
-        ) ||
-        agentNames.any((n) => n.toLowerCase() == 'auth');
-    final looksMultiModule =
-        routeIds.length >= 2 || agentNames.length >= 2;
-    if (looksAuthApp && looksMultiModule) {
+    // Cold start: any non-empty routes + flows wiring should declare entry flow + first navigation intent.
+    final hasRoutesAndFlows =
+        routeIds.isNotEmpty && flowNames.isNotEmpty;
+    if (hasRoutesAndFlows) {
       if (!RegExp(r'\binitialFlowId\s*:').hasMatch(content)) {
         _err(
-          "OmegaConfig missing initialFlowId: — with Auth + multiple modules/routes, set it to the login/auth flow id (same as AuthFlow super(id: ...)).",
+          "OmegaConfig missing initialFlowId: — set it to the entry flow's super(id: ...) (the flow that should run on cold start).",
         );
         ok = false;
       }
       if (!RegExp(r'\binitialNavigationIntent\s*:').hasMatch(content)) {
         _err(
-          "OmegaConfig missing initialNavigationIntent: — set e.g. OmegaIntent.fromName(AppIntent.navigateLogin) so the first screen is login (see example/lib/omega/omega_setup.dart).",
+          "OmegaConfig missing initialNavigationIntent: — set OmegaIntent.fromName(AppIntent.<entry>) matching your first OmegaRoute (navigator: navigate.* → route id).",
         );
         ok = false;
       }
@@ -3184,6 +3177,15 @@ class OmegaValidateCommand {
         if (!hasHomeRoute) {
           _err(
             "Using AppIntent.navigateHome requires OmegaRoute(id: 'home', ...) (lowercase id matches wire navigate.home).",
+          );
+          ok = false;
+        }
+      }
+      if (content.contains('AppIntent.navigateRoot')) {
+        final hasRootRoute = routeIds.any((id) => id == 'root');
+        if (!hasRootRoute) {
+          _err(
+            "Using AppIntent.navigateRoot requires OmegaRoute(id: 'root', ...) (wire navigate.root).",
           );
           ok = false;
         }
@@ -3650,8 +3652,8 @@ OMEGAEVENT / OMEGAINTENT — required id:
 - **`OmegaEvent.fromName` — copy this API literally:** positional **`eventName`** = **enum constant** implementing [OmegaEventName] (e.g. `HomeEvent.toggleTaskStatus`), **FORBIDDEN** as first arg: a string wire, `OmegaEventName('…')`, or **`HomeEvent.toggleTaskStatus.name`** (that is a [String]; the factory expects the enum value). Optional named **`payload:`** = any object; receivers use **`event.payloadAs<YourDto>()`**. **Intent → bus (flow `onIntent`):** when behavior/agent keys off `ctx.event?.name == HomeEvent.toggleTaskStatus.name` but the UI sent a **handleIntent** with a typed payload, re-emit on the channel in one line — do NOT invent a second API:
   `channel.emit(OmegaEvent.fromName(HomeEvent.toggleTaskStatus, payload: ctx.intent?.payloadAs<ToggleTaskStatusPayload>()));`
   Preconditions: `toggleTaskStatus` exists on `enum HomeEvent with OmegaEventNameDottedCamel`; plain class `ToggleTaskStatusPayload` in `*_events.dart`; flow holds `channel` (same as flow ctor). Same rule as [OmegaIntent.fromName]: **enum constant first**, then **`payload:`** only if you need data.
-- FORBIDDEN (analyzer: abstract class can't be instantiated): OmegaEventName('navigation.intent') or OmegaIntentName('navigate.register') — [OmegaEventName] and [OmegaIntentName] are abstract contracts only. You MUST pass a concrete enum value, e.g. OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateLogin)).
-- **`lib/omega/app_semantics.dart` (AppEvent / AppIntent)** — **canonical = same as modules:** `enum AppEvent with OmegaEventNameDottedCamel implements OmegaEventName { navigationIntent, … }` and `enum AppIntent with OmegaIntentNameDottedCamel implements OmegaIntentName { navigateLogin, navigateHome, … }` — **camelCase members only**; `.name` is the dotted wire ([OmegaIntentNameDottedCamel] / [OmegaEventNameDottedCamel]). **Mirror** `example/lib/omega/app_semantics.dart` and `_defaultAppSemanticsDartSource` (`omega init`). **FORBIDDEN in greenfield / CLI / AI output:** `enum AppEvent implements OmegaEventName { navigationIntent('navigation.intent'); const AppEvent(this.name); @override final String name; }` (and the same for `AppIntent` with string literals per case) — duplicates wires the mixin already derives and drifts from validate / navigator rules.
+- FORBIDDEN (analyzer: abstract class can't be instantiated): OmegaEventName('navigation.intent') or OmegaIntentName('navigate.register') — [OmegaEventName] and [OmegaIntentName] are abstract contracts only. You MUST pass a concrete enum value, e.g. `OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateRoot))` (or whichever **`AppIntent`** cases **your** `app_semantics.dart` declares — e.g. auth apps: `navigateLogin` / `navigateHome`).
+- **`lib/omega/app_semantics.dart` (AppEvent / AppIntent)** — **canonical = same as modules:** `enum AppEvent with OmegaEventNameDottedCamel implements OmegaEventName { navigationIntent, … }` and `enum AppIntent with OmegaIntentNameDottedCamel implements OmegaIntentName { … }` — **camelCase members only**; `.name` is the dotted wire. **Greenfield `omega init`** seeds **`navigateRoot` → `navigate.root`**; full apps often add more cases (see **example/lib/omega/app_semantics.dart** for a login+home reference). **FORBIDDEN:** hand-wired `const Case('a.b'); const Foo(this.name); @override final String name;` on these enums — use the DottedCamel mixins only.
 - **Feature `lib/<module>/*_events.dart`:** same — **`with OmegaIntentNameDottedCamel` / `with OmegaEventNameDottedCamel` only**; never hand-wired per-case string constructors there.
 - NAVIGATION WRAP (OmegaNavigator): the OUTER event passed to OmegaEvent.fromName MUST have .name == `navigation.intent` exactly. [OmegaFlowManager.wireNavigator] only reacts to that name (or navigate.*). WRONG: `UserAuthEvent.navigationIntent` if UserAuthEvent has no such enum constant — analyzer: "no constant named 'navigationIntent'". FIX: (1) Add `navigationIntent` with `OmegaEventNameDottedCamel` (wire `navigation.intent`), OR (2) import `app_semantics.dart` and use `AppEvent.navigationIntent`. Do NOT invent MyModuleEvent.navigation without defining it.
 - Inside an OmegaAgent subclass, prefer emit(someEvent.name, payload: ...) (inherited helper builds OmegaEvent with id) instead of hand-building OmegaEvent( without id.
@@ -3661,13 +3663,13 @@ OMEGAEVENT / OMEGAINTENT — required id:
   static const String _omegaAiNavigationChannelEmit = r'''
 OMEGA — NAVIGATION FROM A BUTTON (channel + OmegaNavigator — copy this shape, do not invent):
 - **Canonical emit (app-wide routes):** import `../omega/app_semantics.dart` or `package:<APP_NAME>/omega/app_semantics.dart` (APP_NAME = pubspec `name:`). Then:
-  `OmegaScope.of(context).channel.emit(OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateHome)));`
-  Replace `navigateHome` with another **`AppIntent` enum constant** you added in `app_semantics.dart` (camelCase member → dotted `navigate.*` wire matching your `OmegaRoute` ids). **Never** pass a raw wire string to `OmegaIntent.fromName`.
+  `OmegaScope.of(context).channel.emit(OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateRoot)));`
+  Replace `navigateRoot` with another **`AppIntent` enum constant** you declared in `app_semantics.dart` (camelCase member → dotted `navigate.*` wire matching your `OmegaRoute` ids). **Never** pass a raw wire string to `OmegaIntent.fromName`.
 - **Outer event:** MUST resolve to wire name **`navigation.intent`** exactly — use **`AppEvent.navigationIntent`** unless the feature’s own `*Event` enum defines `navigationIntent` with `OmegaEventNameDottedCamel` to the same wire.
 - **Inner intent:** **`OmegaIntent.fromName(AppIntent.someMember)`** — argument is always an **enum value** implementing [OmegaIntentName]. **FORBIDDEN:** `OmegaIntent.fromName('navigate.home')`, `OmegaIntent.fromName("navigate.x")`, `OmegaIntent.fromName(\`navigate.home\`)`, or comments saying “placeholder string” — those are **not valid Dart** for this API and will not type-check.
 - **FORBIDDEN:** `OmegaIntent.fromName(MyIntent.start.name)` or any `.name` as the first argument — pass **`MyIntent.start`** (the enum constant), not a String.
 - **Module outer + app inner:** only if you intentionally wrap with your module’s `*Event.navigationIntent`; inner payload is still `OmegaIntent.fromName(AppIntent....)` with a real `AppIntent` case.
-- **Startup screen:** `OmegaConfig.initialFlowId` activates a flow only; it does **not** push an `OmegaRoute`. Set **`OmegaConfig.initialNavigationIntent:`** `OmegaIntent.fromName(AppIntent.navigateLogin)` (wire must match `OmegaRoute(id: ...)`), put **`initialNavigationIntent: runtime.initialNavigationIntent`** on **[OmegaScope]**, and set **`MaterialApp.home: OmegaInitialRoute(child: ...)`** (reads intent from scope — package example + `omega create app` template). Use **`OmegaInitialNavigationEmitter`** only when you must pass `intent:` explicitly without scope.
+- **Startup screen:** `OmegaConfig.initialFlowId` activates a flow only; it does **not** push an `OmegaRoute`. Set **`OmegaConfig.initialNavigationIntent:`** to **`OmegaIntent.fromName(AppIntent.<yourEntryIntent>)`** where the intent’s wire matches an **`OmegaRoute(id: …)`** you registered (e.g. greenfield `navigateRoot` → route id **`root`**; auth apps may use `navigateLogin` / `login`, etc.). Put **`initialNavigationIntent: runtime.initialNavigationIntent`** on **[OmegaScope]** and **`MaterialApp.home: OmegaInitialRoute(child: ...)`**. Use **`OmegaInitialNavigationEmitter`** only when you must pass `intent:` explicitly without scope.
 - **AppIntent enum spelling ↔ analyzer (no invented members):** `OmegaIntent.fromName(AppIntent.xxx)` only compiles if **`xxx` exists** on `AppIntent` in `lib/omega/app_semantics.dart`. WRONG: `AppIntent.navigateOrderDetails` when the enum has `navigateOrderDetail` (singular) or `navigateDeliveryDetail` — the analyzer error *There's no constant named …* means you mistyped or never added the case. **Add the member first**, then use the **exact** identifier everywhere (flows, agents, pages). Do not mix plural `…Details` and singular `…Detail`.
 - **AppIntent wire ↔ `OmegaRoute.id` (navigator contract):** [OmegaNavigator] takes `intent.name`, strips the `navigate.` prefix, and looks up **`OmegaRoute(id: <that remainder>)`**. With [OmegaIntentNameDottedCamel], camelCase splits into dotted segments, lowercased — e.g. member `navigateDeliveryDetail` → wire `navigate.delivery.detail` → route id **`delivery.detail`**. WRONG: emitting `AppIntent.navigateDeliveryDetail` but registering `OmegaRoute(id: 'DeliveryDetail', …)` — cold navigation fails. When you add `AppIntent.navigateFooBar`, you MUST add **`OmegaRoute(id: 'foo.bar', …)`** (the exact post-`navigate.` segment) in `omega_setup.dart` (or document it for the human if JSON omits setup).
 ''';
@@ -3778,7 +3780,7 @@ Must include:
 - **`enum <Module>Intent with OmegaIntentNameDottedCamel implements OmegaIntentName { ... }` — REQUIRED shape for this file:** only camelCase member names (no string args per case). Wire = lowercased dotted split from camelCase (e.g. `${lower}Start` → `$lower.start`, `loginRequested` → `login.requested`). Same for **Event** with `OmegaEventNameDottedCamel`.
 - `enum <Module>Event with OmegaEventNameDottedCamel implements OmegaEventName { ... }` — include member `navigationIntent` (wire `navigation.intent`) if this module emits navigator payloads; add `${lower}Requested`, etc., as camelCase members.
 - **FORBIDDEN in `*_events.dart` (feature modules):** hand-wired “BLoC style” enums — `enum FooIntent implements OmegaIntentName { bar('a.b'); const FooIntent(this.name); @override final String name; }` / the same for `OmegaEventName`. That pattern is **not** the Omega template anywhere you control greenfield code.
-- **`lib/omega/app_semantics.dart`:** **same REQUIRED shape** as modules — `enum AppEvent with OmegaEventNameDottedCamel implements OmegaEventName { … }`, `enum AppIntent with OmegaIntentNameDottedCamel implements OmegaIntentName { … }` (see **example/lib/omega/app_semantics.dart**). **FORBIDDEN:** `AppIntent.navigateLogin('navigate.login')` + `const AppIntent(this.name); @override final String name;` on app-wide enums in generated apps — use **`navigateLogin,`** (identifier only) so wire stays `navigate.login` via the mixin.
+- **`lib/omega/app_semantics.dart`:** **same REQUIRED shape** as modules — `enum AppEvent with OmegaEventNameDottedCamel implements OmegaEventName { … }`, `enum AppIntent with OmegaIntentNameDottedCamel implements OmegaIntentName { … }` (see **example/lib/omega/app_semantics.dart**). **FORBIDDEN:** `AppIntent.navigateX('navigate.x')` + `const AppIntent(this.name); @override final String name;` on app-wide enums — use **`navigateX,`** (identifier only) so the wire comes from the mixin.
 - Optional `class ... implements OmegaTypedEvent { @override String get name => <Module>Event.xxx.name; ... }` for emitTyped / payloadAs flows.
 - Plain `class <Module>ViewState { final ...; copyWith; static const idle ... }` — NOT OmegaViewState; NOT package types for UI state.
 - Optional row/DTO classes (lists in UI).
@@ -3843,9 +3845,9 @@ Forbidden: `scope.agentManager`, `scope.agentManager.getAgent(...)`, `scope.getA
 Ground-truth file: `example/lib/omega/omega_setup.dart` (included in PACKAGE GROUND TRUTH for AI). Registration must match it:
 - In `createOmegaConfig(OmegaChannel channel)`: **one** agent instance per module → reuse the **same** variable in `agents: <OmegaAgent>[...]` and in `flows: <OmegaFlow>[ MyFlow(channel: ns, agent: myAgent), ... ]`. Never two `MyModuleAgent(...)` for the same module.
 - `flows:` is a list of **constructor calls** with the same named args as *_flow.dart* (`channel:`, `agent:` when `uiScopeAgent`, optional `offlineQueue:` etc.). FORBIDDEN: bare `MyFlow` without `(...)`.
-- Example pattern: `final authNs = channel.namespace('auth');` + `AuthAgent(authNs)` + `AuthFlow(channel: authNs, agent: authAgent)` — see example app.
-- `initialFlowId:` e.g. `AppFlowId.authFlow.id` when using `app_runtime_ids.dart`; **`initialNavigationIntent:`** `OmegaIntent.fromName(AppIntent.navigateLogin)` for standard apps (same value on **`OmegaScope.initialNavigationIntent`** and **`MaterialApp.home: OmegaInitialRoute(child: ...)`**). **Not optional** when you ship Login+Home — without it the first screen is undefined. `intentHandlerRegistrars:` optional; routes pass shared agents into `builder:` (`OmegaLoginPage(authAgent: authAgent)`), `OmegaRoute.typed<T>` when needed.
-- **`OmegaRoute` ids for global intents:** With [OmegaIntentNameDottedCamel], `AppIntent.navigateLogin.name` is `navigate.login` → navigator looks up route id **`login`** (substring after `navigate.`). `navigate.home` → id **`home`**. Using `id: 'Auth'` for login breaks cold start. For any **`AppIntent` member**, **`OmegaRoute.id` MUST equal the navigator destination string**: take `AppIntent.member.name` (the wire), remove the leading `navigate.` once, and use the remainder as `id:` (keep any inner dots). Example: `navigateDeliveryDetail` → **`delivery.detail`**. WRONG: PascalCase ids like `OrderDetails` when the wire expects `delivery.detail`. WRONG: `AppIntent.navigateOrderDetails` when the enum only has `navigateOrderDetail` / `navigateDeliveryDetail` — **declare the member and use the exact same identifier** in `OmegaIntent.fromName`.
+- Example pattern (one module): `final ns = channel.namespace('orders');` + `OrdersAgent(ns)` + `OrdersFlow(channel: ns, agent: ordersAgent)` — see package example for multi-module wiring.
+- **`initialFlowId` + `initialNavigationIntent` (mandatory for real apps):** Pick the **entry flow** (`super(id: …)` must match `initialFlowId`) and the **first route** the user should see (`OmegaIntent.fromName(AppIntent.<case>)` must match an `OmegaRoute(id: …)` per the navigator rule below). Same values on **`OmegaScope`** via `runtime.*` and **`OmegaInitialRoute`**. The package does **not** prescribe Login/Home — the product owner defines `AppIntent` cases and routes; omitting either field while using `OmegaInitialRoute` leaves the first screen undefined.
+- **`OmegaRoute` ids for global intents:** With [OmegaIntentNameDottedCamel], take `AppIntent.someMember.name` (the wire), strip the leading **`navigate.`** once, and use the remainder as **`OmegaRoute.id`** (inner dots allowed). Example: `navigateDeliveryDetail` → **`delivery.detail`**. Example (greenfield): `navigateRoot` → **`root`**. Auth-style apps may still use **`navigate.login` → `login`**, **`navigate.home` → `home`** when you add those enum members and routes. Using PascalCase module names as route ids when the wire expects dotted ids breaks cold navigation.
 - REQUIRED imports (or analyzer: "function/class isn't defined"): from `lib/omega/omega_setup.dart` use relative `../<folder>/<lower>_flow.dart`, `../<folder>/<lower>_agent.dart`, `../<folder>/ui/<lower>_page.dart` OR `package:<app_name>/...` matching pubspec `name:`.
 - FORBIDDEN: duplicate `import` lines (same URI twice). Each `*_agent`, `*_flow`, `*_page` path appears at most once at the top of omega_setup.dart.
 - **Single agent instance per module:** `final myModuleAgent = MyModuleAgent(channel);` then `agents: <OmegaAgent>[..., myModuleAgent]` and, when the flow defines `uiScopeAgent`, `flows: <OmegaFlow>[..., MyModuleFlow(channel: channel, agent: myModuleAgent)]` — never `MyModuleFlow(channel)` plus a separate `MyModuleAgent(channel)` for the same module.
@@ -3854,9 +3856,8 @@ Ground-truth file: `example/lib/omega/omega_setup.dart` (included in PACKAGE GRO
 - `agents: <OmegaAgent>[ ..., MyAgent(channel), ]` same rule; read ctor in *_agent.dart* (positional vs `{required OmegaEventBus channel}`).
 - Routes: `OmegaRoute(id: '...', builder: ...)` — **unique** `id` per route in the whole `routes:` list. **FORBIDDEN:** two `OmegaRoute(id: 'UserManagement', ...)` or same `id` twice for any string — [OmegaNavigator] lookup is by id; duplicates are always wrong. Page with `required agent` needs `final x = MyAgent(...);` once and `MyPage(agent: x)`. Decoupled page (`const MyPage()` + `OmegaScopedAgentBuilder` inside `OmegaFlowExpressionBuilder`) needs **flow `uiScopeAgent`** + shared agent variable as above, not a second agent construction.
 - **agents:** list each **distinct** agent reference **once** — FORBIDDEN: the same variable twice (e.g. `..., orderManagementAgent, orderManagementAgent,`) or two `FooAgent(channel)` ctor lines for the same module. **flows:** FORBIDDEN: two `UserManagementFlow(...)` lines — one registration per flow. **CI / local:** `omega validate` rejects these duplicates automatically.
-- initialFlowId must match the entry flow’s `super(id: ...)` string when this module is first screen.
-- **Product shell — login then home:** When defining full-app wiring (`omega_setup`, `routes`, `app_semantics`): assume **Login** + **Home** exist. **initialFlowId** activates the **login/auth** flow. **initialNavigationIntent** must open the **login** route first (e.g. `OmegaIntent.fromName(AppIntent.navigateLogin)` — wire must match `OmegaRoute` for login). **Home** hosts **global navigation** to the rest of the app. On successful login, emit `OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateHome))` (or equivalent module outer event + inner intent). Extend `AppIntent` / `routes:` so **navigateLogin** and **navigateHome** both exist; do not cold-start on Home unless the product spec explicitly says “logged-in-only demo”.
-- `lib/omega/app_semantics.dart`: shared `AppEvent` / `AppIntent` with `OmegaEventNameDottedCamel` / `OmegaIntentNameDottedCamel` (camelCase → dotted wire). `omega init` creates minimal `navigationIntent` + `navigateHome`; add **`navigateLogin`** (and matching route id) when you add a login module — extend enums there for cross-module names — do not duplicate app-wide enums inside feature `*_events.dart`; import `../omega/app_semantics.dart` or `package:THE_EXACT_PUBSPEC_NAME/omega/app_semantics.dart` where needed (THE_EXACT_PUBSPEC_NAME = pubspec `name:`).
+- **initialFlowId** must match the entry flow’s `super(id: ...)` string for the flow you activate on cold start.
+- **`lib/omega/app_semantics.dart`:** shared `AppEvent` / `AppIntent` with `OmegaEventNameDottedCamel` / `OmegaIntentNameDottedCamel`. Extend with one **`AppIntent` per global route** you need (`navigateSettings`, …). `omega init` seeds **`navigationIntent`** + **`navigateRoot`** (→ route id **`root`**) only — add login/home (or any other) intents when **your** product requires them. Do not duplicate app-wide enums inside feature `*_events.dart`; import `../omega/app_semantics.dart` or `package:THE_EXACT_PUBSPEC_NAME/omega/app_semantics.dart` (THE_EXACT_PUBSPEC_NAME = pubspec `name:`).
 
 COHERENCE SELF-TEST (model should mentally verify before answering):
 - [ ] Every behavior actionId has agent switch case string.
@@ -3869,22 +3870,19 @@ COHERENCE SELF-TEST (model should mentally verify before answering):
 - [ ] omega_setup: no duplicate entries in `agents:`; no duplicate `OmegaRoute` with the same `id:`; no duplicate same `*Flow(...)` line in `flows:`.
 - [ ] If using decoupled agent: EITHER route wraps `OmegaAgentScope(agent: ..., child: Page())` OR Flow overrides `uiScopeAgent` + same agent instance in `createOmegaConfig` (agents + flows); page uses `OmegaScopedAgentBuilder` / `OmegaFlowExpressionBuilder` where appropriate.
 - [ ] If the flow ctor has extra non-agent params (offlineQueue, repo): they are created once in createOmegaConfig and passed named into the flow; not confused with the module agent.
-- [ ] **Full-app wiring:** `routes:` registers **both** a **login** screen and a **home** shell; `initialFlowId` activates the **login/auth** flow; `initialNavigationIntent` opens the **login** route on cold start (not Home). Successful login emits `navigation.intent` with inner intent to the **home** route. **Home** is where global navigation to the rest of the app lives (drawer / bottom nav / rail / tabs).
+- [ ] **Full-app wiring:** `routes:` + `flows:` + `agents:` coherent; **`initialFlowId`** = entry flow’s `super(id: …)`; **`initialNavigationIntent`** = `OmegaIntent.fromName(AppIntent.<entry>)` whose wire matches the **first** `OmegaRoute` you want on cold start; **`lib/main.dart`** forwards **`runtime.initialFlowId`** and **`runtime.initialNavigationIntent`** to `OmegaScope` with **`OmegaInitialRoute`**. Add more `AppIntent` / routes as the product needs (auth shell, tabs, etc.) — do not assume a fixed Login/Home template.
 ''';
 
-  /// **User prompt:** default app shell — every real product starts at Login and lands on Home with global navigation.
-  static const String _omegaAiLoginHomeShell = r'''
-APP SHELL — LOGIN + HOME (mandatory whenever you create or extend a whole app: `lib/omega/omega_setup.dart`, `lib/main.dart`, `lib/omega/app_semantics.dart`, kickstart with several modules, or JSON that invents routes):
+  /// **User prompt:** cold start + navigator — entry flow and first route are mandatory; Login/Home are optional product choices.
+  static const String _omegaAiColdStartShell = r'''
+COLD START + ROUTES (whenever you emit or describe full-app wiring: `lib/omega/omega_setup.dart`, `lib/main.dart`, `lib/omega/app_semantics.dart`, kickstart modules, or JSON):
 
-- Every app has **two first-class screens**: (1) **Login** — sign-in / cold-start gate; (2) **Home** — post-auth **shell** where **global navigation** lives (Drawer, BottomNavigationBar, NavigationRail, or tabs linking to other modules). Do not leave the user on a feature page with no way to reach other areas after auth.
-- **`OmegaConfig` is incomplete without cold start:** When the app includes **Auth/Login + Home**, the `return OmegaConfig(` **MUST** include **`initialFlowId:`** (same string as the **Auth** flow’s `super(id: ...)`, e.g. `AppFlowId.authFlow.id` or `'authFlow'`) **and** **`initialNavigationIntent: OmegaIntent.fromName(AppIntent.navigateLogin)`**. Omitting either leaves the app opening on the wrong screen or with no first navigation — **FORBIDDEN** for standard products. Import `app_semantics.dart` for `AppIntent` / `AppEvent`; import `app_runtime_ids.dart` when using `AppFlowId`.
-- **Route ids vs navigator (critical):** [OmegaNavigator] resolves `navigate.{destination}` by stripping the **first** `navigate.` prefix and looking up **`OmegaRoute(id: destination)`** (destination may contain dots). So for `AppIntent.navigateLogin` (wire `navigate.login`) the login route id **must be exactly** `login` — **WRONG:** `OmegaRoute(id: 'Auth', ...)` for the login page. For `AppIntent.navigateHome` use **`id: 'home'`**. For any other `AppIntent.navigateFoo…`, **`OmegaRoute.id` must match `AppIntent.navigateFoo….name` with the leading `navigate.` removed** — e.g. `navigateDeliveryDetail` → **`delivery.detail`**. **AppIntent spelling:** `OmegaIntent.fromName(AppIntent.x)` requires **`x` to exist on the enum** — WRONG: `navigateOrderDetails` vs declared `navigateOrderDetail` (analyzer: no constant named …).
-- **Cold start order:** `initialFlowId` = auth flow; `initialNavigationIntent` = `navigateLogin` so the **first visible route is Login**, not Home — mirror `example/lib/omega/omega_setup.dart` + `OmegaInitialRoute` in `example/lib/main.dart`.
-- **`lib/main.dart` must forward `runtime` only:** [OmegaScope] uses **`initialFlowId: runtime.initialFlowId`** and **`initialNavigationIntent: runtime.initialNavigationIntent`** — **never** duplicate cold-start values as string literals in `main.dart` (they drift from `OmegaConfig`); **never** omit either field when `home:` is `OmegaInitialRoute`.
-- **After successful login:** the **Auth flow or Auth agent** MUST emit `OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateHome))` when credentials validate (demo: accept non-empty fields). Do not require a manual second tap to reach Home.
-- **Home page UX:** When the app has multiple modules (Tracking, Orders, …), the **Home** screen must offer **clear, attractive navigation** to each: e.g. `ListTile` / `Card` with **leading icons**, short titles, subtitles, `FilledButton.tonal` or `NavigationRail` for a polished shell — not a bare `Text('Home')`. Each destination should `channel.emit(OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateXxx)))` using the correct **`AppIntent`** case whose wire matches the target route id.
-- **Duplicates:** Never list the same agent variable twice in `agents:` or duplicate `OmegaRoute(id: ...)` — `omega validate` fails; re-read the list before emitting JSON.
-- If this pass outputs **only** one feature module (no `omega_setup` in JSON): still mention in **reasoning** that the host must set **`initialFlowId` + `initialNavigationIntent`**, use route ids **`login`** / **`home`**, and wire **Login → Home** on success.
+- **`OmegaConfig` MUST define cold start for real apps:** **`initialFlowId:`** — same string as the **entry** flow’s `super(id: …)` (the flow that should be **active** on launch). **`initialNavigationIntent:`** — **`OmegaIntent.fromName(AppIntent.<entry>)`** so **[OmegaInitialRoute]** can push the **first** screen. **Both** are required whenever you ship **`MaterialApp(home: OmegaInitialRoute(...))`** + registered routes; omitting either leaves startup undefined. Values must also be passed on **[OmegaScope]** from **`runtime.initialFlowId` / `runtime.initialNavigationIntent`** (never ad-hoc string literals in `main.dart` that drift from `OmegaConfig`).
+- **You do NOT prescribe Login + Home:** the human/product defines screens (auth-only, single-screen tool, game menu, etc.). Your job is to keep **flow id**, **`AppIntent`** cases, **`OmegaRoute.id`**, and the two **initial*** fields **mutually consistent**.
+- **Route ids vs navigator (critical):** [OmegaNavigator] resolves `navigate.{destination}` by stripping the **first** `navigate.` prefix and looking up **`OmegaRoute(id: destination)`**. Example: `AppIntent.navigateRoot` → wire `navigate.root` → route id **`root`**. For any `AppIntent.navigateFoo…`, **`OmegaRoute.id`** must equal that remainder (keep inner dots). **WRONG:** `OmegaRoute(id: 'Auth', …)` when the intent wire expects **`login`** — ids must match the contract, not Pascal module folder names unless they match the wire.
+- **`lib/main.dart`:** mirror **`_omegaAiMainDartEntry`** / package example — `OmegaRuntime.bootstrap`, **`OmegaScope`** with both initial fields from **`runtime`**, **`OmegaInitialRoute`** + **`RootHandler`**.
+- **Duplicates:** never duplicate the same agent in `agents:` or the same **`OmegaRoute(id: …)`** — `omega validate` fails.
+- If JSON **omits** `omega_setup.dart`: state in **reasoning** that the host must set **`initialFlowId`**, **`initialNavigationIntent`**, register **`OmegaRoute`** ids for every **`AppIntent.navigate…`** they use, and keep **`AppIntent`** in sync with routes.
 ''';
 
   /// **Heal user prompt only:** compact Omega API subset when full checklist is omitted (token budget).
@@ -3908,7 +3906,7 @@ HEAL — OMEGA API (fix analyzer errors; mirror PACKAGE GROUND TRUTH examples):
 - Flow: `onIntent` / `onEvent` only inside the flow class. `OmegaFlowContext`: `event`, `intent`, `memory` only — no `getAgentViewState` / agent reads from flow.
 - Bus: listeners see `OmegaEvent` only; typed payloads — `event.payloadAs<T>()`, never `if (event is MyTypedEvent)`.
 - JSON values: avoid invalid `\\` + `$` sequences inside JSON strings (breaks decode); CLI may sanitize common cases — still prefer valid JSON.
-- Full app: **initialFlowId** + **initialNavigationIntent** (navigateLogin) required on `OmegaConfig`; route ids **`login`** / **`home`** (not `Auth` for login — breaks `navigate.login` lookup). **Home** = shell with main nav; login success → **navigateHome**. No duplicate agents or route ids.
+- Full app: **initialFlowId** + **initialNavigationIntent** required on `OmegaConfig`; **`AppIntent.<entry>`** must match a registered **`OmegaRoute(id: …)`** (navigator strips `navigate.`). Example: **`navigateRoot` → id `root`**. Auth-style apps may use **`login` / `home`** when those intents and routes exist. No duplicate agents or route ids.
 - **AppIntent:** use only enum members that exist in `app_semantics.dart` (exact spelling). Each `AppIntent.navigateXxx` needs `OmegaRoute(id: …)` where id = substring after `navigate.` from the wire (e.g. `navigateDeliveryDetail` → **`delivery.detail`**). WRONG: `navigateOrderDetails` if undeclared; WRONG: route id `DeliveryDetail` when wire expects `delivery.detail`.
 ''';
 
@@ -3927,7 +3925,7 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
 - ALLOWED in this file ONLY: (1) **`enum ${moduleName}Intent with OmegaIntentNameDottedCamel implements OmegaIntentName { … }`** — members are **identifiers only** (e.g. `${lower}Start`, `navigateRegister`); **no** `const Case('literal')` and **no** `@override final String name` on these module enums. (2) **`enum ${moduleName}Event with OmegaEventNameDottedCamel implements OmegaEventName { … }`** — same rule; include `navigationIntent` when this file emits navigation envelopes. (3) optional classes implementing OmegaTypedEvent **only** for channel.emitTyped (bus) — with `@override String get name => ${moduleName}Event.<matchingCase>.name`, (4) optional plain Dart class ${moduleName}ViewState (final fields + copyWith + factory idle) and plain data classes for **intent** payloads (OmegaIntent.fromName payload:) and list rows — those classes do **not** implement OmegaTypedEvent; call sites must use the same named args as the fields (e.g. `userName:` not `name:` when the field is `userName`).
 - FORBIDDEN — **Auth-style manual wire enums** in this file: `enum X implements OmegaIntentName { loginRequested('login.requested'); const X(this.name); final String name; }` — wrong for Omega **modules**; use **`with OmegaIntentNameDottedCamel`** and a single camelCase member **`loginRequested`** (wire becomes **`login.requested`** automatically). Same for events: use **`OmegaEventNameDottedCamel`**, not per-case string constructors.
 - FORBIDDEN — type does NOT exist in omega_architecture: extends OmegaViewState, class OmegaViewState, mixin EquatableMixin on ${moduleName}ViewState, or any “base ViewState” from this package. OmegaStatefulAgent<T> uses YOUR plain class T — copy the template’s plain ${moduleName}ViewState only.
-- FORBIDDEN — redundant app enums: do NOT declare enum AppIntent / enum AppEvent again here. Cross-module navigation uses ONE shared **`lib/omega/app_semantics.dart`** — there **`AppEvent` / `AppIntent` MUST use `with OmegaEventNameDottedCamel` / `with OmegaIntentNameDottedCamel`** and **identifier-only** members (`navigationIntent`, `navigateLogin`, …), same as **example/lib/omega/app_semantics.dart** — **not** `enum AppIntent implements OmegaIntentName { navigateLogin('navigate.login'); const …(this.name); final String name; }`. Import app_semantics and use `AppIntent.navigateHome`, `AppEvent.navigationIntent`, etc. — see example/lib/auth/auth_events.dart.
+- FORBIDDEN — redundant app enums: do NOT declare enum AppIntent / enum AppEvent again here. Cross-module navigation uses ONE shared **`lib/omega/app_semantics.dart`** — there **`AppEvent` / `AppIntent` MUST use `with OmegaEventNameDottedCamel` / `with OmegaIntentNameDottedCamel`** and **identifier-only** members (`navigationIntent`, `navigateRoot`, … or whatever the app defines — see **example/lib/omega/app_semantics.dart** for a richer app). **not** `enum AppIntent implements OmegaIntentName { navigateLogin('navigate.login'); const …(this.name); final String name; }`. Import app_semantics and use the declared `AppIntent.*` / `AppEvent.*` cases — see example/lib/auth/auth_events.dart.
 - FORBIDDEN — “fix analyzer” imports in *_events.dart*: package:equatable/equatable.dart, or foundation.dart @immutable on ViewState only to silence errors. If the template ViewState is enough, do not add Equatable.
 - FORBIDDEN — **invented payload marker types:** `implements OmegaIntentPayload`, `implements OmegaEventPayload`, or `implements OmegaIntentPayload, OmegaEventPayload` — **those interfaces do not exist** in package:omega_architecture (only **extension** names like `OmegaIntentPayloadExtension` exist on [OmegaIntent] / [OmegaEvent], not types for your DTO). **RIGHT:** plain `class LoginPayload { final String email; … const LoginPayload({required this.email, …}); }` — no `implements` from omega_architecture except **OmegaTypedEvent** for bus-only typed events.
 - FORBIDDEN — wrong interfaces on enums: implements OmegaIntent or implements OmegaEvent. ONLY OmegaIntentName / OmegaEventName.
@@ -6001,7 +5999,7 @@ $_omegaAiRolesFlowAgentBehavior
 $_omegaAiOmegaWorkflowFlow
 $_omegaAiAgentBehaviorApi
 $_omegaAiCompleteArtifactGuide
-$_omegaAiLoginHomeShell
+$_omegaAiColdStartShell
 $_omegaAiUtf8StringLiterals
 ${_omegaAiEventsFileAllowlist(moduleName, lower)}
 CRITICAL RULES:
@@ -6023,10 +6021,10 @@ CRITICAL RULES:
 9. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
 10. JSON string values that contain Dart: in JSON a backslash may only introduce the usual escapes (quote, another backslash, slash, b, f, n, r, t, or u plus four hex digits). Any other backslash-plus-character (including before a dollar sign, space, or letters) is invalid and breaks jsonDecode (FormatException: unrecognized string escape). Avoid lone backslashes in embedded Dart; use concatenation or double each literal backslash per JSON rules. The CLI repairs some invalid escapes before decode; still emit valid JSON when possible.
 11. Intent payload classes (passed to OmegaIntent.fromName(..., payload: YourPayload(...))): **plain Dart only** — NOT [OmegaTypedEvent]. **FORBIDDEN:** `implements OmegaIntentPayload`, `implements OmegaEventPayload`, or both — **those types are not in** package:omega_architecture (undefined class). Optional: `extends Equatable` only if pubspec has `equatable` and you avoid fake omega `implements`. Named arguments when constructing the payload MUST match **field names** (e.g. `userName:` not `name:` when the field is `userName`).
-12. If the JSON includes **`lib/omega/omega_setup.dart`**: `OmegaConfig` MUST include **`initialFlowId:`** (auth/login flow id) **and** **`initialNavigationIntent: OmegaIntent.fromName(AppIntent.navigateLogin)`** when the app has login+home. Login route: **`OmegaRoute(id: 'login', ...)`** (not `Auth` — navigator matches `navigate.login` → id **`login`**). Home route: **`id: 'home'`**. On valid login, auth flow/agent emits **`navigateHome`** via `AppEvent.navigationIntent`. **HomePage** must expose attractive navigation (cards / list tiles / rail) to every other module route. Never duplicate the same agent in `agents:` or the same `id:` twice in `routes:`.
+12. If the JSON includes **`lib/omega/omega_setup.dart`**: `OmegaConfig` MUST include **`initialFlowId:`** (entry flow’s `super(id: …)` wire) **and** **`initialNavigationIntent:`** as **`OmegaIntent.fromName(AppIntent.<entry>)`** matching the **first** route you register (e.g. **`navigateRoot` → `OmegaRoute(id: 'root', …)`**). When the product uses auth-style navigation, add **`navigate.login` → id `login`**, **`navigate.home` → id `home`**, etc., and keep intents ↔ routes aligned. Never duplicate the same agent in `agents:` or the same `id:` twice in `routes:`.
 13. **`AppIntent` + routes:** Every `OmegaIntent.fromName(AppIntent.someCase)` must use a **`someCase` that exists** in `app_semantics.dart` (exact spelling — no `navigateOrderDetails` vs `navigateOrderDetail` mix-ups). Every such navigation target needs **`OmegaRoute(id: '<segment after navigate.>', …)`** where the id matches the navigator rule (DottedCamel → dotted wire; e.g. `navigateDeliveryDetail` → id **`delivery.detail`**). If you emit a navigate intent, register the matching route in the same JSON or state it explicitly in **reasoning**.
 14. If the JSON includes **`lib/main.dart`** (or you describe the host entry): **[OmegaScope]** MUST use **`initialFlowId: runtime.initialFlowId`** and **`initialNavigationIntent: runtime.initialNavigationIntent`** after **`OmegaRuntime.bootstrap(createOmegaConfig)`** — **FORBIDDEN** string literals on `OmegaScope` for cold start (e.g. `initialFlowId: 'Auth'`) and **FORBIDDEN** omitting **`initialNavigationIntent`** when `MaterialApp` uses **`OmegaInitialRoute`**. Single source of truth: **`OmegaConfig`** in `omega_setup.dart`; `main.dart` only forwards **`runtime`**.
-15. **CLI post-check:** `omega ai coach module` / `omega ai coach redesign` runs **`omega validate`** on the app root after a successful pass (when `lib/omega/omega_setup.dart` exists). **`omega create app`** runs one final **`omega validate`** after modules + `main.dart`. Your emitted **`OmegaConfig`** must pass those checks (**`initialFlowId`**, **`initialNavigationIntent`**, **`login`/`home` route ids** when applicable, no duplicate `agents:`/`flows:`/`routes:` entries).
+15. **CLI post-check:** `omega ai coach module` / `omega ai coach redesign` runs **`omega validate`** on the app root after a successful pass (when `lib/omega/omega_setup.dart` exists). **`omega create app`** runs one final **`omega validate`** after modules + `main.dart`. Your emitted **`OmegaConfig`** must pass those checks (**`initialFlowId`**, **`initialNavigationIntent`**, every **`AppIntent.navigate…`** ↔ **`OmegaRoute.id`**, no duplicate `agents:`/`flows:`/`routes:` entries).
 
 UI DESIGN (apply to the 'page' value only — maximize quality; the structural snippet below is NOT the final UI):
 $_omegaAiUiDesignStandards

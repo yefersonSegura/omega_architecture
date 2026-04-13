@@ -152,7 +152,7 @@ dart run omega_architecture:omega <command> [options]
 | **`g ecosystem <Name>`** | New feature: agent + flow + behavior + page | `cd lib && dart run omega_architecture:omega g ecosystem Orders` |
 | **`g agent <Name>`** | Only a new agent (+ behavior) | `dart run omega_architecture:omega g agent Notifications` |
 | **`g flow <Name>`** | Only a new flow | `dart run omega_architecture:omega g flow Checkout` |
-| **`validate`** | CI or pre-run check of `omega_setup.dart` | `dart run omega_architecture:omega validate` |
+| **`validate`** | `omega_setup.dart` structure, duplicates, route↔page agent wiring; **with any routes + flows**, requires **`initialFlowId`** + **`initialNavigationIntent`**; validates **`navigateLogin` / `navigateHome` / `navigateRoot`** vs `OmegaRoute` ids when referenced | `dart run omega_architecture:omega validate` |
 | **`doctor`** | Human-readable health + counts | `dart run omega_architecture:omega doctor` |
 | **`trace view`** | Summarize a saved session JSON | `dart run omega_architecture:omega trace view ./trace.json` |
 | **`trace validate`** | Check trace file shape (exit code for CI) | `dart run omega_architecture:omega trace validate ./trace.json` |
