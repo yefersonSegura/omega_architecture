@@ -46,9 +46,10 @@ recipes:
         any_of: [profile, settings, omeganavigator]
     body: |
       HEAL RECIPE — [OmegaNavigator] *Route 'x' not found* (runtime / debug console) after `channel.emit(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateY))`:
-      - [OmegaNavigator] takes **`intent.name`** (e.g. `navigate.profile`), strips the **`navigate.`** prefix, and looks up **`OmegaRoute(id: <remainder>)`** — **case-sensitive** map key.
+      - **IA / codegen rule:** **`OmegaRoute` id strings for `navigate.*` are ALWAYS lowercase** (and dotted lowercase for multi-segment wires). Never use PascalCase or folder names as the id.
+      - [OmegaNavigator] takes **`intent.name`**, removes **only the leading** **`navigate.`** once — e.g. **`navigate.user.profile`** → lookup key **`user.profile`** (all segments after that first prefix; NOT just **`profile`**). For push: strip **`navigate.push.`** instead. Lookup is **case-sensitive**.
       - **`AppIntent.navigateProfile` → remainder `profile`** → you MUST register **`OmegaRoute(id: 'profile', …)`**, NOT **`id: 'Profile'`** (PascalCase module folder names are wrong unless the wire literally expects that spelling — it does not for standard DottedCamel intents).
-      - Same: **`navigateSettings` → id `'settings'`**; **`navigateRoot` → `'root'`**; **`navigateDeliveryDetail` → `'delivery.detail'`** (dotted id when the intent has multiple camel segments).
+      - Same: **`navigateSettings` → id `'settings'`**; **`navigateRoot` → `'root'`**; **`navigateDeliveryDetail` → `'delivery.detail'`**; **`navigateAuthPerfil` → wire `navigate.auth.perfil` → id `'auth.perfil'`** (each `lower`+`Upper` boundary in the member name becomes a dot, then lowercased).
       - Fix **`lib/omega/omega_setup.dart`** `routes:` ids to match wires; keep **`AppIntent`** cases in `app_semantics.dart` in sync. Do not confuse **flow id** / **folder name** with **route id**.
 
   - id: flow_contract_emitted_expression_types_not_emitted_event_names

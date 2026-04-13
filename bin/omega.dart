@@ -1434,7 +1434,7 @@ RULES:
 1. Return ONE JSON object: keys = project-relative paths with forward slashes (e.g. "lib/omega/omega_setup.dart"), values = FULL fixed file content as strings.
 2. Include every file you changed; you may include only files that need edits.
 3. Preserve public API names (classes, flow ids) unless the error requires a fix.
-4. omega_setup.dart: if you output it, ensure **no duplicate** `OmegaRoute(id: 'SameId', ...)` entries, **no duplicate** same agent variable in `agents:`, and **no duplicate** identical `*Flow(...)` constructor lines — keep one registration per module/route.
+4. omega_setup.dart: if you output it, ensure **no duplicate** `OmegaRoute(id: 'SameId', ...)` entries, **no duplicate** same agent variable in `agents:`, and **no duplicate** identical `*Flow(...)` constructor lines — keep one registration per module/route. **`OmegaRoute(id:)` for `navigate.*` must be lowercase** (match wire after `navigate.`), never PascalCase folder names.
 
 OMEGA API (concise — full master checklist omitted here; follow roles + rules below + PACKAGE GROUND TRUTH):
 ${OmegaAiCommand._omegaAiRolesFlowAgentBehavior}
@@ -2362,6 +2362,27 @@ String _omegaDedupeOmegaSetupAgentsList(String content) {
   return out;
 }
 
+/// Same algorithm as [omegaWireNameFromCamelCaseEnumMember] in the package
+/// (`lib/omega/core/semantics/omega_semantics_wire_from_camel.dart`). Keep in sync.
+String _omegaWireNameFromCamelCaseEnumMember(String enumMemberName) {
+  if (enumMemberName.isEmpty) return enumMemberName;
+  final dotted = enumMemberName.replaceAllMapped(
+    RegExp(r'([a-z0-9])([A-Z])'),
+    (m) => '${m[1]}.${m[2]}',
+  );
+  return dotted.toLowerCase();
+}
+
+/// Route id = wire for `navigate$Pascal` minus the leading `navigate.` (matches [OmegaNavigator.handleIntent]).
+String _omegaNavigatorRouteIdFromNavigateIntentCamel(String navigateMemberCamel) {
+  final wire = _omegaWireNameFromCamelCaseEnumMember(navigateMemberCamel);
+  const prefix = 'navigate.';
+  if (!wire.startsWith(prefix)) {
+    return wire;
+  }
+  return wire.substring(prefix.length);
+}
+
 /// [OmegaNavigator] resolves `navigate.login` / `navigate.home` to route ids **`login`** / **`home`**.
 /// Ecosystem registration used to emit Pascal ids (`Auth`, `Home`), which breaks cold navigation.
 String _omegaNormalizeAuthHomeRouteIdsForNavigator(String content) {
@@ -2389,7 +2410,9 @@ String _omegaNormalizeAuthHomeRouteIdsForNavigator(String content) {
   return s;
 }
 
-/// Route id registered in [omega_setup] for [OmegaNavigator] (not always PascalCase module name).
+/// Route id registered in [omega_setup] for [OmegaNavigator].
+/// Matches `AppIntent.navigate<Module>.name` with `navigate.` stripped (lowercase, dotted segments).
+/// Legacy special cases: Auth/Home modules map to **`login`** / **`home`** (not `auth` / `home` wire from `navigateAuth`).
 String _omegaNavRouteIdForModulePascal(String pascal) {
   switch (pascal) {
     case 'Auth':
@@ -2397,7 +2420,7 @@ String _omegaNavRouteIdForModulePascal(String pascal) {
     case 'Home':
       return 'home';
     default:
-      return pascal;
+      return _omegaNavigatorRouteIdFromNavigateIntentCamel('navigate$pascal');
   }
 }
 
@@ -3260,6 +3283,23 @@ class OmegaValidateCommand {
       ok = false;
     }
 
+    final routeIdsWithUppercase = routeIds
+        .where((id) => RegExp(r'[A-Z]').hasMatch(id))
+        .toSet()
+        .toList()
+      ..sort();
+    if (routeIdsWithUppercase.isNotEmpty) {
+      _err(
+        "OmegaRoute id must be lowercase (navigator keys match the wire after navigate.): "
+        "${routeIdsWithUppercase.join(", ")}.",
+      );
+      stdout.writeln(
+        "  Use only a-z, digits, and '.' between segments in OmegaRoute(id: ...) — "
+        "never PascalCase folder or class names as the route id.",
+      );
+      ok = false;
+    }
+
     // Cold start: any non-empty routes + flows wiring should declare entry flow + first navigation intent.
     final hasRoutesAndFlows =
         routeIds.isNotEmpty && flowNames.isNotEmpty;
@@ -3787,7 +3827,8 @@ OMEGA — NAVIGATION FROM A BUTTON (channel + OmegaNavigator — copy this shape
 - **Module outer + app inner:** only if you intentionally wrap with your module’s `*Event.navigationIntent`; inner payload is still `OmegaIntent.fromName(AppIntent....)` with a real `AppIntent` case.
 - **Startup screen:** `OmegaConfig.initialFlowId` activates a flow only; it does **not** push an `OmegaRoute`. Set **`OmegaConfig.initialNavigationIntent:`** to **`OmegaIntent.fromName(AppIntent.<yourEntryIntent>)`** where the intent’s wire matches an **`OmegaRoute(id: …)`** you registered (e.g. greenfield `navigateRoot` → route id **`root`**; auth apps may use `navigateLogin` / `login`, etc.). Put **`initialNavigationIntent: runtime.initialNavigationIntent`** on **[OmegaScope]** and **`MaterialApp.home: OmegaInitialRoute(child: ...)`**. Use **`OmegaInitialNavigationEmitter`** only when you must pass `intent:` explicitly without scope.
 - **AppIntent enum spelling ↔ analyzer (no invented members):** `OmegaIntent.fromName(AppIntent.xxx)` only compiles if **`xxx` exists** on `AppIntent` in `lib/omega/app_semantics.dart`. WRONG: `AppIntent.navigateOrderDetails` when the enum has `navigateOrderDetail` (singular) or `navigateDeliveryDetail` — the analyzer error *There's no constant named …* means you mistyped or never added the case. **Add the member first**, then use the **exact** identifier everywhere (flows, agents, pages). Do not mix plural `…Details` and singular `…Detail`.
-- **AppIntent wire ↔ `OmegaRoute.id` (navigator contract):** [OmegaNavigator] takes `intent.name`, strips the `navigate.` prefix, and looks up **`OmegaRoute(id: <that remainder>)`**. With [OmegaIntentNameDottedCamel], camelCase splits into dotted segments, lowercased — e.g. member `navigateDeliveryDetail` → wire `navigate.delivery.detail` → route id **`delivery.detail`**. WRONG: emitting `AppIntent.navigateDeliveryDetail` but registering `OmegaRoute(id: 'DeliveryDetail', …)` — cold navigation fails. When you add `AppIntent.navigateFooBar`, you MUST add **`OmegaRoute(id: 'foo.bar', …)`** (the exact post-`navigate.` segment) in `omega_setup.dart` (or document it for the human if JSON omits setup).
+- **AppIntent wire ↔ `OmegaRoute.id` (navigator contract):** [OmegaNavigator] takes `intent.name`, removes **only the leading** **`navigate.`** once (`replaceFirst`), and looks up **`OmegaRoute(id: <everything after that>)`** — inner dots stay. Example: wire **`navigate.user.profile`** → route id **`user.profile`** (NOT **`profile`**). For **`navigate.push.*`**, the prefix stripped is **`navigate.push.`** instead. With [OmegaIntentNameDottedCamel], **every** camelCase boundary `lower+UPPER` becomes **`.`**, then the whole wire is **lowercased** — e.g. `navigateDeliveryDetail` → wire `navigate.delivery.detail` → route id **`delivery.detail`**; **`navigateAuthPerfil`** → wire **`navigate.auth.perfil`** → route id **`auth.perfil`** (NOT a single PascalCase id like **`'AuthPerfil'`**). WRONG: emitting `AppIntent.navigateDeliveryDetail` but registering `OmegaRoute(id: 'DeliveryDetail', …)` — cold navigation fails. When you add `AppIntent.navigateFooBar`, you MUST add **`OmegaRoute(id: 'foo.bar', …)`** (the exact post-`navigate.` segment) in `omega_setup.dart` (or document it for the human if JSON omits setup).
+- **MANDATORY — route id casing (tell every model):** every **`OmegaRoute(id: '…')`** used for **`navigate.*`** targets MUST be **all lowercase** in the string: only **`a-z`**, **`0-9`** if needed, and **`.`** between segments. **FORBIDDEN:** any uppercase **`A–Z`** in that id (e.g. **`'Profile'`**, **`'Settings'`**, **`'DeliveryDetail'`**). PascalCase is for **classes / folders**, never for **navigator route ids** — the lookup key is always the lowercase wire remainder after **`navigate.`**.
 ''';
 
   /// **User prompt:** canonical `lib/main.dart` — mirror **example/lib/main.dart** (PACKAGE GROUND TRUTH).
@@ -3963,7 +4004,7 @@ Ground-truth file: `example/lib/omega/omega_setup.dart` (included in PACKAGE GRO
 - `flows:` is a list of **constructor calls** with the same named args as *_flow.dart* (`channel:`, `agent:` when `uiScopeAgent`, optional `offlineQueue:` etc.). FORBIDDEN: bare `MyFlow` without `(...)`.
 - Example pattern (one module): `final ns = channel.namespace('orders');` + `OrdersAgent(ns)` + `OrdersFlow(channel: ns, agent: ordersAgent)` — see package example for multi-module wiring.
 - **`initialFlowId` + `initialNavigationIntent` (mandatory for real apps):** Pick the **entry flow** (`super(id: …)` must match `initialFlowId`) and the **first route** the user should see (`OmegaIntent.fromName(AppIntent.<case>)` must match an `OmegaRoute(id: …)` per the navigator rule below). Same values on **`OmegaScope`** via `runtime.*` and **`OmegaInitialRoute`**. The package does **not** prescribe Login/Home — the product owner defines `AppIntent` cases and routes; omitting either field while using `OmegaInitialRoute` leaves the first screen undefined.
-- **`OmegaRoute` ids for global intents:** With [OmegaIntentNameDottedCamel], take `AppIntent.someMember.name` (the wire), strip the leading **`navigate.`** once, and use the remainder as **`OmegaRoute.id`** (inner dots allowed). Example: `navigateDeliveryDetail` → **`delivery.detail`**. Example (greenfield): `navigateRoot` → **`root`**. Auth-style apps may still use **`navigate.login` → `login`**, **`navigate.home` → `home`** when you add those enum members and routes. Using PascalCase module names as route ids when the wire expects dotted ids breaks cold navigation.
+- **`OmegaRoute` ids for global intents:** **Always lowercase** — the id literal must match the wire remainder character-for-character (DottedCamel wires are lowercase with dots). With [OmegaIntentNameDottedCamel], take `AppIntent.someMember.name` (the wire), strip the leading **`navigate.`** once, and use the remainder as **`OmegaRoute.id`** (inner dots allowed). Example: `navigateDeliveryDetail` → **`delivery.detail`**. Example (greenfield): `navigateRoot` → **`root`**. Auth-style apps may still use **`navigate.login` → `login`**, **`navigate.home` → `home`** when you add those enum members and routes. Using PascalCase module names as route ids when the wire expects dotted ids breaks cold navigation.
 - REQUIRED imports (or analyzer: "function/class isn't defined"): from `lib/omega/omega_setup.dart` use relative `../<folder>/<lower>_flow.dart`, `../<folder>/<lower>_agent.dart`, `../<folder>/ui/<lower>_page.dart` OR `package:<app_name>/...` matching pubspec `name:`.
 - FORBIDDEN: duplicate `import` lines (same URI twice). Each `*_agent`, `*_flow`, `*_page` path appears at most once at the top of omega_setup.dart.
 - **Single agent instance per module:** `final myModuleAgent = MyModuleAgent(channel);` then `agents: <OmegaAgent>[..., myModuleAgent]` and, when the flow defines `uiScopeAgent`, `flows: <OmegaFlow>[..., MyModuleFlow(channel: channel, agent: myModuleAgent)]` — never `MyModuleFlow(channel)` plus a separate `MyModuleAgent(channel)` for the same module.
@@ -3995,7 +4036,7 @@ COLD START + ROUTES (whenever you emit or describe full-app wiring: `lib/omega/o
 
 - **`OmegaConfig` MUST define cold start for real apps:** **`initialFlowId:`** — same string as the **entry** flow’s `super(id: …)` (the flow that should be **active** on launch). **`initialNavigationIntent:`** — **`OmegaIntent.fromName(AppIntent.<entry>)`** so **[OmegaInitialRoute]** can push the **first** screen. **Both** are required whenever **`routes:` and `flows:` are non-empty** (and whenever you ship **`MaterialApp(home: OmegaInitialRoute(...))`** + registered routes); omitting either leaves startup undefined and breaks **`omega validate`**. Values must also be passed on **[OmegaScope]** from **`runtime.initialFlowId` / `runtime.initialNavigationIntent`** (never ad-hoc string literals in `main.dart` that drift from `OmegaConfig`).
 - **You do NOT prescribe Login + Home:** the human/product defines screens (auth-only, single-screen tool, game menu, etc.). Your job is to keep **flow id**, **`AppIntent`** cases, **`OmegaRoute.id`**, and the two **initial*** fields **mutually consistent**.
-- **Route ids vs navigator (critical):** [OmegaNavigator] resolves `navigate.{destination}` by stripping the **first** `navigate.` prefix and looking up **`OmegaRoute(id: destination)`** — lookup is **case-sensitive**. Example: `AppIntent.navigateRoot` → **`root`**. **`AppIntent.navigateProfile` → wire `navigate.profile` → route id MUST be `'profile'`** (lowercase). **`AppIntent.navigateSettings` → `'settings'`**. **FORBIDDEN for global routes:** using the **module folder name in PascalCase** as `OmegaRoute(id: …)` — e.g. **`id: 'Profile'`** / **`id: 'Settings'`** when intents are **`navigateProfile`** / **`navigateSettings`** → runtime error *Route 'profile' not found* because the map has **`Profile`** not **`profile`**. Derive every **`OmegaRoute.id`** from the **`AppIntent` wire** (post-`navigate.` segment, lowercased dotted path), **not** from `lib/Profile/` or class names.
+- **Route ids vs navigator (critical):** **`OmegaRoute.id` for global navigation is ALWAYS lowercase** — that is the project rule for models and humans; never use PascalCase or mixed case in the id literal. [OmegaNavigator] resolves `navigate.{destination}` by stripping the **first** `navigate.` prefix and looking up **`OmegaRoute(id: destination)`** — lookup is **case-sensitive**. Example: `AppIntent.navigateRoot` → **`root`**. **`AppIntent.navigateProfile` → wire `navigate.profile` → route id MUST be `'profile'`**. **`AppIntent.navigateSettings` → `'settings'`**. **FORBIDDEN for global routes:** using the **module folder name in PascalCase** as `OmegaRoute(id: …)` — e.g. **`id: 'Profile'`** / **`id: 'Settings'`** when intents are **`navigateProfile`** / **`navigateSettings`** → runtime error *Route 'profile' not found* because the map has **`Profile`** not **`profile`**. Derive every **`OmegaRoute.id`** from the **`AppIntent` wire** (post-`navigate.` segment, lowercased dotted path), **not** from `lib/Profile/` or class names.
 - **`lib/main.dart`:** mirror **`_omegaAiMainDartEntry`** / package example — `OmegaRuntime.bootstrap`, **`OmegaScope`** with both initial fields from **`runtime`**, **`OmegaInitialRoute`** + **`RootHandler`**.
 - **Duplicates:** never duplicate the same agent in `agents:` or the same **`OmegaRoute(id: …)`** — `omega validate` fails.
 - If JSON **omits** `omega_setup.dart`: state in **reasoning** that the host must set **`initialFlowId`**, **`initialNavigationIntent`**, register **`OmegaRoute`** ids for every **`AppIntent.navigate…`** they use, and keep **`AppIntent`** in sync with routes.
@@ -4004,7 +4045,7 @@ COLD START + ROUTES (whenever you emit or describe full-app wiring: `lib/omega/o
   /// **Heal user prompt only:** compact Omega API subset when full checklist is omitted (token budget).
   static const String _omegaAiHealPromptCompactOmega = r'''
 HEAL — OMEGA API (fix analyzer errors; mirror PACKAGE GROUND TRUTH examples):
-- createOmegaConfig: `agents:` / `flows:` use constructor calls only (never bare `MyFlow` without `(...)`). One agent instance per module; reuse the same variable in `MyFlow(channel: c, agent: thatAgent)` when the flow exposes `uiScopeAgent`. No duplicate identical import lines. **routes:** each `OmegaRoute` `id:` **globally unique** in `routes:` — never two blocks with `id: 'UserManagement'` or two `id: 'OrderManagement'`. **agents:** list each variable **once** — WRONG: `agents: [ userAgent, orderAgent, orderAgent ]`; **flows:** one ctor line per flow type — WRONG: two `UserManagementFlow(...)`. Run **`omega validate`** from app root; it fails on duplicate route ids, duplicate agent list entries, and duplicate flow types inside the lists.
+- createOmegaConfig: `agents:` / `flows:` use constructor calls only (never bare `MyFlow` without `(...)`). One agent instance per module; reuse the same variable in `MyFlow(channel: c, agent: thatAgent)` when the flow exposes `uiScopeAgent`. No duplicate identical import lines. **routes:** each `OmegaRoute` `id:` **globally unique** in `routes:` — never two blocks with `id: 'UserManagement'` or two `id: 'OrderManagement'`. **`OmegaRoute(id:)` for `navigate.*` MUST be lowercase** (wire remainder after `navigate.`); **FORBIDDEN** PascalCase ids like **`'Profile'`** / **`'UserManagement'`** for those routes. **agents:** list each variable **once** — WRONG: `agents: [ userAgent, orderAgent, orderAgent ]`; **flows:** one ctor line per flow type — WRONG: two `UserManagementFlow(...)`. Run **`omega validate`** from app root; it fails on duplicate route ids, duplicate agent list entries, and duplicate flow types inside the lists.
 - Typed ids: if `lib/omega/app_runtime_ids.dart` exists, `super(id: AppFlowId.X.id)` / `AppAgentId.X.id` must match an enum member; import `package:<THIS_APP>/omega/app_runtime_ids.dart` with THIS_APP from the APP PUBSPEC block.
 - OmegaScope: `.channel`, `.flowManager`, `.initialFlowId`, `.initialNavigationIntent` — no agentManager. Use `getFlow` + `StreamBuilder`, or pass `agent` into the Page, or `OmegaAgentScope` / `Flow.uiScopeAgent` + shared agent in setup. **`lib/main.dart`:** mirror `_omegaAiMainDartEntry` / example `main.dart` — **`initialFlowId` + `initialNavigationIntent` from `runtime.` only** (no `'Auth'` / `'authFlow'` literals on `OmegaScope`); `MaterialApp.home` uses `OmegaInitialRoute` + `RootHandler`.
 - `OmegaFlowActivator`: only `flowId` + `child` + optional `useSwitchTo` — no `onActivate` / callbacks. `OmegaFlowManager`: no `getAgent` — remove invented manager→agent bridges. `OmegaScope`: no `agentManager` / `getAgent` — use `widget.agent`, `OmegaAgentScope`, or `uiScopeAgent` + `OmegaScopedAgentBuilder`.
@@ -4025,7 +4066,7 @@ HEAL — OMEGA API (fix analyzer errors; mirror PACKAGE GROUND TRUTH examples):
 - JSON values: avoid invalid `\\` + `$` sequences inside JSON strings (breaks decode); CLI may sanitize common cases — still prefer valid JSON.
 - Full app: **initialFlowId** + **initialNavigationIntent** required on `OmegaConfig`; **`AppIntent.<entry>`** must match a registered **`OmegaRoute(id: …)`** (navigator strips `navigate.`). Example: **`navigateRoot` → id `root`**. Auth-style apps may use **`login` / `home`** when those intents and routes exist. No duplicate agents or route ids.
 - **Flow `onIntent` + agent behavior:** if rules use **`ctx.event`** for loads (`*Requested`), **`onIntent` must `channel.emit`** that event after `*Start` — not optional. **Login page:** no **`initState`/`didChangeDependencies` login kick**; user gesture triggers login intent.
-- **AppIntent:** use only enum members that exist in `app_semantics.dart` (exact spelling). Each `AppIntent.navigateXxx` needs `OmegaRoute(id: …)` where id = substring after `navigate.` from the wire (e.g. `navigateDeliveryDetail` → **`delivery.detail`**; **`navigateProfile` → `profile`**, not **`Profile`**). WRONG: `navigateOrderDetails` if undeclared; WRONG: route id `DeliveryDetail` / `Profile` when wire expects **`delivery.detail`** / **`profile`** (PascalCase module folders are **not** route ids unless the wire says so).
+- **AppIntent:** use only enum members that exist in `app_semantics.dart` (exact spelling). Each `AppIntent.navigateXxx` needs **`OmegaRoute(id: …)` with a fully lowercase id** = substring after `navigate.` from the wire (e.g. `navigateDeliveryDetail` → **`delivery.detail`**; **`navigateProfile` → `profile`**, never **`Profile`**). WRONG: `navigateOrderDetails` if undeclared; WRONG: route id `DeliveryDetail` / `Profile` when wire expects **`delivery.detail`** / **`profile`** (PascalCase module folders are **not** route ids unless the wire says so).
 ''';
 
   /// **User prompt:** UTF-8 / encoding hints for string literals inside generated Dart (JSON-safe copy).
@@ -6139,8 +6180,8 @@ CRITICAL RULES:
 9. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
 10. JSON string values that contain Dart: in JSON a backslash may only introduce the usual escapes (quote, another backslash, slash, b, f, n, r, t, or u plus four hex digits). Any other backslash-plus-character (including before a dollar sign, space, or letters) is invalid and breaks jsonDecode (FormatException: unrecognized string escape). Avoid lone backslashes in embedded Dart; use concatenation or double each literal backslash per JSON rules. The CLI repairs some invalid escapes before decode; still emit valid JSON when possible.
 11. Intent payload classes (passed to OmegaIntent.fromName(..., payload: YourPayload(...))): **plain Dart only** — NOT [OmegaTypedEvent]. **FORBIDDEN:** `implements OmegaIntentPayload`, `implements OmegaEventPayload`, or both — **those types are not in** package:omega_architecture (undefined class). Optional: `extends Equatable` only if pubspec has `equatable` and you avoid fake omega `implements`. Named arguments when constructing the payload MUST match **field names** (e.g. `userName:` not `name:` when the field is `userName`).
-12. If the JSON includes **`lib/omega/omega_setup.dart`**: `OmegaConfig` MUST include **`initialFlowId:`** (entry flow’s `super(id: …)` wire) **and** **`initialNavigationIntent:`** as **`OmegaIntent.fromName(AppIntent.<entry>)`** matching a registered **`OmegaRoute(id: …)`** (same order as product: often the first route). **Never omit either field when `routes:` and `flows:` are non-empty** — `omega validate` fails; the CLI may auto-insert them, but your JSON should already be complete. Examples: **`navigateRoot` → `OmegaRoute(id: 'root', …)`**; auth-style **`navigate.login` / `login`**, **`navigate.home` / `home`**. **`OmegaRoute(id:)`** must match the **navigator wire** (strip `navigate.` → lowercase dotted remainder): **`navigateProfile` → id `'profile'`**, **`navigateSettings` → `'settings'`** — **FORBIDDEN:** `id: 'Profile'` / `'Settings'` because the folder is `lib/Profile/` (runtime: *Route 'profile' not found*). Never duplicate the same agent in `agents:` or the same `id:` twice in `routes:`.
-13. **`AppIntent` + routes:** Every `OmegaIntent.fromName(AppIntent.someCase)` must use a **`someCase` that exists** in `app_semantics.dart` (exact spelling — no `navigateOrderDetails` vs `navigateOrderDetail` mix-ups). Every such navigation target needs **`OmegaRoute(id: '<segment after navigate.>', …)`** where the id matches the navigator rule (DottedCamel → dotted wire; e.g. `navigateDeliveryDetail` → id **`delivery.detail`**). If you emit a navigate intent, register the matching route in the same JSON or state it explicitly in **reasoning**.
+12. If the JSON includes **`lib/omega/omega_setup.dart`**: `OmegaConfig` MUST include **`initialFlowId:`** (entry flow’s `super(id: …)` wire) **and** **`initialNavigationIntent:`** as **`OmegaIntent.fromName(AppIntent.<entry>)`** matching a registered **`OmegaRoute(id: …)`** (same order as product: often the first route). **Never omit either field when `routes:` and `flows:` are non-empty** — `omega validate` fails; the CLI may auto-insert them, but your JSON should already be complete. **Hard rule:** every **`OmegaRoute(id: '…')`** for a **`navigate.*`** screen MUST be **entirely lowercase** (no uppercase letters in the string). Examples: **`navigateRoot` → `OmegaRoute(id: 'root', …)`**; auth-style **`navigate.login` / `login`**, **`navigate.home` / `home`**. **`OmegaRoute(id:)`** must match the **navigator wire** (strip `navigate.` → lowercase dotted remainder): **`navigateProfile` → id `'profile'`**, **`navigateSettings` → `'settings'`** — **FORBIDDEN:** `id: 'Profile'` / `'Settings'` because the folder is `lib/Profile/` (runtime: *Route 'profile' not found*). Never duplicate the same agent in `agents:` or the same `id:` twice in `routes:`.
+13. **`AppIntent` + routes:** Every `OmegaIntent.fromName(AppIntent.someCase)` must use a **`someCase` that exists** in `app_semantics.dart` (exact spelling — no `navigateOrderDetails` vs `navigateOrderDetail` mix-ups). Every such navigation target needs **`OmegaRoute(id: '<segment after navigate.>', …)`** with that segment **all lowercase** (DottedCamel → dotted wire; e.g. `navigateDeliveryDetail` → id **`delivery.detail`**). If you emit a navigate intent, register the matching route in the same JSON or state it explicitly in **reasoning**.
 14. If the JSON includes **`lib/main.dart`** (or you describe the host entry): **[OmegaScope]** MUST use **`initialFlowId: runtime.initialFlowId`** and **`initialNavigationIntent: runtime.initialNavigationIntent`** after **`OmegaRuntime.bootstrap(createOmegaConfig)`** — **FORBIDDEN** string literals on `OmegaScope` for cold start (e.g. `initialFlowId: 'Auth'`) and **FORBIDDEN** omitting **`initialNavigationIntent`** when `MaterialApp` uses **`OmegaInitialRoute`**. Single source of truth: **`OmegaConfig`** in `omega_setup.dart`; `main.dart` only forwards **`runtime`**.
 15. **CLI post-check:** `omega ai coach module` / `omega ai coach redesign` runs **`omega validate`** on the app root after a successful pass (when `lib/omega/omega_setup.dart` exists). **`omega create app`** runs one final **`omega validate`** after modules + `main.dart`. Your emitted **`OmegaConfig`** must pass those checks (**`initialFlowId`**, **`initialNavigationIntent`**, every **`AppIntent.navigate…`** ↔ **`OmegaRoute.id`**, no duplicate `agents:`/`flows:`/`routes:` entries).
 
