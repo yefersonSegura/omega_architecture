@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Omega Inspector (VM Service)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      background: radial-gradient(circle at top left, #1f2937 0, #020617 45%, #020617 100%);
+      color: #e5e7eb;
+    }
+    .header {
+      background: linear-gradient(90deg, #020617, #0b1120);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: conic-gradient(from 180deg, #38bdf8, #6366f1, #a855f7, #38bdf8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.65);
+    }
+    .logo-dot span {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      background: #020617;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #f9fafb;
+    }
+    .header-sub {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: rgba(15, 23, 42, 0.9);
+    }
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #ef4444;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
+    }
+    .badge.connected .badge-dot {
+      background: #22c55e;
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.7);
+    }
+    .badge.connected {
+      border-color: rgba(34, 197, 94, 0.6);
+      background: radial-gradient(circle at top left, rgba(22, 163, 74, 0.18), rgba(15, 23, 42, 0.9));
+    }
+    .connect-shell {
+      padding: 14px 18px;
+      background: radial-gradient(circle at top right, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 0.98));
+      border-bottom: 1px solid rgba(51, 65, 85, 0.7);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .connect-box {
+      flex: 2;
+      min-width: 260px;
+    }
+    .connect-box label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #9ca3af;
+      margin-bottom: 6px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .connect-box input {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(75, 85, 99, 0.85);
+      background: rgba(15, 23, 42, 0.85);
+      color: #e5e7eb;
+      font-size: 12px;
+      outline: none;
+    }
+    .connect-box input::placeholder {
+      color: #6b7280;
+    }
+    .connect-box input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.5);
+    }
+    .connect-box button {
+      padding: 8px 14px;
+      background: linear-gradient(135deg, #38bdf8, #6366f1);
+      color: #f9fafb;
+      border: none;
+      border-radius: 999px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 12px;
+      white-space: nowrap;
+      box-shadow: 0 7px 18px rgba(79, 70, 229, 0.45);
+    }
+    .connect-box button:hover {
+      filter: brightness(1.08);
+    }
+    .connect-box .hint {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 6px;
+    }
+    .welcome {
+      font-size: 12px;
+      color: #e5e7eb;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .welcome span.loader {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      border: 2px solid rgba(148, 163, 184, 0.7);
+      border-top-color: #38bdf8;
+      animation: spin 0.8s linear infinite;
+    }
+    .welcome span.pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+      animation: pulse 1.2s ease-out infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+    .connect-summary {
+      flex: 1.2;
+      min-width: 200px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: radial-gradient(circle at top, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.95));
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    .connect-summary-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #d1d5db;
+      margin-bottom: 4px;
+    }
+    .connect-summary code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 6px;
+      padding: 2px 4px;
+      color: #e5e7eb;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      height: calc(100vh - 126px);
+      min-height: 340px;
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), #020617 55%);
+    }
+    .sidebar {
+      border-right: 1px solid rgba(31, 41, 55, 0.95);
+      padding: 14px 12px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.96));
+    }
+    .main-panel {
+      padding: 14px 16px;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 10px;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #9ca3af;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .flow-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .flow-row {
+      display: flex;
+      flex-direction: column;
+      padding: 7px 9px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      font-size: 11px;
+      cursor: default;
+    }
+    .flow-row.active {
+      border-color: rgba(96, 165, 250, 0.9);
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.55);
+      background: radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), rgba(15, 23, 42, 0.96));
+    }
+    .flow-row-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+    .flow-id {
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+    .flow-state-pill {
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(31, 41, 55, 1);
+      color: #9ca3af;
+    }
+    .flow-row.active .flow-state-pill {
+      background: rgba(22, 163, 74, 0.18);
+      color: #bbf7d0;
+    }
+    .flow-meta {
+      font-size: 10px;
+      color: #9ca3af;
+      display: flex;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    .event-list-card {
+      border-radius: 14px;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      background: radial-gradient(circle at top left, rgba(31, 41, 55, 0.92), rgba(15, 23, 42, 0.98));
+      padding: 10px 12px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .event-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .event-header-row span {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    .event-scroll {
+      flex: 1;
+      overflow: auto;
+      padding-right: 4px;
+      margin-top: 4px;
+    }
+    .event {
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 10px;
+      padding: 7px 9px;
+      margin-bottom: 6px;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .event .name {
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+    .event .time {
+      font-size: 10px;
+      color: #9ca3af;
+    }
+    .event .namespace {
+      font-size: 10px;
+      color: #93c5fd;
+    }
+    .details-card {
+      border-radius: 14px;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      background: radial-gradient(circle at top right, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.98));
+      padding: 10px 12px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .details-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .details-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .details-kind {
+      font-size: 10px;
+      color: #6b7280;
+    }
+    .details-body {
+      flex: 1;
+      overflow: auto;
+      padding-top: 4px;
+    }
+    .details-body pre {
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #e5e7eb;
+    }
+    .empty {
+      color: #6b7280;
+      font-size: 12px;
+      padding: 12px 0;
+    }
+    .error {
+      color: #fecaca;
+      font-size: 11px;
+      padding: 6px 0;
+    }
+    @media (max-width: 760px) {
+      .layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: 220px minmax(0, 1fr);
+      }
+      .sidebar {
+        border-right: none;
+        border-bottom: 1px solid rgba(31, 41, 55, 0.95);
+      }
+      .main-panel {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(0, 1fr) 200px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <div class="logo-dot"><span></span></div>
+      <div>
+        <h1>Omega Inspector</h1>
+        <div class="header-sub">Flows · Events · VM Service</div>
+      </div>
+    </div>
+    <span id="status" class="badge disconnected">
+      <span class="badge-dot"></span>
+      Disconnected
+    </span>
+  </div>
+  <div class="connect-shell">
+    <div class="connect-box">
+      <label for="vmUri">VM Service URL</label>
+      <div class="input-row">
+        <input type="text" id="vmUri" placeholder="http://127.0.0.1:38473/abc=/">
+        <button type="button" id="connectBtn">Connect</button>
+      </div>
+      <p class="hint">
+        Paste the VM Service URL printed by Flutter (e.g. <code>http://127.0.0.1:XXXX/TOKEN=/</code>),
+        or open the full link logged by <strong>OmegaInspectorServer</strong>. Flutter already forwards the port.
+      </p>
+      <p id="welcome" class="welcome">
+        <span class="loader"></span>
+        Waiting for connection… if the URL came from OmegaInspectorServer we will connect automatically.
+      </p>
+      <p id="error" class="error" style="display:none;"></p>
+    </div>
+    <div class="connect-summary">
+      <div class="connect-summary-title">Live session</div>
+      <p style="margin: 0 0 4px;">
+        Omega Inspector connects to your app via <strong>Dart VM Service</strong>.
+        No adb reverse is required; just run in debug mode.
+      </p>
+      <p style="margin: 0;">
+        Tip: use the URL printed in your Flutter logs:
+        <code>http://127.0.0.1:&lt;PORT&gt;/&lt;TOKEN&gt;=/</code>
+      </p>
+    </div>
+  </div>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="section-title">Flows</div>
+      <div id="flows" class="flow-list"></div>
+    </aside>
+    <main class="main-panel">
+      <div class="event-list-card">
+        <div class="event-header-row">
+          <div class="section-title" style="margin-bottom:0;">Events</div>
+          <span id="eventsCount">0 events</span>
+        </div>
+        <div id="eventsTimeline" style="margin-top:4px;"></div>
+        <div id="events" class="event-scroll" style="margin-top:4px;"></div>
+      </div>
+      <div class="details-card">
+        <div class="details-header">
+          <div class="details-title">Details</div>
+          <div id="detailsKind" class="details-kind">Select an event or flow</div>
+        </div>
+        <div id="detailsBody" class="details-body">
+          <div class="empty">No selection yet.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    const vmUriInput = document.getElementById('vmUri');
+    const connectBtn = document.getElementById('connectBtn');
+    const statusEl = document.getElementById('status');
+    const eventsEl = document.getElementById('events');
+    const eventsTimelineEl = document.getElementById('eventsTimeline');
+    const flowsEl = document.getElementById('flows');
+    const errorEl = document.getElementById('error');
+    const welcomeEl = document.getElementById('welcome');
+    const detailsKindEl = document.getElementById('detailsKind');
+    const detailsBodyEl = document.getElementById('detailsBody');
+
+    // Prefill from hash (e.g. inspector.html#http://127.0.0.1:38473/abc=/ or encoded)
+    const rawHash = location.hash.slice(1);
+    let hasAutoUrl = false;
+    if (rawHash) {
+      try {
+        const decoded = decodeURIComponent(rawHash);
+        if (decoded.startsWith('http')) {
+          vmUriInput.value = decoded;
+          hasAutoUrl = true;
+        }
+      } catch (_) {
+        if (rawHash.startsWith('http')) {
+          vmUriInput.value = rawHash;
+          hasAutoUrl = true;
+        }
+      }
+    }
+
+    let ws = null;
+    let isolateId = null;
+    let pollTimer = null;
+    let events = [];
+    let snapshot = null;
+    let selectedEventIndex = null;
+    let selectedFlowId = null;
+
+    function showError(msg) {
+      errorEl.textContent = msg || '';
+      errorEl.style.display = msg ? 'block' : 'none';
+    }
+
+    function setStatus(connected) {
+      statusEl.textContent = connected ? 'Connected' : 'Disconnected';
+      statusEl.className = 'badge ' + (connected ? 'connected' : 'disconnected');
+    }
+
+    function httpToWsUri(httpUri) {
+      const s = httpUri.trim().replace(/\/$/, '');
+      if (s.startsWith('https://')) return 'wss://' + s.slice(8) + '/ws';
+      if (s.startsWith('http://')) return 'ws://' + s.slice(7) + '/ws';
+      if (s.startsWith('ws://') || s.startsWith('wss://')) return s.endsWith('/ws') ? s : s + (s.endsWith('/') ? '' : '/') + 'ws';
+      return 'ws://' + s + '/ws';
+    }
+
+    function send(method, params, id) {
+      return new Promise((resolve, reject) => {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          reject(new Error('Not connected'));
+          return;
+        }
+        const req = { jsonrpc: '2.0', method, id };
+        if (params && Object.keys(params).length) req.params = params;
+        const onMessage = (e) => {
+          try {
+            const res = JSON.parse(e.data);
+            if (res.id === id) {
+              ws.removeEventListener('message', onMessage);
+              if (res.error) reject(new Error(res.error.message || 'RPC error'));
+              else resolve(res.result);
+            }
+          } catch (_) {}
+        };
+        ws.addEventListener('message', onMessage);
+        ws.send(JSON.stringify(req));
+      });
+    }
+
+    function pollState() {
+      if (!ws || ws.readyState !== WebSocket.OPEN || !isolateId) return;
+      send('ext.omega.inspector.getState', { isolateId }, Date.now()).then((result) => {
+        if (typeof result === 'string') {
+          try {
+            result = JSON.parse(result);
+          } catch (_) {}
+        }
+        if (result && result.events) events = result.events.slice(0, 30);
+        if (result && result.snapshot) snapshot = result.snapshot;
+        renderEvents();
+        renderFlows();
+      }).catch(() => {});
+    }
+
+    function renderEvents() {
+      const count = events.length;
+      const header = document.getElementById('eventsCount');
+      if (header) header.textContent = count + (count === 1 ? ' event' : ' events');
+      if (events.length === 0) {
+        eventsEl.innerHTML = '<div class="empty">No events yet</div>';
+        if (eventsTimelineEl) eventsTimelineEl.innerHTML = '';
+        return;
+      }
+      if (eventsTimelineEl) {
+        const items = events.slice(0, 30).slice().reverse();
+        eventsTimelineEl.innerHTML =
+          '<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:#9ca3af;">' +
+          items.map(() => '<span style="width:8px;height:8px;border-radius:999px;background:#38bdf8;box-shadow:0 0 8px rgba(56,189,248,0.8);"></span>').join('') +
+          '</div>';
+      }
+      eventsEl.innerHTML = events.slice(0, 25).map((e, idx) =>
+        '<div class="event" data-idx="' + idx + '">' +
+          '<span class="name">' + (e.name || '') + '</span>' +
+          (e.namespace ? '<span class="namespace">' + e.namespace + '</span>' : '') +
+          '<span class="time"></span>' +
+        '</div>'
+      ).join('');
+      Array.from(eventsEl.querySelectorAll('.event')).forEach(el => {
+        el.addEventListener('click', () => {
+          const idx = parseInt(el.getAttribute('data-idx') || '0', 10);
+          selectedEventIndex = idx;
+          const evt = events[idx];
+          renderDetails('event', evt);
+        });
+      });
+    }
+
+    function flowLastExpressionLabel(f) {
+      if (!f) return 'idle';
+      if (f.lastExpressionType) return f.lastExpressionType;
+      var le = f.lastExpression;
+      if (le && typeof le === 'object' && le.type) return le.type;
+      return 'idle';
+    }
+
+    function renderFlows() {
+      if (!snapshot || !snapshot.flows || snapshot.flows.length === 0) {
+        flowsEl.innerHTML = '<div class="empty">No flows</div>';
+        return;
+      }
+      const active = snapshot.activeFlowId || '';
+      flowsEl.innerHTML = snapshot.flows.map(f => {
+        const isActive = f.flowId === active;
+        return (
+          '<div class="flow-row ' + (isActive ? 'active' : '') + '" data-id="' + (f.flowId || '') + '">' +
+            '<div class="flow-row-header">' +
+              '<span class="flow-id">' + (f.flowId || '') + '</span>' +
+              '<span class="flow-state-pill">' + (f.state || '') + '</span>' +
+            '</div>' +
+            '<div class="flow-meta">' +
+              '<span>' + flowLastExpressionLabel(f) + '</span>' +
+              (isActive ? '<span>active</span>' : '') +
+            '</div>' +
+          '</div>'
+        );
+      }).join('');
+      Array.from(flowsEl.querySelectorAll('.flow-row')).forEach(el => {
+        el.addEventListener('click', () => {
+          const id = el.getAttribute('data-id') || '';
+          selectedFlowId = id;
+          const flow = (snapshot && snapshot.flows || []).find(f => f.flowId === id);
+          if (flow) renderDetails('flow', flow);
+        });
+      });
+    }
+
+    function renderDetails(kind, data) {
+      if (!detailsKindEl || !detailsBodyEl) return;
+      detailsKindEl.textContent = kind === 'event' ? 'Event payload' : 'Flow snapshot';
+      if (!data) {
+        detailsBodyEl.innerHTML = '<div class="empty">No data</div>';
+        return;
+      }
+      let pretty;
+      try {
+        pretty = JSON.stringify(data, null, 2);
+      } catch (_) {
+        pretty = String(data);
+      }
+      detailsBodyEl.innerHTML = '<pre>' + pretty + '</pre>';
+    }
+
+    function disconnect() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = null;
+      isolateId = null;
+      if (ws) {
+        ws.close();
+        ws = null;
+      }
+      setStatus(false);
+    }
+
+    function connectNow(auto) {
+      const uri = vmUriInput.value.trim();
+      if (!uri) {
+        if (!auto) {
+          showError('Enter the VM Service URL from the app logs.');
+        }
+        return;
+      }
+      showError('');
+      if (welcomeEl) {
+        welcomeEl.textContent = auto
+          ? 'Connecting to Omega Inspector…'
+          : 'Connecting…';
+      }
+      disconnect();
+      const wsUri = httpToWsUri(uri);
+      ws = new WebSocket(wsUri);
+      ws.onopen = () => {
+        setStatus(true);
+        if (welcomeEl) {
+          welcomeEl.textContent = 'Connected. Streaming Omega events and flows.';
+        }
+        send('getVM', {}, 1).then((vm) => {
+          const isolates = vm && vm.isolates;
+          if (isolates && isolates.length) {
+            isolateId = isolates[0].id;
+            pollState();
+            pollTimer = setInterval(pollState, 2000);
+          } else {
+            showError('No isolate found.');
+          }
+        }).catch((e) => {
+          showError('getVM failed: ' + (e && e.message));
+        });
+      };
+      ws.onclose = () => {
+        disconnect();
+        showError('Connection closed.');
+      };
+      ws.onerror = () => {
+        showError('Connection error. Is the app running and the VM Service URL correct?');
+      };
+    }
+
+    connectBtn.addEventListener('click', () => connectNow(false));
+
+    // Auto-connect a few moments after load when URL came from hash.
+    if (hasAutoUrl) {
+      setTimeout(() => connectNow(true), 1000);
+    }
+  </script>
+</body>
+</html>

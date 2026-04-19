@@ -1,0 +1,65 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="omega_bg" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0EA5E9"/>
+      <stop offset="0.5" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#A855F7"/>
+    </linearGradient>
+    <linearGradient id="omega_inner" x1="176" y1="120" x2="336" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F9FAFB"/>
+      <stop offset="1" stop-color="#E5E7EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#omega_bg)"/>
+
+  <!-- Inner dark circle -->
+  <circle cx="256" cy="256" r="176" fill="#020617"/>
+
+  <!-- Omega glyph: clear, symmetric, readable at small sizes -->
+  <!-- Outer stroke -->
+  <path
+    d="
+      M 176 192
+      C 176 150 210 120 256 120
+        302 120 336 150 336 192
+        336 228 316 254 288 268
+        316 284 336 312 336 348
+        336 366 332 380 324 392
+      L 300 392
+      C 308 382 312 368 312 348
+        312 310 288 284 256 284
+        224 284 200 310 200 348
+        200 368 204 382 212 392
+      L 188 392
+      C 180 380 176 366 176 348
+        176 312 196 284 224 268
+        196 254 176 228 176 192
+      Z
+    "
+    fill="url(#omega_inner)"/>
+
+  <!-- Inner cutout to make the Ω legs and hollow center -->
+  <path
+    d="
+      M 208 194
+      C 208 163 228 144 256 144
+        284 144 304 163 304 194
+        304 222 288 242 266 250
+        292 262 304 284 304 312
+        304 332 300 346 292 356
+      L 276 356
+      C 282 348 284 338 284 324
+        284 298 272 284 256 284
+        240 284 228 298 228 324
+        228 338 230 348 236 356
+      L 220 356
+      C 212 346 208 332 208 312
+        208 284 220 262 246 250
+        224 242 208 222 208 194
+      Z
+    "
+    fill="#020617"/>
+</svg>
+
