@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useData } from 'vitepress';
+// Bundled at build time — no runtime URL / base-path issues (fixes broken <img> on some hosts).
+import dashboardSvg from '../../../public/omega-observability-dashboard.svg?raw';
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
-    /** When set, wraps the image in a link to the observability guide */
+    /** When set, wraps the chart in a link to the observability guide */
     linkToGuide?: boolean;
   }>(),
   { linkToGuide: false },
@@ -12,29 +14,28 @@ const props = withDefaults(
 
 const { site } = useData();
 
-const assetSrc = computed(() => {
-  const base = site.value.base;
-  const path = 'omega-observability-dashboard.svg';
-  return base.endsWith('/') ? `${base}${path}` : `${base}/${path}`;
-});
-
 const guideHref = computed(() => {
-  const base = site.value.base;
-  const path = 'guide/observability-and-stats.html';
-  return base.endsWith('/') ? `${base}${path}` : `${base}/${path}`;
+  const base = site.value.base ?? '/';
+  const normalized = base.endsWith('/') ? base : `${base}/`;
+  return `${normalized}guide/observability-and-stats.html`;
 });
 
-const alt =
+const ariaLabel =
   'Example statistical dashboard: channel events by category, intent to expression latency, events per minute, and flow snapshot';
 </script>
 
 <template>
   <div class="omega-obs-dash">
-    <a v-if="linkToGuide" class="omega-obs-dash__frame" :href="guideHref" title="Observability and statistics guide">
-      <img class="omega-obs-dash__img" :src="assetSrc" :alt="alt" width="820" height="473" loading="lazy" decoding="async" />
+    <a
+      v-if="linkToGuide"
+      class="omega-obs-dash__frame"
+      :href="guideHref"
+      title="Observability and statistics guide"
+    >
+      <span class="omega-obs-dash__svg-root" v-html="dashboardSvg" role="img" :aria-label="ariaLabel" />
     </a>
     <div v-else class="omega-obs-dash__frame">
-      <img class="omega-obs-dash__img" :src="assetSrc" :alt="alt" width="820" height="473" loading="lazy" decoding="async" />
+      <span class="omega-obs-dash__svg-root" v-html="dashboardSvg" role="img" :aria-label="ariaLabel" />
     </div>
   </div>
 </template>
@@ -60,10 +61,11 @@ const alt =
   box-shadow: 0 12px 36px rgba(15, 23, 42, 0.1);
   transform: translateY(-1px);
 }
-.omega-obs-dash__img {
+.omega-obs-dash__svg-root :deep(svg) {
   display: block;
   width: 100%;
   max-width: 820px;
   height: auto;
+  vertical-align: top;
 }
 </style>
