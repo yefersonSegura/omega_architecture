@@ -1,15 +1,10 @@
-# VitePress (docs/) → force-push branch `gh-pages` (GitHub Pages: Deploy from branch → gh-pages → /).
+# VitePress (docs/) → GitHub Actions Pages (same pattern as omega-workspace).
 #
-# Do NOT add GitHub's default "Deploy static content to Pages" workflow (artifact = whole repo + deploy-pages).
-# That publishes wrong files and conflicts with this flow. Use branch gh-pages here, not "GitHub Actions" source,
-# unless you replace all of this with one workflow that uploads only docs/.vitepress/dist via deploy-pages.
+# One-time: Settings → Pages → Build and deployment → Source: **GitHub Actions**.
+# Do NOT add a second workflow that uploads pages from repo root — no index.html there.
 #
-# Uses plain `git push` so CI logs show the real error if publish fails.
-#
-# If build succeeds but the site does not update:
-#   1. Settings → Actions → General → Workflow permissions → Read and write permissions
-#   2. Settings → Pages → Deploy from a branch → gh-pages → / (root)
-#   3. Branch protection: allow force-push to gh-pages (this workflow uses git push --force)
+# If you still use “Deploy from branch → gh-pages”, that branch is no longer updated by
+# this file; switch Pages to GitHub Actions or restore the git-push-to-gh-pages flow.
 #
 # VitePress `base` in docs/.vitepress/config.mts must be '/<repo>/' (e.g. /omega_architecture/).
 name: Deploy documentation
@@ -23,14 +18,16 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: docs-gh-pages
+  group: pages
   cancel-in-progress: true
 
 jobs:
-  build-and-publish:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,56 +45,18 @@ jobs:
           npm run build
 
       - name: Verify dist
-        run: |
-          test -f docs/.vitepress/dist/index.html
-          echo "Dist size:" && du -sh docs/.vitepress/dist
-          echo "Top files:" && ls -la docs/.vitepress/dist | head -25
+        run: test -f docs/.vitepress/dist/index.html
 
-      - name: Push dist to gh-pages
-        env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euxo pipefail
-          DIST="${GITHUB_WORKSPACE}/docs/.vitepress/dist"
-          cd "$DIST"
-          git init
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-          git add -A
-          git status
-          git commit -m "docs: publish ${GITHUB_SHA:0:7}"
-          git branch -M gh-pages
-          git remote add origin "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git push --force origin gh-pages
-          echo ""
-          echo "========== PUBLICACIÓN (dónde quedó el sitio) =========="
-          echo "Rama actualizada: gh-pages (en el repo ${GITHUB_REPOSITORY})"
-          echo "Ver archivos en GitHub: https://github.com/${GITHUB_REPOSITORY}/tree/gh-pages"
-          OWNER="${GITHUB_REPOSITORY%%/*}"
-          REPO="${GITHUB_REPOSITORY#*/}"
-          echo "URL pública esperada (GitHub Pages proyecto): https://${OWNER}.github.io/${REPO}/"
-          echo "Si esa URL da 404: Settings → Pages → Source = Deploy from a branch → gh-pages → / (root)"
-          echo "======================================================"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/.vitepress/dist
 
-      - name: Resumen en la pestaña Summary del workflow
-        if: success()
-        run: |
-          OWNER="${GITHUB_REPOSITORY%%/*}"
-          REPO="${GITHUB_REPOSITORY#*/}"
-          SITE="https://${OWNER}.github.io/${REPO}/"
-          TREE="https://github.com/${GITHUB_REPOSITORY}/tree/gh-pages"
-          {
-            echo "## Dónde se publicó la documentación"
-            echo ""
-            echo "| Campo | Valor |"
-            echo "|-------|-------|"
-            echo "| Rama (git) | \`gh-pages\` |"
-            echo "| Ver archivos en GitHub | ${TREE} |"
-            echo "| URL pública (Pages proyecto) | ${SITE} |"
-            echo ""
-            echo "**Si ${SITE} responde 404 o “File not found / index.html”:**"
-            echo ""
-            echo "- **Correcto:** Source = **Deploy from a branch** → **gh-pages** → folder **/ (root)** (el HTML generado está en la raíz de esa rama)."
-            echo "- **Incorrecto:** Source = **main** + folder **/docs** — en \`docs/\` del repo solo hay Markdown (\`index.md\`), **no** hay \`index.html\`; el build está en \`docs/.vitepress/dist/\` y el workflow lo copia a **gh-pages**."
-            echo "- **URL del proyecto:** debe incluir el nombre del repo, p. ej. **${SITE}** — no uses solo \`https://${OWNER}.github.io/\`."
-          } >> "$GITHUB_STEP_SUMMARY"
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
