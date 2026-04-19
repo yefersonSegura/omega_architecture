@@ -1,11 +1,13 @@
-# VitePress site from docs/ → GitHub Pages (same stack as omega-workspace/docs).
+# VitePress build from docs/ → push static site to branch `gh-pages`.
+# Avoids actions/deploy-pages (REST "create deployment") which returns 404 unless
+# Pages is configured exactly for the GitHub Actions artifact flow.
 #
-# ONE-TIME (repo owner): If deploy fails with HttpError 404 / "Creating Pages deployment failed":
-#   Settings → Pages → Build and deployment → Source → select "GitHub Actions" (NOT "Deploy from a branch").
-#   Until Pages is enabled this way, actions/deploy-pages cannot create a deployment.
-#   Optional: Settings → Environments → github-pages — approve the environment on first run if protected.
+# ONE-TIME (repo owner):
+#   1. Settings → Pages → Build and deployment → Source: "Deploy from a branch"
+#      Branch: gh-pages  ·  Folder: / (root)
+#   2. If the workflow cannot push: Settings → Actions → General → Workflow permissions
+#      → enable "Read and write permissions" for GITHUB_TOKEN (needed to update gh-pages).
 #
-# https://docs.github.com/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-with-a-custom-github-actions-workflow
 name: Deploy documentation site
 
 on:
@@ -17,16 +19,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages-docs
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,16 +41,9 @@ jobs:
         working-directory: docs
         run: npm ci && npm run build
 
-      - uses: actions/upload-pages-artifact@v3
+      - name: Push site to gh-pages
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          path: docs/.vitepress/dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          branch: gh-pages
+          folder: docs/.vitepress/dist
+          clean: true
