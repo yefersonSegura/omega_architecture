@@ -106,7 +106,7 @@ omega ai env
 
 - [omega_architecture on pub.dev](https://pub.dev/packages/omega_architecture)  
 - [Repository](https://github.com/yefersonSegura/omega_architecture)  
-- [Omega documentation (web)](https://yefersonsegura.com/projects/omega/)  
+- [Omega documentation (web)](https://yefersonsegura.github.io/omega_architecture/)  
 - Root package README for CLI and architecture overview: [README.md](../README.md)
 
 ---

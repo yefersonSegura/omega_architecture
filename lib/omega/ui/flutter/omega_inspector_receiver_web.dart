@@ -11,7 +11,7 @@ import 'package:web/web.dart' as web;
 
 const String _kChannelName = 'omega_inspector';
 
-// Visual theme: aligned with presentation/inspector.html (dark dashboard).
+// Visual theme: aligned with docs/public/inspector.html (dark dashboard).
 const Color _kInspectorBg = Color(0xFF020617);
 const Color _kInspectorBgSoft = Color(0xFF0F172A);
 const Color _kInspectorHeaderDark = Color(0xFF020617);

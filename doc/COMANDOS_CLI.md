@@ -216,7 +216,7 @@ La IA y la auto-sanación del CLI respetan el contexto del paquete (ejemplos en 
 
 ## Documentación relacionada
 
-- **Sitio / HTML local:** la misma guía interactiva está en [presentation/index.html](../presentation/index.html) (ES) y [presentation/index-en.html](../presentation/index-en.html) (EN): sección **CLI** con pestañas; enlaza aquí y al README para la tabla completa. Tras publicar o copiar `presentation/` al hosting, `omega doc` puede abrir esa URL.
+- **Sitio documentación:** [docs/](https://github.com/yefersonSegura/omega_architecture/tree/main/docs) — VitePress (mismo enfoque que `omega-workspace/docs` en Omega Angular), desplegado en GitHub Pages. Detalle largo en Markdown bajo `doc/` del repo. `omega doc` abre la URL oficial en el navegador.
 - [README principal](../README.md) — Instalación global, flujo “Quick Start” y sección **Omega CLI** en inglés (mismo contenido ampliado con ejemplos de éxito/error).
 - [GUIA.md](GUIA.md) — Uso de channel, intents, flows y agentes en código.
 - [TIME_TRAVEL.md](TIME_TRAVEL.md) — Trazas y `trace view` / `validate`.

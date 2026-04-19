@@ -19,7 +19,7 @@ void main() async {
   final runtime = OmegaRuntime.bootstrap(createOmegaConfig);
   // Inspector (solo debug, no web):
   // VM (desktop/móvil) → imprime la URL pública del inspector
-  // http://yefersonsegura.com/projects/omega/inspector.html#<VM-URL-encodeada> para abrirlo en el navegador.
+  // https://yefersonsegura.github.io/omega_architecture/inspector.html#<VM-URL-encodeada> para abrirlo en el navegador.
   if (kDebugMode && !kIsWeb) {
     await OmegaInspectorServer.start(runtime.channel, runtime.flowManager);
   }

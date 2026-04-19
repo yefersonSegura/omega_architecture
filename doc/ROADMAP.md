@@ -72,7 +72,7 @@ Ideas para hacer de Omega la opción más visionaria y única en Flutter. No son
 
 ## 7. Diferenciación (mensaje)
 
-- [x] **Un párrafo claro:** “En [COMPARATIVA.md](COMPARATIVA.md) y en la web (presentation): estado observable, persistible y reproducible; agentes, flows e intents en el centro; la UI solo refleja.”
+- [x] **Un párrafo claro:** “En [COMPARATIVA.md](COMPARATIVA.md) y en la web (VitePress `docs/`): estado observable, persistible y reproducible; agentes, flows e intents en el centro; la UI solo refleja.”
 - [x] **Comparativa honesta:** [doc/COMPARATIVA.md](COMPARATIVA.md) y sección en la web: "Omega vs BLoC vs Riverpod", tabla y **cuándo elegir Omega**. README enlaza la web como documentación completa.
 
 **Objetivo:** Que la comunidad entienda por qué y cuándo elegir Omega.

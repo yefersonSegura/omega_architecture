@@ -77,7 +77,7 @@ void main() async {
       runtime.flowManager,
     );
     // En consola se imprime una URL como:
-    //   http://yefersonsegura.com/projects/omega/inspector.html#<VM-URL-encodeada>
+    //   https://yefersonsegura.github.io/omega_architecture/inspector.html#<VM-URL-encodeada>
     // Ábrela en el navegador del PC; la página se conecta sola.
   }
 
@@ -90,8 +90,8 @@ void main() async {
 }
 ```
 
-- **VM (Android/iOS/desktop):** [OmegaInspectorServer.start] registra una extensión `ext.omega.inspector.getState` en el VM Service y obtiene la `serverUri`. En consola imprime una URL de la forma `http://yefersonsegura.com/projects/omega/inspector.html#<encoded-VM-URL>`. Abre esa URL en el navegador del PC y el inspector online se conectará automáticamente; si prefieres, también puedes pegar la VM Service URL a mano.
-- **CLI (`omega inspector`):** Ejecuta `dart run omega_architecture:omega inspector` para abrir `http://yefersonsegura.com/projects/omega/inspector.html` directamente y luego pega el hash o la VM Service URL que imprime la app.
+- **VM (Android/iOS/desktop):** [OmegaInspectorServer.start] registra una extensión `ext.omega.inspector.getState` en el VM Service y obtiene la `serverUri`. En consola imprime una URL de la forma `https://yefersonsegura.github.io/omega_architecture/inspector.html#<encoded-VM-URL>`. Abre esa URL en el navegador del PC y el inspector online se conectará automáticamente; si prefieres, también puedes pegar la VM Service URL a mano.
+- **CLI (`omega inspector`):** Ejecuta `dart run omega_architecture:omega inspector` para abrir `https://yefersonsegura.github.io/omega_architecture/inspector.html` directamente y luego pega el hash o la VM Service URL que imprime la app.
 - **Web:** `OmegaInspectorServer.start` no hace nada en web (stub); usa **OmegaInspectorLauncher** para abrir una ventana remota con `OmegaInspectorReceiver`, que ahora comparte el mismo layout general (flows a la izquierda, events + detalles a la derecha).
 
 Para detener (opcional): `OmegaInspectorServer.stop();`
@@ -184,4 +184,4 @@ class _Home extends StatelessWidget {
 3. **Launcher:** el icono de bicho (bug) en la AppBar solo se muestra en debug. Pulsa para abrir el Inspector en diálogo o ventana nueva.
 4. **Web:** el servidor no corre en web; en consola verás el mensaje del stub. Usa el botón de la AppBar (Launcher) para abrir el Inspector en otra ventana.
 5. **Desktop + servidor:** tras `OmegaInspectorServer.start(...)` en la consola sale la URL; ábrela en el navegador del PC.
-6. **App en móvil, Inspector en el PC:** usa el flujo por **VM Service** (sin adb reverse). Al ejecutar la app en el dispositivo, en la consola se imprime la VM Service URL. En el PC abre `presentation/inspector.html` (del paquete omega_architecture), pega esa URL y pulsa Connect. Flutter ya reenvía el puerto del VM Service al host.
+6. **App en móvil, Inspector en el PC:** usa el flujo por **VM Service** (sin adb reverse). Al ejecutar la app en el dispositivo, en la consola se imprime la URL completa con hash (o la VM Service URL). En el PC abre esa URL o la página hospedada en `docs/public/inspector.html` desplegada en GitHub Pages; pega la VM Service URL si hace falta y pulsa Connect. Flutter ya reenvía el puerto del VM Service al host.

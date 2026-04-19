@@ -16,6 +16,10 @@ import '../../flows/omega_flow_manager.dart';
 const int _kDefaultEventLimit = 30;
 const Duration _kSnapshotInterval = Duration(seconds: 2);
 
+/// Static Inspector UI shipped in `docs/public/inspector.html` and deployed with GitHub Pages.
+const String kOmegaInspectorPublicPageUrl =
+    'https://yefersonsegura.github.io/omega_architecture/inspector.html';
+
 /// Extension method name for VM Service (mobile Inspector without adb reverse).
 const String _kExtGetState = 'ext.omega.inspector.getState';
 
@@ -70,7 +74,7 @@ class OmegaInspectorServer {
     });
 
     // VM platforms (mobile + desktop): use VM Service + public web inspector.
-    // No local HTTP server; everything goes through http://yefersonsegura.com/projects/omega/inspector.html.
+    // No local HTTP server; everything goes through [kOmegaInspectorPublicPageUrl].
     if (_server != null) {
       _server!.close(force: true);
       _server = null;
@@ -80,8 +84,7 @@ class OmegaInspectorServer {
     final vmUri = await _vmServiceUri();
     if (vmUri != null && vmUri.isNotEmpty) {
       final hash = Uri.encodeComponent(vmUri);
-      final publicUrl =
-          'http://yefersonsegura.com/projects/omega/inspector.html#$hash';
+      final publicUrl = '$kOmegaInspectorPublicPageUrl#$hash';
       debugPrint(
         'Omega Inspector [vm] — Open in your browser (no adb reverse needed):',
       );

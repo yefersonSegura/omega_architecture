@@ -46,4 +46,4 @@ En resumen: **Omega** fija un modelo (agentes + flows + canal) y ofrece trazabil
 
 - **Documentación técnica:** [ARQUITECTURA.md](ARQUITECTURA.md)  
 - **Roadmap y visión:** [ROADMAP.md](ROADMAP.md)  
-- **Web de Omega (documentación completa):** en el repo, carpeta `presentation/` — abre `index.html` o despliega la web donde esté alojada.
+- **Web de Omega (documentación):** sitio VitePress en [docs/](https://github.com/yefersonSegura/omega_architecture/tree/main/docs) — publicado en GitHub Pages (`omega doc`). Profundidad adicional en `doc/*.md` del repositorio.

@@ -287,9 +287,9 @@ Key files: [omega_setup.dart](example/lib/omega/omega_setup.dart), [auth_flow.da
 | [doc/TESTING.md](doc/TESTING.md) | Testing agents and flows |
 | [doc/ROADMAP.md](doc/ROADMAP.md) | Long-term direction |
 | [API on pub.dev](https://pub.dev/documentation/omega_architecture/latest) | Generated API reference |
-| [Web documentation](https://yefersonsegura.com/projects/omega/index-en.html) | Architecture overview and guides |
+| [Web documentation (VitePress)](https://yefersonsegura.github.io/omega_architecture/) | Guide site (same stack as Omega Angular `docs/`) |
 
-Local presentation bundle: [presentation/index.html](presentation/index.html).
+Local **VitePress** site: `cd docs && npm install && npm run dev`. The **VM Service Inspector** page is `docs/public/inspector.html` (deployed at `/inspector.html` next to the docs site).
 
 ---
 

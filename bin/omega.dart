@@ -5,7 +5,7 @@ import 'dart:io';
 import 'omega_heal_catalog.dart';
 
 const String _version = "1.0.4";
-const String _docUrl = "https://yefersonsegura.com/proyects/omega/";
+const String _docUrl = "https://yefersonsegura.github.io/omega_architecture/";
 
 void _openInBrowser(String urlOrPath) {
   if (Platform.isWindows) {
@@ -514,7 +514,7 @@ void printHelp() {
   stdout.writeln("Examples:");
   stdout.writeln("  omega doc                 # open web documentation");
   stdout.writeln(
-    "  omega inspector           # open local inspector.html in browser",
+    "  omega inspector           # open hosted Inspector (VM Service) in browser",
   );
   stdout.writeln("  omega init");
   stdout.writeln(
@@ -2124,10 +2124,11 @@ void _formatFile(String path) {
 }
 
 /// Open the online Omega Inspector (VM Service) in the default browser.
-/// It uses the hosted page at http://yefersonsegura.com/projects/omega/inspector.html.
+/// URL matches `kOmegaInspectorPublicPageUrl` in `lib/omega/ui/flutter/omega_inspector_server_io.dart`.
 class OmegaInspectorCommand {
   static void run() {
-    const url = "http://yefersonsegura.com/projects/omega/inspector.html";
+    const url =
+        "https://yefersonsegura.github.io/omega_architecture/inspector.html";
     _openInBrowser(url);
     stdout.writeln("Opening Omega Inspector (online):");
     stdout.writeln("  $url");
