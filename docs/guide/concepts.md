@@ -15,4 +15,6 @@ Short glossary for Omega on Flutter. For diagrams and longer examples, see [GUIA
 
 **One sentence:** the UI says what it wants (**intent**); the channel carries **events**; **flows** and **agents** decide what happens; the UI only reflects **expressions** and route changes.
 
+For a full stack map (bootstrap, snapshots, tooling), see **[Total architecture](./total-architecture)**.
+
 Next: **[Data flow](./data-flow)**.

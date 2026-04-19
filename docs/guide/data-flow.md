@@ -1,6 +1,6 @@
 # Data flow
 
-End-to-end path (same mental model as Omega Angular):
+End-to-end path:
 
 1. **UI** → emits an **intent** (e.g. login) to the flow manager or channel.  
 2. **Flow** (when running) receives it in `onIntent`; may emit **events** on the channel (e.g. `auth.login.request`).  

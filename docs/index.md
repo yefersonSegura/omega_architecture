@@ -2,9 +2,9 @@
 layout: home
 
 hero:
-  name: Omega Architecture
-  text: Reactive, agent-based architecture for Flutter
-  tagline: One event channel, typed intents, flows and agents, first-class CLI, inspector, and traces — same philosophy as Omega Angular for the web.
+  name: Omega Flutter
+  text: Reactive, agent-based architecture
+  tagline: One event channel, typed intents, flows and agents, first-class CLI, inspector, and traces.
   image:
     src: /omega-logo.svg
     alt: Omega
@@ -24,7 +24,7 @@ hero:
 
 features:
   - title: Vision
-    details: Intent-first collaboration — flows orchestrate, agents handle IO, one shared channel. Pairs naturally with the Angular package omega-angular for full-stack teams.
+    details: Intent-first collaboration — flows orchestrate, agents handle IO, one shared channel.
   - title: OmegaChannel & events
     details: Broadcast typed events, namespaces for modules, and optional contracts in debug — see the channel guide.
   - title: Flows & agents
@@ -38,10 +38,11 @@ features:
 This site documents the **[omega_architecture](https://pub.dev/packages/omega_architecture)** Dart package and the **[omega_architecture](https://github.com/yefersonSegura/omega_architecture)** GitHub repository — **Flutter only**.
 
 - Read **[Vision & why Omega](/guide/vision-and-why)** for purpose and fit, then **[Getting started](/guide/getting-started)** and **[Core concepts](/guide/concepts)**.  
+- For a **single map of every subsystem** (runtime, channel, flows, agents, navigation, widgets, tooling), see **[Total architecture](/guide/total-architecture)**.  
 - Follow **[Data flow](/guide/data-flow)** for an end-to-end picture, then **[Channel & events](/guide/channel-events)**, **[Intents & flows](/guide/intents-flows-manager)**, and **[Agents & behaviors](/guide/agents-behaviors)**.  
 - Use **[API reference](/guide/api-reference)** as the map to the generated API docs on pub.dev.
 
-Long-form Markdown in the repo lives under **`doc/`** (e.g. [GUIA.md](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/GUIA.md)). The **[online Inspector](/inspector.html)** page (VM Service) ships as a static asset next to this site.
+Long-form Markdown in the repo lives under **`doc/`** — it is also published here as **[Repository docs (Spanish)](/doc/)** (GUIA, ARQUITECTURA, COMANDOS_CLI, INSPECTOR, etc.), synced from `doc/` on each build. The **[online Inspector](/inspector.html)** page (VM Service) ships as a static asset next to this site.
 
 Monorepo layout, `example/`, and publishing are summarized under **[Repository layout](/guide/repository)** and the README on GitHub.
 

@@ -14,10 +14,6 @@ In growing Flutter apps, business logic often leaks into widgets: `setState`, se
 - **Debuggable sessions** — **inspector** (in-app or browser + VM Service) and **time-travel** traces.
 - **Velocity** — **`omega`** CLI scaffolds ecosystems, validates projects, and optional **Omi** AI helpers.
 
-## Same idea as Omega Angular
-
-If you also build on **Angular**, the **[omega-angular](https://www.npmjs.com/package/omega-angular)** package mirrors this model (channel, intents, flows, agents). Teams can share vocabulary across mobile and web.
-
 ## When to look elsewhere
 
 Omega adds structure. Prototypes that intentionally throw away code, or apps with almost no cross-screen coordination, might not need it yet. If you adopt Omega, commit to **intents + channel + flows/agents** as the default path for features.

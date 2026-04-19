@@ -1,4 +1,4 @@
-# VitePress (docs/) → GitHub Actions Pages (same pattern as omega-workspace).
+# VitePress (docs/) → GitHub Actions Pages.
 #
 # One-time: Settings → Pages → Build and deployment → Source: **GitHub Actions**.
 # Do NOT add a second workflow that uploads pages from repo root — no index.html there.

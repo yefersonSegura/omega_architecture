@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress';
+import { syncDocFromRepo } from './plugins/sync-doc-from-repo';
 
 export default defineConfig({
   title: 'Omega Architecture',
@@ -7,6 +8,10 @@ export default defineConfig({
   lang: 'en-US',
   base: '/omega_architecture/',
   appearance: true,
+
+  vite: {
+    plugins: [syncDocFromRepo()],
+  },
   head: [
     ['link', { rel: 'icon', href: '/omega_architecture/omega-logo.svg', type: 'image/svg+xml' }],
     ['meta', { name: 'theme-color', content: '#00d2ff' }],
@@ -15,6 +20,7 @@ export default defineConfig({
     logo: '/omega-logo.svg',
     nav: [
       { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
+      { text: 'Doc (ES)', link: '/doc/', activeMatch: '/doc/' },
       { text: 'Inspector (VM)', link: '/inspector.html', target: '_blank', rel: 'noopener noreferrer' },
       { text: 'About', link: '/guide/about' },
       { text: 'Repository', link: '/guide/repository' },
@@ -29,6 +35,7 @@ export default defineConfig({
           { text: 'About the author', link: '/guide/about' },
           { text: 'Getting started', link: '/guide/getting-started' },
           { text: 'Core concepts', link: '/guide/concepts' },
+          { text: 'Total architecture', link: '/guide/total-architecture' },
           { text: 'Data flow', link: '/guide/data-flow' },
           { text: 'omega_setup.dart', link: '/guide/omega-setup' },
         ],
@@ -58,6 +65,24 @@ export default defineConfig({
           { text: 'Testing', link: '/guide/testing' },
         ],
       },
+      {
+        text: 'Repository docs (Spanish)',
+        collapsed: true,
+        items: [
+          { text: 'Overview (doc/)', link: '/doc/' },
+          { text: 'GUIA — tour + examples', link: '/doc/GUIA' },
+          { text: 'ARQUITECTURA — deep reference', link: '/doc/ARQUITECTURA' },
+          { text: 'COMANDOS_CLI — CLI tables', link: '/doc/COMANDOS_CLI' },
+          { text: 'INSPECTOR', link: '/doc/INSPECTOR' },
+          { text: 'CONTRACTS', link: '/doc/CONTRACTS' },
+          { text: 'TIME_TRAVEL', link: '/doc/TIME_TRAVEL' },
+          { text: 'TESTING', link: '/doc/TESTING' },
+          { text: 'COMPARATIVA', link: '/doc/COMPARATIVA' },
+          { text: 'ROADMAP', link: '/doc/ROADMAP' },
+          { text: 'MEJORAS', link: '/doc/MEJORAS' },
+          { text: 'ARTICLE_MEDIUM', link: '/doc/ARTICLE_MEDIUM' },
+        ],
+      },
     ],
 
     editLink: {
@@ -78,7 +103,7 @@ export default defineConfig({
 
     footer: {
       message:
-        'Omega Architecture (Flutter) — by <a href="https://yefersonsegura.com/" target="_blank" rel="noopener">Yeferson Segura</a>. Same philosophy as <a href="https://yefersonsegura.github.io/omega_angular/" target="_blank" rel="noopener">Omega Angular</a>.',
+        'Omega Architecture (Flutter) — by <a href="https://yefersonsegura.com/" target="_blank" rel="noopener">Yeferson Segura</a>.',
       copyright: 'Copyright © present',
     },
 
