@@ -18,6 +18,7 @@
 </p>
 
 <p align="center">
+  <a href="#introduction">Intro</a> ·
   <a href="#why-omega">Why Omega</a> ·
   <a href="#start-in-one-minute">Quick start</a> ·
   <a href="#what-it-feels-like">Mental model</a> ·
@@ -27,7 +28,28 @@
 
 ---
 
-> **Omega** helps you ship Flutter apps you can reason about: **thin screens**, **flows** that orchestrate, **agents** for real work, and **one channel** so every feature speaks the same language. Refactor safer, debug with an **inspector** and **traces** instead of guesswork.
+## Introduction
+
+### What is Omega?
+
+**Omega Architecture** is a **Dart / Flutter package** plus a **`omega` CLI** that organizes your app around a few clear ideas: a single **`OmegaChannel`** for events, **flows** that orchestrate use cases, **agents** that run side effects and domain logic, and a **thin UI** that sends **intents** and reacts to **flow expressions** — instead of growing a tangle of `setState`, callbacks, and hidden dependencies across widgets.
+
+### Why use it?
+
+- **Easier to reason about** — business rules live in flows and agents; screens stay declarative.
+- **Safer evolution** — typed intent/event names, optional **contracts** in debug, and **`omega validate`** catch wiring mistakes before they ship.
+- **Better debugging** — **inspector** (overlay, dialog, or browser + VM Service), **time-travel** sessions, and traces so you see *what* happened and *in what order*.
+- **Less boilerplate** — **`omega g ecosystem`**, project templates, and an optional **AI coach** for scaffolding.
+
+This README is only a **summary**. **Go to the documentation** for install steps, diagrams, every guide, and the learning path:
+
+<p align="center">
+  <strong>
+    <a href="https://yefersonsegura.github.io/omega_architecture/">Documentation site →</a>
+  </strong>
+  <br/>
+  <sub>Suggested path: <a href="https://yefersonsegura.github.io/omega_architecture/guide/getting-started.html">Getting started</a> · <a href="https://yefersonsegura.github.io/omega_architecture/guide/concepts.html">Core concepts</a> · <a href="https://yefersonsegura.github.io/omega_architecture/guide/data-flow.html">Data flow</a></sub>
+</p>
 
 ---
 
