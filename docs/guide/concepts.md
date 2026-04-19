@@ -1,6 +1,6 @@
 # Core concepts
 
-Short glossary for Omega on Flutter. For diagrams and longer examples, see [GUIA.md](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/GUIA.md).
+Short glossary for Omega on Flutter.
 
 | Concept | Role |
 |--------|------|

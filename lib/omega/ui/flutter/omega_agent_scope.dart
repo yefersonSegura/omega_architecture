@@ -35,7 +35,7 @@ class OmegaAgentScope extends InheritedWidget {
       'OmegaAgentScope not found above this context. '
       'If you use OmegaScopedAgentBuilder under OmegaFlowExpressionBuilder, override '
       'OmegaFlow.uiScopeAgent on your flow (same agent instance), or wrap the route with '
-      'OmegaAgentScope in omega_setup. See doc/GUIA.md (OmegaFlowExpressionBuilder).',
+      'OmegaAgentScope in omega_setup. See web docs: OmegaFlowExpressionBuilder.',
     );
     return scope!.agent;
   }

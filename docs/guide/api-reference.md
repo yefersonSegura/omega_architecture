@@ -6,4 +6,4 @@ Generated API documentation for the **published** package:
 
 Start from the main export **`package:omega_architecture/omega_architecture.dart`** — it re-exports the public surface you should build against.
 
-For narrative explanations, stay in this guide or open **[GUIA.md](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/GUIA.md)** / **[ARQUITECTURA.md](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/ARQUITECTURA.md)** on GitHub.
+For narrative explanations, use **[Total architecture](./total-architecture)** and the guide sections in the sidebar.

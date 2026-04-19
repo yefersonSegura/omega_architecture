@@ -68,4 +68,4 @@ Env overview: run **`omega ai env`**. Package / heal tuning variables are listed
 ## More help
 
 - **Inspector:** [Inspector & VM Service](./inspector)
-- **Spanish (PATH, tables, edge cases):** [COMANDOS_CLI](/doc/COMANDOS_CLI) (synced from `doc/`)
+- **PATH / global install issues:** see the README on GitHub (`omega` not found → Pub global `bin`).

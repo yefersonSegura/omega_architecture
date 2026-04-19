@@ -13,7 +13,7 @@ For a narrative “why” and product fit, start with [Vision & why Omega](./vis
 - **Agents for side effects** — [OmegaAgent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaAgent-class.html) + [OmegaAgentBehaviorEngine](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaAgentBehaviorEngine-class.html) centralize IO, storage, and imperative work; widgets stay thin.
 - **Observable orchestration** — Flows emit **expressions** (streams) for UI state and can trigger **navigation** through the same channel conventions the navigator listens for.
 
-Longer Spanish deep-dive (component-by-component): [ARQUITECTURA.md](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/ARQUITECTURA.md). Guided tour with examples: [GUIA.md](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/GUIA.md).
+More narrative walkthroughs: [Getting started](./getting-started), [Channel & events](./channel-events), and the **[example app](https://github.com/yefersonSegura/omega_architecture/tree/main/example)** on GitHub.
 
 ---
 
@@ -127,7 +127,7 @@ More detail: [Channel & events](./channel-events), [Data flow](./data-flow).
 | [OmegaFlowContext](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowContext-class.html) | Context passed into `onIntent` / `onEvent` |
 | [OmegaWorkflowFlow](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaWorkflowFlow-class.html) | Step-based flows built on the same channel model |
 
-Optional [OmegaFlowContract](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowContract-class.html) documents listened events, handled intents, and emitted expression kinds; in **debug**, mismatches are reported. See [CONTRACTS.md](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/CONTRACTS.md).
+Optional [OmegaFlowContract](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowContract-class.html) documents listened events, handled intents, and emitted expression kinds; in **debug**, mismatches are reported. See **`example/lib/auth/`** (`AuthFlow` / `AuthAgent`) for `contract` usage.
 
 **Snapshots** — [OmegaFlowSnapshot](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowSnapshot-class.html) / app-level snapshots support debugging, persistence, and time-travel tooling ([OmegaSnapshotStorage](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaSnapshotStorage-class.html), [restoreFromSnapshot](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowManager/restoreFromSnapshot.html)).
 
@@ -188,7 +188,7 @@ For small apps you can register [OmegaFlowManager.registerIntentHandler](https:/
 |-------|----------------|
 | **Failures** | [OmegaFailure](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFailure-class.html) for semantic errors on the channel or return paths |
 | **Contracts (debug)** | [OmegaFlowContract](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowContract-class.html), [OmegaAgentContract](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaAgentContract-class.html) |
-| **Time travel** | [OmegaTimeTravelRecorder](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaTimeTravelRecorder-class.html), [OmegaRecordedSession](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaRecordedSession-class.html) — see [TIME_TRAVEL.md](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/TIME_TRAVEL.md) |
+| **Time travel** | [OmegaTimeTravelRecorder](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaTimeTravelRecorder-class.html), [OmegaRecordedSession](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaRecordedSession-class.html) — **`omega trace view`** / **`omega trace validate`** ([CLI](./cli)) |
 | **Offline-first intents** | [OmegaOfflineQueue](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaOfflineQueue-class.html) |
 | **Package barrel** | [omega_architecture.dart](https://github.com/yefersonSegura/omega_architecture/blob/main/lib/omega_architecture.dart) — canonical exports |
 
@@ -200,7 +200,6 @@ For small apps you can register [OmegaFlowManager.registerIntentHandler](https:/
 |------|------|
 | **`example/`** | Runnable reference: `omega_setup.dart`, auth flow/agent, routes |
 | **`bin/omega.dart`** | **omega** CLI: `create app`, ecosystem generation, validate, traces, optional AI helpers |
-| **`doc/`** | Long-form Markdown (Spanish + depth): architecture, CLI, inspector, contracts — **mirrored on the site** at [/doc/](/doc/) (build sync from `doc/`) |
 | **`docs/`** | This VitePress site; `public/inspector.html` for VM Service inspector page |
 
 Guides: [Repository layout](./repository), [Omega CLI](./cli), [Inspector & VM Service](./inspector), [Testing](./testing).

@@ -15,4 +15,4 @@ channel.events.listen((e) { /* react */ });
 // channel.dispose() when tearing down
 ```
 
-Full examples: [GUIA.md — OmegaChannel](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/GUIA.md#omegachannel-bus-de-eventos).
+Full examples: **`example/lib/auth/`** and **[Channel & events](./channel-events)** (this section).

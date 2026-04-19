@@ -4,4 +4,4 @@
 
 Keep **widgets free** of IO: the agent is the natural place for side effects coordinated with the flow.
 
-Reference implementation: `example/lib/auth/auth_agent.dart` in the repo — and [GUIA.md](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/GUIA.md) sections on agents and behaviors.
+Reference implementation: **`example/lib/auth/auth_agent.dart`** in the repository.

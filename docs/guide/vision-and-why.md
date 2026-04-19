@@ -24,4 +24,4 @@ Omega adds structure. Prototypes that intentionally throw away code, or apps wit
 2. **[Data flow](./data-flow)** — end-to-end path  
 3. **[Getting started](./getting-started)** — install and first commands  
 
-Deep reference in repo: [GUIA.md](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/GUIA.md) (Spanish walkthrough with code).
+Hands-on next: **[Getting started](./getting-started)** and the **`example/`** tree in the repository.

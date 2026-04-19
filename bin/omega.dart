@@ -5987,7 +5987,7 @@ class _${moduleName}PageState extends State<${moduleName}Page> {
       }
 
       if (!compactForHeal && attachPackageDocs) {
-        for (final rel in ["doc/ARQUITECTURA.md", "README.md"]) {
+        for (final rel in ["docs/guide/total-architecture.md", "README.md"]) {
           final f = File("$root$sep${rel.replaceAll("/", sep)}");
           if (f.existsSync()) {
             var text = f.readAsStringSync();

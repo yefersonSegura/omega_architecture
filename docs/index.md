@@ -42,7 +42,7 @@ This site documents the **[omega_architecture](https://pub.dev/packages/omega_ar
 - Follow **[Data flow](/guide/data-flow)** for an end-to-end picture, then **[Channel & events](/guide/channel-events)**, **[Intents & flows](/guide/intents-flows-manager)**, and **[Agents & behaviors](/guide/agents-behaviors)**.  
 - Use **[API reference](/guide/api-reference)** as the map to the generated API docs on pub.dev.
 
-Long-form Markdown in the repo lives under **`doc/`** — it is also published here as **[Repository docs (Spanish)](/doc/)** (GUIA, ARQUITECTURA, COMANDOS_CLI, INSPECTOR, etc.), synced from `doc/` on each build. The **[online Inspector](/inspector.html)** page (VM Service) ships as a static asset next to this site.
+The **[online Inspector](/inspector.html)** page (VM Service) is a static asset next to this site.
 
 Monorepo layout, `example/`, and publishing are summarized under **[Repository layout](/guide/repository)** and the README on GitHub.
 

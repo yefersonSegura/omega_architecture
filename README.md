@@ -64,7 +64,7 @@ omega create app my_app && cd my_app && flutter run
 
 
 
-Add Pub’s global **`bin`** to your **`PATH`** (Windows: `%LOCALAPPDATA%\Pub\Cache\bin`). If `omega` is not found, see **[doc/COMANDOS_CLI.md](doc/COMANDOS_CLI.md)** — PATH, shims, and `dart run omega_architecture:omega …`.
+Add Pub’s global **`bin`** to your **`PATH`** (Windows: `%LOCALAPPDATA%\Pub\Cache\bin`). If `omega` is not found, open the **[CLI guide](https://yefersonsegura.github.io/omega_architecture/guide/cli.html)** on the doc site (PATH + `dart run omega_architecture:omega …`).
 
 
 
@@ -100,7 +100,7 @@ OmegaScope(
 
 
 
-More depth: **[site](https://yefersonsegura.github.io/omega_architecture/)** · **[doc/GUIA.md](doc/GUIA.md)** (walkthrough + code) · **[API](https://pub.dev/documentation/omega_architecture/latest)**
+More depth: **[documentation site](https://yefersonsegura.github.io/omega_architecture/)** · **[API](https://pub.dev/documentation/omega_architecture/latest)**
 
 
 
@@ -130,7 +130,7 @@ More depth: **[site](https://yefersonsegura.github.io/omega_architecture/)** · 
 
 
 
-Full command matrix: **[doc/COMANDOS_CLI.md](doc/COMANDOS_CLI.md)**
+Full command list: **[CLI guide](https://yefersonsegura.github.io/omega_architecture/guide/cli.html)**
 
 
 
@@ -146,11 +146,11 @@ Full command matrix: **[doc/COMANDOS_CLI.md](doc/COMANDOS_CLI.md)**
 
 |------|-----|
 
-| **[Web docs](https://yefersonsegura.github.io/omega_architecture/)** | Guides, architecture map, `/doc/` mirror (Spanish deep dives) |
+| **[Web docs](https://yefersonsegura.github.io/omega_architecture/)** | Guides, architecture map, CLI, inspector |
 
-| **[doc/GUIA.md](doc/GUIA.md)** | Copy-paste tour of every piece |
+| **[CLI](https://yefersonsegura.github.io/omega_architecture/guide/cli.html)** | All `omega` and `omega ai` commands |
 
-| **[doc/INSPECTOR.md](doc/INSPECTOR.md)** | Overlay, launcher, VM / browser |
+| **[Inspector guide](https://yefersonsegura.github.io/omega_architecture/guide/inspector.html)** | Overlay, launcher, VM / browser |
 
 | **[example/](example/)** | Reference login flow — `cd example && flutter run` |
 

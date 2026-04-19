@@ -1,5 +1,4 @@
 import { defineConfig } from 'vitepress';
-import { syncDocFromRepo } from './plugins/sync-doc-from-repo';
 
 export default defineConfig({
   title: 'Omega Architecture',
@@ -9,9 +8,6 @@ export default defineConfig({
   base: '/omega_architecture/',
   appearance: true,
 
-  vite: {
-    plugins: [syncDocFromRepo()],
-  },
   head: [
     ['link', { rel: 'icon', href: '/omega_architecture/omega-logo.svg', type: 'image/svg+xml' }],
     ['meta', { name: 'theme-color', content: '#00d2ff' }],
@@ -20,7 +16,6 @@ export default defineConfig({
     logo: '/omega-logo.svg',
     nav: [
       { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
-      { text: 'Doc (ES)', link: '/doc/', activeMatch: '/doc/' },
       { text: 'Inspector (VM)', link: '/inspector.html', target: '_blank', rel: 'noopener noreferrer' },
       { text: 'About', link: '/guide/about' },
       { text: 'Repository', link: '/guide/repository' },
@@ -63,24 +58,6 @@ export default defineConfig({
           { text: 'Omega CLI', link: '/guide/cli' },
           { text: 'Inspector & VM Service', link: '/guide/inspector' },
           { text: 'Testing', link: '/guide/testing' },
-        ],
-      },
-      {
-        text: 'Repository docs (Spanish)',
-        collapsed: true,
-        items: [
-          { text: 'Overview (doc/)', link: '/doc/' },
-          { text: 'GUIA — tour + examples', link: '/doc/GUIA' },
-          { text: 'ARQUITECTURA — deep reference', link: '/doc/ARQUITECTURA' },
-          { text: 'COMANDOS_CLI — CLI tables', link: '/doc/COMANDOS_CLI' },
-          { text: 'INSPECTOR', link: '/doc/INSPECTOR' },
-          { text: 'CONTRACTS', link: '/doc/CONTRACTS' },
-          { text: 'TIME_TRAVEL', link: '/doc/TIME_TRAVEL' },
-          { text: 'TESTING', link: '/doc/TESTING' },
-          { text: 'COMPARATIVA', link: '/doc/COMPARATIVA' },
-          { text: 'ROADMAP', link: '/doc/ROADMAP' },
-          { text: 'MEJORAS', link: '/doc/MEJORAS' },
-          { text: 'ARTICLE_MEDIUM', link: '/doc/ARTICLE_MEDIUM' },
         ],
       },
     ],

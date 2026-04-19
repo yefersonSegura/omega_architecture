@@ -8,4 +8,4 @@ End-to-end path:
 4. **Flow** handles events in `onEvent`; emits **expressions** to the UI and/or **navigation intents**.  
 5. **UI** rebuilds from expressions; **OmegaNavigator** resolves navigation intents to routes.
 
-Details and code snippets: [GUIA.md — Flujo de datos resumido](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/GUIA.md#flujo-de-datos-resumido).
+Details: follow **[Channel & events](./channel-events)** and the **`example/`** app on GitHub.

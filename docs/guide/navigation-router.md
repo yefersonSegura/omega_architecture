@@ -2,6 +2,6 @@
 
 **OmegaNavigator** connects navigation **intents** to **`OmegaRoute`** entries (ids and builders). Wire names use dotted lower case (see **`OmegaIntentNameDottedCamel`**) so Dart identifiers map cleanly to route ids.
 
-Wrong wiring (route id does not match intent wire) is a common first bug — see README and [GUIA.md](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/GUIA.md) for **`navigate.*`** vs **`navigate.push.*`** and examples.
+Wrong wiring (route id does not match intent wire) is a common first bug — see the README and **`example/lib/omega/omega_setup.dart`** for **`navigate.*`** vs **`navigate.push.*`**.
 
-Also read [ARQUITECTURA.md](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/ARQUITECTURA.md) for the navigation contract.
+Contract summary: **[Total architecture](./total-architecture)** → Navigation.

@@ -6,4 +6,4 @@
 
 The UI does **not** call repositories or routers directly for feature work; it emits intents and listens to **expressions** and route arguments.
 
-See the package **`example/`** app (`AuthFlow`, login screen) and [GUIA.md — OmegaIntent / flows](https://github.com/yefersonSegura/omega_architecture/blob/main/doc/GUIA.md#omegaintent-intención).
+See the package **`example/`** app (`AuthFlow`, login screen) on GitHub.
