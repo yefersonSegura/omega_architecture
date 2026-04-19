@@ -1,8 +1,16 @@
-# Builds the Omega Architecture documentation site (VitePress in docs/) and deploys to GitHub Pages.
-# Same pattern as omega-workspace: https://github.com/yefersonSegura/omega_angular/blob/main/.github/workflows/docs.yml
-# Do NOT add a second workflow that uploads a pages artifact from repo root — it has no index.html and will overwrite this site.
-# One-time: Settings → Pages → Source: GitHub Actions. Site URL: https://<owner>.github.io/<repo>/
-# VitePress `base` in docs/.vitepress/config.mts must be '/<repo>/' (match the repository name).
+# VitePress (docs/) → push static files to branch `gh-pages`.
+#
+# Omega Angular uses actions/deploy-pages + "Pages source: GitHub Actions" and that works there.
+# This repo often hits HttpError 404 on createPagesDeployment when that API is not available for
+# the repository (Pages not set to GitHub Actions, org policy, etc.). Publishing via `gh-pages`
+# avoids that API entirely — same public URL once Pages points at the branch.
+#
+# ONE-TIME:
+#   Settings → Pages → Source: "Deploy from a branch" → Branch: gh-pages → Folder: / (root)
+#   Settings → Actions → General → Workflow permissions: "Read and write" (token must push gh-pages)
+#
+# VitePress `base` in docs/.vitepress/config.mts must be '/<repo>/' (e.g. /omega_architecture/).
+# Do NOT add another workflow that publishes a different Pages artifact to the same site.
 name: Deploy documentation
 
 on:
@@ -14,39 +22,36 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: docs/package-lock.json
+
       - name: Install & build
         working-directory: docs
         run: |
           npm ci
           npm run build
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs/.vitepress/dist
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    steps:
-      - id: deploy
-        uses: actions/deploy-pages@v4
+      - name: Verify dist
+        run: test -f docs/.vitepress/dist/index.html
+
+      - name: Push to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/.vitepress/dist
+          force_orphan: true
