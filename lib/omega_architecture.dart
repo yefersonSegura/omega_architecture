@@ -21,7 +21,7 @@
 /// `example/lib/auth/auth_flow.dart`, `example/lib/auth/auth_agent.dart`,
 /// `example/lib/auth/ui/auth_page.dart`.
 ///
-/// Further reading: `doc/ARQUITECTURA.md` (may be partially non-English).
+/// Further reading: documentation site (see repository `docs/`).
 library;
 
 // CORE EXPORTS
