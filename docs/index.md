@@ -42,13 +42,9 @@ features:
 Omega keeps **one clear pipeline** from UI to flows to agents. That means you can **inspect** what happened, **replay** it, and **define statistics** (throughput, response paths, flow state) without reverse‑engineering a forest of providers. **[Observability & statistics →](/guide/observability-and-stats)**
 :::
 
-<div style="text-align:center;margin:0.5rem 0 2rem;">
+<OmegaObservabilityDashboard link-to-guide />
 
-[![Example statistical dashboard: channel events by category, intent to expression latency, events per minute, and flow snapshot — open the observability guide](/omega-observability-dashboard.svg)](/guide/observability-and-stats)
-
-<p style="margin-top:0.65rem;font-size:0.9rem;color:var(--vp-c-text-2);max-width:42rem;margin-left:auto;margin-right:auto;">Illustrative charts — the same shapes you can back with <strong>real</strong> numbers from the inspector, time travel, or your own telemetry.</p>
-
-</div>
+<p style="margin-top:0.65rem;font-size:0.9rem;color:var(--vp-c-text-2);max-width:42rem;margin-left:auto;margin-right:auto;text-align:center;">Illustrative charts — the same shapes you can back with <strong>real</strong> numbers from the inspector, time travel, or your own telemetry.</p>
 
 ## By the numbers (why teams reach for it)
 

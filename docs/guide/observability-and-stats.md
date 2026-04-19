@@ -10,7 +10,7 @@ This page explains **what to measure**, **what you already get in the package**,
 
 The diagram below is **not live data** from your app: it shows the **kinds of charts** that fit Omega naturally — category mix on the channel, **intent → expression** latency bands, an **events/minute** curve, and a **flow snapshot** row. You can reproduce these from **traces**, **inspector exports**, or **custom timers** around `handleIntent` / `emitExpression`.
 
-![Example bar chart, latency p50 and p95 bars, events per minute area chart, and flow state chips for Omega observability](/omega-observability-dashboard.svg)
+<OmegaObservabilityDashboard />
 
 ---
 
