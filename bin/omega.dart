@@ -2128,7 +2128,7 @@ void _formatFile(String path) {
 class OmegaInspectorCommand {
   static void run() {
     const url =
-        "https://yefersonsegura.github.io/omega_architecture/inspector.html";
+        "https://yefersonsegura.com/projects/omega/inspector.html";
     _openInBrowser(url);
     stdout.writeln("Opening Omega Inspector (online):");
     stdout.writeln("  $url");

@@ -44,7 +44,7 @@ Omega keeps **one clear pipeline** from UI to flows to agents. That means you ca
 
 <OmegaObservabilityDashboard link-to-guide />
 
-<p style="margin-top:0.65rem;font-size:0.9rem;color:var(--vp-c-text-2);max-width:42rem;margin-left:auto;margin-right:auto;text-align:center;">Illustrative charts — the same shapes you can back with <strong>real</strong> numbers from the inspector, time travel, or your own telemetry.</p>
+<p style="margin-top:0.75rem;font-size:0.95rem;color:var(--vp-c-text-2);max-width:min(1200px, calc(100vw - 48px));margin-left:auto;margin-right:auto;text-align:center;line-height:1.5;">Illustrative charts — the same shapes you can back with <strong>real</strong> numbers from the inspector, time travel, or your own telemetry.</p>
 
 ## By the numbers (why teams reach for it)
 
@@ -112,7 +112,7 @@ Structured documentation for the **[omega_architecture](https://pub.dev/packages
 | **[API reference](/guide/api-reference)** | Map to **pub.dev** API docs |
 | **[Repository layout](/guide/repository)** | `lib/`, `example/`, `docs/`, CI |
 
-The **[Inspector HTML](/inspector.html)** page (VM Service) ships with this site.
+The hosted **[Inspector HTML (VM Service)](https://yefersonsegura.com/projects/omega/inspector.html)** page is the URL the CLI and `OmegaInspectorServer` open; a copy also ships with this site at **[Inspector HTML](/inspector.html)**.
 
 The **[README](https://github.com/yefersonSegura/omega_architecture/blob/main/README.md)** on GitHub has a short pitch and badges.
 

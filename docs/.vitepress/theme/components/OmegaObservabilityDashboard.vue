@@ -43,11 +43,17 @@ const ariaLabel =
 <style scoped>
 .omega-obs-dash {
   text-align: center;
-  margin: 0.5rem 0 2rem;
+  margin: 0.75rem 0 2.25rem;
+  width: 100%;
+  max-width: min(1200px, 100%);
+  margin-left: auto;
+  margin-right: auto;
 }
 .omega-obs-dash__frame {
-  display: inline-block;
-  max-width: 100%;
+  display: block;
+  width: 100%;
+  max-width: min(1200px, 100%);
+  margin: 0 auto;
   border-radius: 14px;
   border: 1px solid var(--vp-c-divider);
   box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
@@ -64,7 +70,7 @@ const ariaLabel =
 .omega-obs-dash__svg-root :deep(svg) {
   display: block;
   width: 100%;
-  max-width: 820px;
+  max-width: min(1200px, 100%);
   height: auto;
   vertical-align: top;
 }

@@ -9,14 +9,13 @@
 </p>
 
 
-
-[![pub package](https://img.shields.io/pub/v/omega_architecture.svg)](https://pub.dev/packages/omega_architecture)
-
-[![documentation](https://img.shields.io/badge/docs-site%20%26%20API-blue)](https://yefersonsegura.github.io/omega_architecture/)
-
-[![API](https://img.shields.io/badge/pub.dev-API-0175C2)](https://pub.dev/documentation/omega_architecture/latest)
-
-
+<p align="center">
+  <a href="https://pub.dev/packages/omega_architecture"><img src="https://img.shields.io/pub/v/omega_architecture.svg" alt="pub package"></a>
+  &nbsp;&nbsp;
+  <a href="https://yefersonsegura.github.io/omega_architecture/"><img src="https://img.shields.io/badge/docs-site%20%26%20API-blue" alt="documentation"></a>
+  &nbsp;&nbsp;
+  <a href="https://pub.dev/documentation/omega_architecture/latest"><img src="https://img.shields.io/badge/pub.dev-API-0175C2" alt="API"></a>
+</p>
 
 **Omega** turns messy Flutter apps into something you can reason about: **thin screens**, **flows** that orchestrate, **agents** that do the real work, and **one channel** so every feature speaks the same language. You ship faster, refactor safer, and debug with an **inspector** and **traces** instead of guesswork.
 

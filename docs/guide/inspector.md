@@ -30,7 +30,7 @@ dart run omega_architecture:omega inspector
 
 ## Hosted static page
 
-The file **`inspector.html`** ships with this documentation site (**`/inspector.html`** under your Pages base path). `OmegaInspectorServer` and the CLI open it with a **hash** or query carrying the encoded VM Service URI so the page can attach.
+The canonical URL opened by **`OmegaInspectorServer`** and **`omega inspector`** is **[https://yefersonsegura.com/projects/omega/inspector.html](https://yefersonsegura.com/projects/omega/inspector.html)** (VM Service connection uses the **URL hash** with the encoded VM URI). The same **`inspector.html`** file ships in this repo under **`docs/public/`** and is also published with the VitePress site at **`/inspector.html`** on GitHub Pages for offline browsing of the UI.
 
 ---
 

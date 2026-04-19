@@ -97,3 +97,39 @@
   max-width: min(280px, 88vw);
   height: auto;
 }
+
+/* Home: observability dashboard — break out of the narrow prose column so charts read clearly */
+.VPHome .vp-doc .omega-obs-dash {
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1200px, calc(100vw - 40px));
+  max-width: min(1200px, calc(100vw - 40px));
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.VPHome .vp-doc .omega-obs-dash__frame {
+  width: 100%;
+  max-width: none;
+}
+
+.VPHome .vp-doc .omega-obs-dash__svg-root svg {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+/* Guide pages: use full content column width for the same graphic */
+.VPDoc .vp-doc .omega-obs-dash {
+  max-width: min(1100px, 100%);
+  width: 100%;
+}
+
+.VPDoc .vp-doc .omega-obs-dash__svg-root svg {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+}
