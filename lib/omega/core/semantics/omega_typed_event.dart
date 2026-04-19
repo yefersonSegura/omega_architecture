@@ -10,7 +10,8 @@ import 'omega_event_name.dart';
 /// ```
 ///
 /// The channel wraps it in an [OmegaEvent] with [name] and the instance as payload.
-/// Listeners use [OmegaEvent.payloadAs] to read the same typed object:
+/// Listeners use [OmegaEventTypedPayloadExtension.typedPayloadAs] or [OmegaEventPayloadExtension.payloadAs]
+/// to read the same typed object:
 ///
 /// ```dart
 /// final ev = event.payloadAs<LoginRequestedEvent>();

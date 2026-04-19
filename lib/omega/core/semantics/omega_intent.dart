@@ -1,5 +1,7 @@
+import '../omega_sequencer.dart';
 import '../types/omega_object.dart';
 import 'omega_intent_name.dart';
+import 'omega_typed_intent.dart';
 
 /// Represents a request for action (login, navigate, etc.) without coupling who asks and who executes.
 ///
@@ -37,14 +39,17 @@ class OmegaIntent extends OmegaObject {
   /// not a string and not `AppIntent.navigateLogin.name`. Optional **[payload]:** any
   /// object; use [OmegaIntentPayloadExtension.payloadAs] in flows. Pairs with
   /// [OmegaEvent.fromName] when the same DTO is re-emitted on the channel.
-  factory OmegaIntent.fromName(
+  ///
+  /// The type parameter **[T]** constrains [payload] at compile time when you pass it:
+  /// `OmegaIntent.fromName<LoginCredentials>(AppIntent.authLogin, payload: creds)`.
+  static OmegaIntent fromName<T extends Object?>(
     OmegaIntentName intentName, {
-    dynamic payload,
+    T? payload,
     String? id,
     String? namespace,
   }) =>
       OmegaIntent(
-        id: id ?? 'intent:${DateTime.now().millisecondsSinceEpoch}',
+        id: id ?? omegaNextSequencedId('intent:'),
         name: intentName.name,
         payload: payload,
         namespace: namespace,
@@ -58,4 +63,13 @@ extension OmegaIntentPayloadExtension on OmegaIntent {
   /// **Example:** `final creds = intent.payloadAs<LoginCredentials>(); if (creds != null) ...`
   T? payloadAs<T>() =>
       payload != null && payload is T ? payload as T : null;
+}
+
+/// Extension for intents emitted via [OmegaFlowManager.handleTypedIntent].
+extension OmegaIntentTypedPayloadExtension on OmegaIntent {
+  /// Returns [payload] when it implements [OmegaTypedIntent] and is a [T].
+  ///
+  /// **Example:** `final data = intent.typedPayloadAs<SubmitLogin>();`
+  T? typedPayloadAs<T extends OmegaTypedIntent>() =>
+      payload is T ? payload as T : null;
 }

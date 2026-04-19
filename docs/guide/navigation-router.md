@@ -9,6 +9,12 @@ Assign **`navigatorKey: runtime.navigator.navigatorKey`** on **`MaterialApp`**.
 
 ---
 
+## Platform transitions
+
+[OmegaNavigator](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaNavigator-class.html) picks **Material** routes on Android (and web/desktop) and **Cupertino** routes on **iOS** (native slide + edge swipe-back), so push / pushReplacement feel native on each mobile platform.
+
+---
+
 ## `navigate.*` vs `navigate.push.*`
 
 | Pattern | Navigator behaviour |

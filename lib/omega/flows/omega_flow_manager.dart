@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:omega_architecture/omega/core/semantics/omega_intent.dart';
+import 'package:omega_architecture/omega/core/semantics/omega_typed_intent.dart';
 import 'package:omega_architecture/omega/ui/navigation/omega_navigator.dart';
 
 import '../core/channel/omega_channel.dart';
@@ -33,6 +34,7 @@ class OmegaFlowManager {
   final OmegaChannel channel;
 
   final Map<String, OmegaFlow> _flows = {};
+  final List<OmegaFlow> _runningFlows = [];
   final List<_RegisteredIntentHandler> _intentHandlers = [];
   StreamSubscription? _navSubscription;
 
@@ -49,7 +51,24 @@ class OmegaFlowManager {
   ///
   /// **Example:** `flowManager.registerFlow(AuthFlow(channel: ch, agent: authAgent));`
   void registerFlow(OmegaFlow flow) {
+    final existing = _flows[flow.id];
+    if (existing != null && !identical(existing, flow)) {
+      existing.onFlowStateChanged = null;
+      _runningFlows.remove(existing);
+    }
     _flows[flow.id] = flow;
+    flow.onFlowStateChanged = () => _syncRunningMembership(flow);
+    _syncRunningMembership(flow);
+  }
+
+  void _syncRunningMembership(OmegaFlow flow) {
+    if (flow.state == OmegaFlowState.running) {
+      if (!_runningFlows.contains(flow)) {
+        _runningFlows.add(flow);
+      }
+    } else {
+      _runningFlows.remove(flow);
+    }
   }
 
   /// Ids of all registered flows (same strings as [OmegaFlow.id]). Useful for debugging.
@@ -170,11 +189,17 @@ class OmegaFlowManager {
     }
     if (consume) return;
 
-    for (final flow in _flows.values) {
-      if (flow.state == OmegaFlowState.running) {
-        flow.receiveIntent(intent);
-      }
+    for (final flow in List<OmegaFlow>.from(_runningFlows)) {
+      flow.receiveIntent(intent);
     }
+  }
+
+  /// Sends a strongly-typed intent: [intent] supplies the wire name and is also the
+  /// [OmegaIntent.payload] (same object). In flows use [OmegaIntentTypedPayloadExtension.typedPayloadAs].
+  ///
+  /// **Example:** `handleTypedIntent(SubmitLogin('a@b.com', 'secret'));`
+  void handleTypedIntent<T extends OmegaTypedIntent>(T intent) {
+    handleIntent(OmegaIntent.fromName<T>(intent, payload: intent));
   }
 
   // -----------------------------------------------------------
@@ -291,19 +316,22 @@ class OmegaFlowManager {
   void wireNavigator(OmegaNavigator nav) {
     _navSubscription?.cancel();
     _navSubscription = channel.events.listen((event) {
+      final n = event.name;
+      // Fast path: ignore almost all bus traffic so navigation stays cheap.
+      if (n != navigationIntentEvent && !n.startsWith('navigate.')) return;
       try {
-        if (event.name == navigationIntentEvent) {
+        if (n == navigationIntentEvent) {
           if (event.payload is OmegaIntent) {
             nav.handleIntent(event.payload as OmegaIntent);
           }
-        } else if (event.name.startsWith("navigate.")) {
+        } else {
           nav.handleIntent(
-            OmegaIntent(id: event.id, name: event.name, payload: event.payload),
+            OmegaIntent(id: event.id, name: n, payload: event.payload),
           );
         }
       } catch (e, st) {
         developer.log(
-          'Navigator handling failed for event "${event.name}".',
+          'Navigator handling failed for event "$n".',
           name: 'omega_flow_manager',
           error: e,
           stackTrace: st,

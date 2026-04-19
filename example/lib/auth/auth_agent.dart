@@ -50,12 +50,14 @@ class AuthAgent extends OmegaStatefulAgent<AuthViewState> {
   }
 
   Future<void> _login(dynamic payload) async {
-    // Payload puede ser LoginRequestedEvent (emitTyped) o LoginCredentials (desde intent directo)
     final String email;
     final String password;
     if (payload is LoginRequestedEvent) {
       email = payload.email;
       password = payload.password;
+    } else if (payload is AuthLoginIntent) {
+      email = payload.credentials.email;
+      password = payload.credentials.password;
     } else if (payload is LoginCredentials) {
       email = payload.email;
       password = payload.password;
@@ -72,7 +74,7 @@ class AuthAgent extends OmegaStatefulAgent<AuthViewState> {
       token = "FAKE_TOKEN_ABC123";
       user = {"name": "Admin", "email": email};
       channel.emit(
-        OmegaEvent.fromName(
+        OmegaEvent.fromName<LoginSuccessPayload>(
           AppEvent.authLoginSuccess,
           payload: LoginSuccessPayload(token: token!, user: user!),
         ),
@@ -80,7 +82,7 @@ class AuthAgent extends OmegaStatefulAgent<AuthViewState> {
       setViewState(viewState.copyWith(isLoading: false, errorMessage: null));
     } else {
       channel.emit(
-        OmegaEvent.fromName(
+        OmegaEvent.fromName<OmegaFailure>(
           AppEvent.authLoginError,
           payload: OmegaFailure(
             id: "auth.invalid_credentials",

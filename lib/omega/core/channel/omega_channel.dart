@@ -1,5 +1,6 @@
 import 'dart:async';
 import '../events/omega_event.dart';
+import '../omega_sequencer.dart';
 import '../semantics/omega_typed_event.dart';
 
 /// Abstraction for emitting and listening to events. Implemented by [OmegaChannel]
@@ -53,6 +54,7 @@ class OmegaChannel implements OmegaEventBus {
   /// Receives all events (global and namespaced). For scoped listening use [namespace].
   ///
   /// **Example:** `channel.events.listen((e) { if (e.name == "user.updated") refresh(); });`
+  @override
   Stream<OmegaEvent> get events => _controller.stream;
 
   /// Returns a view of the channel scoped to [name]. Events emitted via this view
@@ -90,7 +92,7 @@ class OmegaChannel implements OmegaEventBus {
   @override
   void emitTyped(OmegaTypedEvent event) {
     emit(OmegaEvent(
-      id: 'ev:${DateTime.now().millisecondsSinceEpoch}',
+      id: omegaNextSequencedId('ev:'),
       name: event.name,
       payload: event,
     ));
@@ -135,7 +137,7 @@ class OmegaChannelNamespace implements OmegaEventBus {
   @override
   void emitTyped(OmegaTypedEvent event) {
     final inner = OmegaEvent(
-      id: 'ev:${DateTime.now().millisecondsSinceEpoch}',
+      id: omegaNextSequencedId('ev:'),
       name: event.name,
       payload: event,
     );
@@ -144,6 +146,7 @@ class OmegaChannelNamespace implements OmegaEventBus {
 
   /// Event stream filtered to global events and events in this namespace.
   /// Use this so a module only reacts to its own and global events.
+  @override
   Stream<OmegaEvent> get events => channel.events.where((e) {
         final ns = e.namespace;
         return ns == null || ns == namespace;

@@ -46,4 +46,5 @@ The file **`inspector.html`** ships with this documentation site (**`/inspector.
 
 - [Omega CLI](./cli) — `omega inspector` flags  
 - [Time travel](./time-travel) — recorded sessions complement the inspector  
+- [Observability & statistics](./observability-and-stats) — metrics mindset, intent→expression, what to measure  
 - **`example/lib/main.dart`** — overlay + launcher + server wiring  

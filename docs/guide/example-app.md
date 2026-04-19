@@ -11,7 +11,7 @@ The **`example/`** directory in the repository is a **full Flutter application**
 | **Bootstrap** | `lib/main.dart` — `OmegaRuntime.bootstrap`, `MaterialApp`, `navigatorKey`, first-frame `switchTo` + navigation |
 | **Composition** | `lib/omega/omega_setup.dart` — namespaces, agents, flows, routes, cold start, intent registrars |
 | **Semantics** | `lib/omega/app_semantics.dart`, `app_runtime_ids.dart` — `AppEvent` / `AppIntent` / flow & agent ids |
-| **Auth module** | `lib/auth/*` — `AuthFlow`, `AuthAgent`, `AuthBehavior`, `auth_page`, **contracts** |
+| **Auth module** | `lib/auth/*` — `AuthFlow`, `AuthAgent`, `AuthBehavior`, `auth_page`, **`AuthLoginIntent` / `handleTypedIntent`**, `emitTyped` / **`typedPayloadAs`**, **contracts** |
 | **Other modules** | `lib/orders/`, `lib/provider/`, `lib/home/` — multi-flow patterns, typed `home` route |
 | **Debug** | Inspector overlay / launcher, optional `OmegaInspectorServer`, time-travel panel |
 

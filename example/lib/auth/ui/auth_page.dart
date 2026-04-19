@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:omega_architecture/omega_architecture.dart';
 
 import '../../omega/app_runtime_ids.dart';
-import '../../omega/app_semantics.dart';
 import '../auth_agent.dart';
 import '../auth_flow.dart';
 import '../auth_events.dart';
@@ -58,14 +57,14 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
   }
 
   void _login() {
-    final intent = OmegaIntent.fromName(
-      AppIntent.authLogin,
-      payload: LoginCredentials(
-        email: emailCtrl.text.trim(),
-        password: passCtrl.text.trim(),
+    OmegaScope.of(context).flowManager.handleTypedIntent(
+      AuthLoginIntent(
+        LoginCredentials(
+          email: emailCtrl.text.trim(),
+          password: passCtrl.text.trim(),
+        ),
       ),
     );
-    OmegaScope.of(context).flowManager.handleIntent(intent);
   }
 
   @override
@@ -142,8 +141,8 @@ class _OmegaLoginPageState extends State<OmegaLoginPage> {
           const SizedBox(height: 40),
           ElevatedButton(
             onPressed: () {
-              OmegaScope.of(context).flowManager.handleIntent(
-                OmegaIntent.fromName(AppIntent.authLogout),
+              OmegaScope.of(context).flowManager.handleTypedIntent(
+                const AuthLogoutIntent(),
               );
             },
             child: const Text("Logout"),

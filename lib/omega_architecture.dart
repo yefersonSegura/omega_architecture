@@ -33,6 +33,7 @@ export 'omega/core/semantics/omega_flow_id.dart';
 export 'omega/core/semantics/omega_agent_id.dart';
 export 'omega/core/semantics/omega_semantics_wire_from_camel.dart';
 export 'omega/core/semantics/omega_typed_event.dart';
+export 'omega/core/semantics/omega_typed_intent.dart';
 export 'omega/core/events/omega_event.dart';
 export 'omega/core/types/omega_failure.dart';
 export 'omega/core/types/omega_object.dart';

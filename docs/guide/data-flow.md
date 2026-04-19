@@ -2,7 +2,7 @@
 
 End-to-end path through the system (the **spine** of every Omega feature):
 
-1. **UI** → emits an **[OmegaIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaIntent-class.html)** (e.g. login) via **[OmegaFlowManager.handleIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowManager/handleIntent.html)** (or occasionally the channel, for global intents).  
+1. **UI** → emits an **[OmegaIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaIntent-class.html)** (e.g. login) via **[handleIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowManager/handleIntent.html)** or **[handleTypedIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowManager/handleTypedIntent.html)** (or occasionally the channel, for global intents).  
 2. **Flow** (when **running**) receives it in **`onIntent`**; may emit **[OmegaEvent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaEvent-class.html)s** on the channel (e.g. `auth.login.request`).  
 3. **Agent** listens; **behavior** picks a reaction (e.g. `doLogin`); agent emits success / failure **events**.  
 4. **Flow** handles events in **`onEvent`**; emits **expressions** for the UI and/or **navigation** events / intents.  
@@ -16,7 +16,7 @@ sequenceDiagram
   participant CH as OmegaChannel
   participant A as OmegaAgent
   participant NAV as OmegaNavigator
-  UI->>FM: handleIntent(login)
+  UI->>FM: handleIntent / handleTypedIntent(login)
   FM->>F: onIntent
   F->>CH: emit auth.login.request
   CH->>A: events

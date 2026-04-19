@@ -6,7 +6,7 @@ Short glossary for Omega on Flutter.
 |--------|------|
 | **OmegaChannel** | Event bus: `emit` / `events`, optional `namespace('auth')` per module. |
 | **OmegaEvent** | Something that happened (`name` + `payload`), often typed. |
-| **OmegaIntent** | Something the UI wants (`login`, `navigate.home`, …); handled by flows / navigator. |
+| **OmegaIntent** | Something the UI wants (`login`, `navigate.home`, …); build with **`OmegaIntent.fromName`** (optional generic on **`payload`**) or **`handleTypedIntent`** + **[OmegaTypedIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaTypedIntent-class.html)**; flows / navigator handle delivery. |
 | **OmegaFlow** | Orchestrates a feature: `onIntent`, `onEvent`, emits expressions and navigation intents. |
 | **OmegaAgent** | Subscribes to the channel; **behavior** maps reactions to imperative work (HTTP, storage). |
 | **Flow manager** | Decides which flow is **running** and delivers intents. |

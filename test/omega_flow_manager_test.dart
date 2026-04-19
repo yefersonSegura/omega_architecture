@@ -230,4 +230,44 @@ void main() {
     manager.dispose();
     channel.dispose();
   });
+
+  test("handleTypedIntent delivers same object as name and typed payload", () {
+    final channel = OmegaChannel();
+    final manager = OmegaFlowManager(channel: channel);
+    final flow = _TypedPayloadFlow(channel);
+    manager.registerFlow(flow);
+    manager.activate('typed');
+
+    final payload = _SubmitTyped(7);
+    manager.handleTypedIntent(payload);
+
+    expect(flow.lastTyped, same(payload));
+    expect(flow.lastIntentName, 'typed.test.submit');
+
+    manager.dispose();
+    channel.dispose();
+  });
+}
+
+final class _SubmitTyped implements OmegaTypedIntent {
+  _SubmitTyped(this.value);
+  final int value;
+  @override
+  String get name => 'typed.test.submit';
+}
+
+class _TypedPayloadFlow extends OmegaFlow {
+  _TypedPayloadFlow(OmegaChannel channel) : super(id: 'typed', channel: channel);
+
+  Object? lastTyped;
+  String? lastIntentName;
+
+  @override
+  void onIntent(OmegaFlowContext ctx) {
+    lastIntentName = ctx.intent?.name;
+    lastTyped = ctx.intent?.typedPayloadAs<_SubmitTyped>();
+  }
+
+  @override
+  void onEvent(OmegaFlowContext event) {}
 }

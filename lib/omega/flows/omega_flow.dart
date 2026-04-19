@@ -56,6 +56,10 @@ abstract class OmegaFlow {
 
   StreamSubscription<OmegaEvent>? _channelSubscription;
 
+  /// Optional hook invoked right after [state] is assigned (start, pause, sleep, wakeUp, end).
+  /// Used by [OmegaFlowManager] to route intents only to running flows without scanning the full registry.
+  VoidCallback? onFlowStateChanged;
+
   OmegaFlow({required this.id, required this.channel}) {
     _channelSubscription = channel.events.listen(_handleEvent);
   }
@@ -94,24 +98,28 @@ abstract class OmegaFlow {
   void start() {
     if (state == OmegaFlowState.running) return;
     state = OmegaFlowState.running;
+    onFlowStateChanged?.call();
     onStart();
   }
 
   /// Puts the flow in "sleep" mode, reducing activity but keeping state.
   void sleep() {
     state = OmegaFlowState.sleeping;
+    onFlowStateChanged?.call();
     onSleep();
   }
 
   /// Wakes up a flow that was in sleep mode.
   void wakeUp() {
     state = OmegaFlowState.running;
+    onFlowStateChanged?.call();
     onWakeUp();
   }
 
   /// Pauses the flow temporarily.
   void pause() {
     state = OmegaFlowState.paused;
+    onFlowStateChanged?.call();
     onPause();
   }
 
@@ -119,6 +127,7 @@ abstract class OmegaFlow {
   void end() {
     if (state == OmegaFlowState.ended) return;
     state = OmegaFlowState.ended;
+    onFlowStateChanged?.call();
     onEnd();
     _channelSubscription?.cancel();
     _channelSubscription = null;

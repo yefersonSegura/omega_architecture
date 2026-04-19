@@ -8,7 +8,8 @@ import '../core/events/omega_event.dart';
 ///
 /// **Not available here:** there is no `getAgentViewState` and no API to read an agent's `viewState` from the flow. Pass data through [OmegaIntent.payload] (`intent?.payloadAs<YourCredentials>()`), [memory], or channel events the agent emitted.
 ///
-/// **Example:** `void onIntent(OmegaFlowContext ctx) { final creds = ctx.intent?.payloadAs<LoginCredentials>(); ctx.memory["pending"] = true; ... }`
+/// **Example:** `void onIntent(OmegaFlowContext ctx) { final creds = ctx.intent?.payloadAs<LoginCredentials>(); ... }`
+/// For [OmegaFlowManager.handleTypedIntent], use [OmegaIntentTypedPayloadExtension.typedPayloadAs].
 class OmegaFlowContext {
   /// Event that triggered [onEvent]. Null in [onIntent].
   final OmegaEvent? event;

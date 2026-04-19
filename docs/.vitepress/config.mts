@@ -8,7 +8,7 @@ export default defineConfig({
 
   description:
 
-    'Reactive, agent-based architecture for Flutter — OmegaChannel, intents, flows, agents, CLI, and inspector.',
+    'Reactive, agent-based architecture for Flutter — OmegaChannel, intents, flows, agents, CLI, inspector, traces, and observability.',
 
   lang: 'en-US',
 
@@ -82,6 +82,8 @@ export default defineConfig({
 
           { text: 'Omega vs BLoC / Riverpod', link: '/guide/comparison' },
 
+          { text: 'Observability & statistics', link: '/guide/observability-and-stats' },
+
         ],
 
       },
@@ -99,6 +101,8 @@ export default defineConfig({
           { text: 'Agents & behaviors', link: '/guide/agents-behaviors' },
 
           { text: 'Navigation & routes', link: '/guide/navigation-router' },
+
+          { text: 'Flutter widgets', link: '/guide/widgets' },
 
         ],
 

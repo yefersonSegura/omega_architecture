@@ -46,21 +46,23 @@ class AuthFlow extends OmegaFlow {
 
     if (intent == null) return;
 
-    // LOGIN → evento tipado (emitTyped) o clásico (fromName + payload)
-    if (intent.name == AppIntent.authLogin.name) {
-      final creds = intent.payloadAs<LoginCredentials>();
-      if (creds != null) {
-        emitExpression("loading");
-        channel.emitTyped(
-          LoginRequestedEvent(email: creds.email, password: creds.password),
-        );
-      }
+    final login = intent.typedPayloadAs<AuthLoginIntent>();
+    if (login != null) {
+      emitExpression("loading");
+      channel.emitTyped(
+        LoginRequestedEvent(
+          email: login.credentials.email,
+          password: login.credentials.password,
+        ),
+      );
+      return;
     }
 
-    // LOGOUT
-    if (intent.name == AppIntent.authLogout.name) {
+    final logout = intent.typedPayloadAs<AuthLogoutIntent>();
+    if (logout != null) {
       emitExpression("loading");
       channel.emit(OmegaEvent.fromName(AppEvent.authLogoutRequest));
+      return;
     }
   }
 
@@ -74,22 +76,22 @@ class AuthFlow extends OmegaFlow {
       emitExpression("loading");
     }
 
-    // LOGIN CORRECTO: navegar a home con payload tipado (la vista recibe LoginSuccessPayload)
     if (event.name == AppEvent.authLoginSuccess.name) {
-      emitExpression("success", payload: event.payload);
-      final userData = event.payload; // LoginSuccessPayload desde el agente
-      channel.emit(
-        OmegaEvent.fromName(
-          AppEvent.navigationIntent,
-          payload: OmegaIntent.fromName(
-            AppIntent.navigateHome,
-            payload: userData,
+      final userData = event.payloadAs<LoginSuccessPayload>();
+      emitExpression("success", payload: userData);
+      if (userData != null) {
+        channel.emit(
+          OmegaEvent.fromName<OmegaIntent>(
+            AppEvent.navigationIntent,
+            payload: OmegaIntent.fromName<LoginSuccessPayload>(
+              AppIntent.navigateHome,
+              payload: userData,
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
 
-    // ERROR DE LOGIN: payload tipado con payloadAs<OmegaFailure>()
     if (event.name == AppEvent.authLoginError.name) {
       final failure = event.payloadAs<OmegaFailure>();
       emitExpression(

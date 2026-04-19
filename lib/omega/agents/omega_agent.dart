@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:omega_architecture/omega/core/semantics/omega_intent.dart';
 
+import '../core/omega_sequencer.dart';
 import '../contracts/omega_flow_contract.dart';
 import '../core/channel/omega_channel.dart';
 import '../core/events/omega_event.dart';
@@ -162,7 +163,7 @@ abstract class OmegaAgent {
   void emit(String name, {dynamic payload}) {
     channel.emit(
       OmegaEvent(
-        id: "$id:${DateTime.now().millisecondsSinceEpoch}",
+        id: omegaNextSequencedId('$id:'),
         name: name,
         payload: payload,
       ),

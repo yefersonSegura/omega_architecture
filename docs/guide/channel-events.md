@@ -9,8 +9,9 @@
 ```dart
 final channel = OmegaChannel();
 channel.emit(OmegaEvent.fromName(AppEvent.authLoginRequest, payload: creds));
+// Or: OmegaEvent.fromName<MyDto>(AppEvent.someCase, payload: dto) — generic matches payload type.
 channel.events.listen((e) {
-  // filter by e.name, read e.payloadAs<MyType>()
+  // e.payloadAs<MyDto>() or e.typedPayloadAs<MyTypedEvent>() when payload implements OmegaTypedEvent
 });
 // When the app shuts down:
 // channel.dispose();
@@ -22,9 +23,17 @@ Always **`dispose()`** the channel when the owning scope tears down (same lifeti
 
 ## Typed names
 
-Prefer **`OmegaEvent.fromName`** / **`OmegaIntent.fromName`** with enums implementing [OmegaEventName](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaEventName-class.html) / [OmegaIntentName](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaIntentName-class.html) (see **`AppEvent` / `AppIntent`** in **`example/lib/omega/app_semantics.dart`**). That keeps wire strings in **one place** and survives refactors.
+Prefer **`OmegaEvent.fromName`** / **`OmegaIntent.fromName`** (**static** methods on the classes) with enums implementing [OmegaEventName](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaEventName-class.html) / [OmegaIntentName](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaIntentName-class.html) (see **`AppEvent` / `AppIntent`** in **`example/lib/omega/app_semantics.dart`**). That keeps wire strings in **one place** and survives refactors.
 
-Use **`payloadAs<T>()`** on events and intents for typed reads without scattered casts.
+Use **`payloadAs<T>()`** on [OmegaEvent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaEvent-class.html) / [OmegaIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaIntent-class.html) for safe casts. Use **`typedPayloadAs<T>()`** on **events** when **`T`** implements **[OmegaTypedEvent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaTypedEvent-class.html)** (usually after **`emitTyped`**), and on **intents** when **`T`** implements **[OmegaTypedIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaTypedIntent-class.html)** (usually after **`handleTypedIntent`**).
+
+---
+
+## Typed payloads (analyzer-checked)
+
+- **`OmegaEvent.fromName<T>(enumCase, payload: …)`** / **`OmegaIntent.fromName<T>(enumCase, payload: …)`** — the type parameter **`T`** must match the **`payload`** you pass (plain DTOs in **`example/lib/auth/auth_events.dart`**).
+- **Bus:** [OmegaTypedEvent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaTypedEvent-class.html) + **`emitTyped`** — one class carries **`name`** + fields; listeners use **`typedPayloadAs`** or **`payloadAs`**.
+- **UI → flow:** [OmegaTypedIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaTypedIntent-class.html) + **`flowManager.handleTypedIntent(myIntent)`** — the **same object** is the wire (`implements` [OmegaIntentName](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaIntentName-class.html)) and the **`OmegaIntent.payload`**. In **`onIntent`**, read **`ctx.intent?.typedPayloadAs<MyIntent>()`** (see **`AuthLoginIntent`** / **`AuthLogoutIntent`** in the example).
 
 ---
 
@@ -36,7 +45,7 @@ For large apps, **`channel.namespace('orders')`** returns an **[OmegaChannelName
 
 ## Typed events on the bus
 
-[OmegaTypedEvent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaTypedEvent-class.html) + **`emitTyped`** give stronger typing for **bus** events when you need it; module **payload DTOs** for intents often stay plain Dart classes (see contracts docstrings in the package).
+[OmegaTypedEvent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaTypedEvent-class.html) + **`emitTyped`** give stronger typing for **bus** events when you need it. For **intents**, either a **plain DTO** with **`OmegaIntent.fromName<Dto>(…)`** or a single class **`implements OmegaTypedIntent`** with **`handleTypedIntent`** (example auth).
 
 ---
 

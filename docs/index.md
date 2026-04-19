@@ -4,7 +4,7 @@ layout: home
 hero:
   name: Omega Flutter
   text: Reactive, agent-based architecture
-  tagline: One event channel, typed intents, flows and agents, first-class CLI, inspector, and traces.
+  tagline: One event channel, typed intents, flows and agents — inspect, trace, and measure what matters.
   image:
     src: /omega-logo.svg
     alt: Omega
@@ -21,6 +21,9 @@ hero:
     - theme: alt
       text: Source
       link: https://github.com/yefersonSegura/omega_architecture
+    - theme: alt
+      text: Observe & measure
+      link: /guide/observability-and-stats
 
 features:
   - title: Vision
@@ -31,6 +34,31 @@ features:
     details: OmegaFlow receives intents and events; OmegaAgent runs behaviors. The UI stays thin; business rules live outside widgets.
   - title: Tooling
     details: omega CLI (create app, generate ecosystem, traces, optional Omi AI), inspector overlay or browser + VM Service, and time-travel traces.
+  - title: Observability & statistics
+    details: See live channel traffic and flow snapshots, record sessions for replay, and map intent→expression latency — one architecture, measurable behavior.
+---
+
+::: tip Built to be watched, not guessed
+Omega keeps **one clear pipeline** from UI to flows to agents. That means you can **inspect** what happened, **replay** it, and **define statistics** (throughput, response paths, flow state) without reverse‑engineering a forest of providers. **[Observability & statistics →](/guide/observability-and-stats)**
+:::
+
+<div style="text-align:center;margin:0.5rem 0 2rem;">
+
+[![Example statistical dashboard: channel events by category, intent to expression latency, events per minute, and flow snapshot — open the observability guide](/omega-observability-dashboard.svg)](/guide/observability-and-stats)
+
+<p style="margin-top:0.65rem;font-size:0.9rem;color:var(--vp-c-text-2);max-width:42rem;margin-left:auto;margin-right:auto;">Illustrative charts — the same shapes you can back with <strong>real</strong> numbers from the inspector, time travel, or your own telemetry.</p>
+
+</div>
+
+## By the numbers (why teams reach for it)
+
+|  |  |
+|--|--|
+| **One channel** | A single **OmegaChannel** coordinates the app: every important message has a name and a place in the timeline. |
+| **Every flow, one snapshot** | The inspector summarizes **all registered flows** — state and last expression — so “who is running?” is never a mystery. |
+| **30 recent events (default)** | The inspector keeps a rolling window of **channel events** in view so you spot storms, duplicates, and ordering bugs quickly. |
+| **Ordered sessions** | Time‑travel recording preserves **event order** for offline analysis or CLI tooling — your first “statistics export” is often a trace file. |
+
 ---
 
 ## What is this site?
@@ -58,6 +86,7 @@ Structured documentation for the **[omega_architecture](https://pub.dev/packages
 | **[Vision & why Omega](/guide/vision-and-why)** | When Omega fits your team |
 | **[Total architecture](/guide/total-architecture)** | One diagram of the whole stack |
 | **[Omega vs BLoC / Riverpod](/guide/comparison)** | Honest trade-offs |
+| **[Observability & statistics](/guide/observability-and-stats)** | Inspector, traces, metrics mindset, intent→expression |
 
 ### Build features
 
@@ -67,6 +96,7 @@ Structured documentation for the **[omega_architecture](https://pub.dev/packages
 | **[Intents, flows & manager](/guide/intents-flows-manager)** | Routing intents, flow lifecycle |
 | **[Agents & behaviors](/guide/agents-behaviors)** | Side effects, `onAction`, stateful agents |
 | **[Navigation & routes](/guide/navigation-router)** | `navigate.*`, typed routes |
+| **[Flutter widgets](/guide/widgets)** | `OmegaScope`, flow/agent builders, inspector, `RootHandler` |
 
 ### Advanced
 

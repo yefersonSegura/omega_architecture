@@ -1,5 +1,7 @@
+import '../omega_sequencer.dart';
 import '../types/omega_object.dart';
 import '../semantics/omega_event_name.dart';
+import '../semantics/omega_typed_event.dart';
 
 /// Represents "something that happened" in the system, transmitted via [OmegaChannel].
 ///
@@ -57,15 +59,18 @@ class OmegaEvent extends OmegaObject {
   /// ```
   /// Declare `toggleTaskStatus` on `enum HomeEvent with OmegaEventNameDottedCamel` and
   /// `ToggleTaskStatusPayload` in the module `*_events.dart` next to the enums.
-  factory OmegaEvent.fromName(
+  ///
+  /// The type parameter **[T]** constrains [payload] at compile time when you pass it:
+  /// `OmegaEvent.fromName<UserDto>(AppEvent.profileLoaded, payload: dto)`.
+  static OmegaEvent fromName<T extends Object?>(
     OmegaEventName eventName, {
-    dynamic payload,
+    T? payload,
     String? id,
     String? namespace,
     Map<String, dynamic> meta = const {},
   }) =>
       OmegaEvent(
-        id: id ?? 'ev:${DateTime.now().millisecondsSinceEpoch}',
+        id: id ?? omegaNextSequencedId('ev:'),
         name: eventName.name,
         payload: payload,
         namespace: namespace,
@@ -101,4 +106,13 @@ extension OmegaEventPayloadExtension on OmegaEvent {
   /// **Why use it:** Avoids `payload as User` which can throw; here you get null if it doesn't match.
   /// **Example:** `final user = event.payloadAs<User>(); if (user != null) show(user.name);`
   T? payloadAs<T>() => payload != null && payload is T ? payload as T : null;
+}
+
+/// Extension for events emitted via [OmegaEventBus.emitTyped].
+extension OmegaEventTypedPayloadExtension on OmegaEvent {
+  /// Returns [payload] when it implements [OmegaTypedEvent] and is a [T].
+  ///
+  /// **Example:** `final ev = event.typedPayloadAs<LoginRequestedEvent>();`
+  T? typedPayloadAs<T extends OmegaTypedEvent>() =>
+      payload is T ? payload as T : null;
 }

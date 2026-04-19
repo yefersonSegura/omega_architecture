@@ -6,9 +6,12 @@ This chapter covers **what the UI asks for** ([OmegaIntent](https://pub.dev/docu
 
 ## OmegaIntent
 
-An intent is a **named request** with optional **payload**. Build them with **`OmegaIntent.fromName`** and enums implementing [OmegaIntentName](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaIntentName-class.html) (see **`AppIntent`** in the example’s **`app_semantics.dart`**).
+An intent is a **named request** with optional **payload**.
 
-The UI (or tests) send intents through **`flowManager.handleIntent(intent)`** — the manager forwards to every flow in **`OmegaFlowState.running`**.
+1. **Enum + optional DTO** — **`OmegaIntent.fromName<YourDto>(AppIntent.someCase, payload: dto)`** (static method). The generic **`YourDto`** checks the payload at compile time when you pass it.
+2. **One object = wire + data** — implement **[OmegaTypedIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaTypedIntent-class.html)** (same **`name`** as the matching **`AppIntent`** / module intent wire). UI calls **`flowManager.handleTypedIntent(myTypedIntent)`**; flows read **`ctx.intent?.typedPayloadAs<MyTypedIntent>()`**.
+
+The UI (or tests) send intents through **`flowManager.handleIntent(…)`** or **`flowManager.handleTypedIntent(…)`** — the manager forwards to every flow in **`OmegaFlowState.running`** (see **`example/lib/auth/ui/auth_page.dart`**).
 
 ---
 
@@ -32,7 +35,8 @@ Emit **expressions** for UI state via **`emitExpression(type, payload)`** and dr
 | **`registerFlow`** | Register once at bootstrap. |
 | **`activate(id)`** | Add a flow to the running set (multi-flow). |
 | **`switchTo(id)`** | Single “main” flow: activates one and pauses others. |
-| **`handleIntent`** | Entry point from UI. |
+| **`handleIntent`** | Entry point from UI with a built **[OmegaIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaIntent-class.html)**. |
+| **`handleTypedIntent`** | Same, but argument **`implements OmegaTypedIntent`** — wire + payload are one object ([API](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowManager/handleTypedIntent.html)). |
 | **`wireNavigator`** | Called by [OmegaRuntime.bootstrap](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaRuntime/OmegaRuntime.bootstrap.html) — connects navigation traffic on the channel. |
 
 ---

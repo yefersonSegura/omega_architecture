@@ -10,7 +10,7 @@ Omega pushes **business rules** into [OmegaFlow](https://pub.dev/documentation/o
 |--------|------|
 | **Agent + behavior** | Emit events on a **test channel**; assert reactions / follow-up events / `onAction` branches. |
 | **Flow** | Put flow in **`running`**, call **`receiveIntent`** / drive **`onEvent`**, assert **expressions** or emitted events. |
-| **FlowManager** | **`registerFlow`**, **`switchTo`**, **`handleIntent`**, then read **`getAppSnapshot()`** or expression streams. |
+| **FlowManager** | **`registerFlow`**, **`switchTo`**, **`handleIntent`** / **`handleTypedIntent`**, then read **`getAppSnapshot()`** or expression streams. |
 | **Navigator** | Integration-style tests can still pump **`MaterialApp`** with **`navigatorKey`** from bootstrap — keep these fewer in number. |
 
 Idle / paused flows **ignore** intents until activated — assert both paths.

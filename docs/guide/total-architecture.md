@@ -107,10 +107,10 @@ Cold start is explicit: [initialFlowId](https://pub.dev/documentation/omega_arch
 
 ## Channel, namespaces, events, and intents
 
-- **Events** — “Something happened” (`OmegaEvent`: id, name, payload). Consumers use [payloadAs](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaObject/payloadAs.html) for typed reads.
-- **Intents** — “Something is requested” (`OmegaIntent`). The flow manager delivers intents to flows in `running` state; navigation uses the same intent model with names like `navigate.login` or `navigate.push.detail`.
+- **Events** — “Something happened” (`OmegaEvent`: id, name, payload). Consumers use **`payloadAs<T>()`** / **`typedPayloadAs<T>()`** (extensions on [OmegaEvent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaEvent-class.html); **`typedPayloadAs`** for **[OmegaTypedEvent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaTypedEvent-class.html)** payloads).
+- **Intents** — “Something is requested” (`OmegaIntent`). The flow manager delivers intents to flows in `running` state via **`handleIntent`** or **`handleTypedIntent`** ([OmegaTypedIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaTypedIntent-class.html)); use **`payloadAs`** / **`typedPayloadAs`** on [OmegaIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaIntent-class.html) in **`onIntent`**. Navigation uses the same intent model with names like `navigate.login` or `navigate.push.detail`.
 - **Namespaces** — [OmegaChannel.namespace](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaChannel/namespace.html) scopes traffic by module (auth, checkout, …) while sharing one physical channel.
-- **Typed wire names** — Prefer enums implementing [OmegaEventName](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaEventName-class.html) / [OmegaIntentName](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaIntentName-class.html) with [OmegaEvent.fromName](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaEvent/OmegaEvent.fromName.html) / [OmegaIntent.fromName](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaIntent/OmegaIntent.fromName.html) instead of raw strings.
+- **Typed wire names** — Prefer enums implementing [OmegaEventName](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaEventName-class.html) / [OmegaIntentName](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaIntentName-class.html) with **`OmegaEvent.fromName` / `OmegaIntent.fromName`** (static methods; optional **`<T>`** on **`payload`**) instead of raw strings.
 
 More detail: [Channel & events](./channel-events), [Data flow](./data-flow).
 
@@ -121,7 +121,7 @@ More detail: [Channel & events](./channel-events), [Data flow](./data-flow).
 | Piece | Role |
 |-------|------|
 | [OmegaFlow](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlow-class.html) | Business process: [onIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlow/onIntent.html), [onEvent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlow/onEvent.html), emits **expressions** for UI and events for agents / navigation |
-| [OmegaFlowManager](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowManager-class.html) | Registers flows; [activate](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowManager/activate.html) / [switchTo](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowManager/switchTo.html); [handleIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowManager/handleIntent.html) to running flows |
+| [OmegaFlowManager](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowManager-class.html) | Registers flows; [activate](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowManager/activate.html) / [switchTo](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowManager/switchTo.html); [handleIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowManager/handleIntent.html) / [handleTypedIntent](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowManager/handleTypedIntent.html) to running flows |
 | [OmegaFlowState](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowState.html) | Only **running** flows receive intents and process events |
 | [OmegaFlowExpression](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowExpression-class.html) | UI-facing stream of state (loading, success, error, …) |
 | [OmegaFlowContext](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowContext-class.html) | Context passed into `onIntent` / `onEvent` |
@@ -217,7 +217,7 @@ sequenceDiagram
   participant A as OmegaAgent
   participant NAV as OmegaNavigator
 
-  UI->>FM: handleIntent(login)
+  UI->>FM: handleIntent / handleTypedIntent(login)
   FM->>F: onIntent (running flows)
   F->>CH: emit auth.login.request
   CH->>A: event stream

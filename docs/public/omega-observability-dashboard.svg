@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 460" role="img" aria-labelledby="title desc">
+  <title id="title">Example Omega observability dashboard</title>
+  <desc id="desc">Illustrative bar chart, latency bars, and event-rate sparkline for documentation only.</desc>
+  <defs>
+    <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+  <rect width="800" height="460" fill="#f8fafc"/>
+  <rect x="24" y="16" width="752" height="428" rx="18" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#shadow)"/>
+  <text x="48" y="52" font-family="system-ui,Segoe UI,sans-serif" font-size="20" font-weight="700" fill="#0f172a">Omega observability</text>
+  <text x="48" y="76" font-family="system-ui,Segoe UI,sans-serif" font-size="12" fill="#64748b">Illustrative metrics  build charts from inspector, traces, or your telemetry</text>
+  <!-- Bar chart: events by category -->
+  <text x="48" y="112" font-family="system-ui,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#334155">Channel events by category (1 min)</text>
+  <text x="48" y="128" font-family="system-ui,Segoe UI,sans-serif" font-size="10" fill="#94a3b8">example counts</text>
+  <g transform="translate(48, 260)">
+    <line x1="0" y1="0" x2="300" y2="0" stroke="#e2e8f0" stroke-width="1"/>
+    <rect x="12" y="-95" width="44" height="95" rx="6" fill="url(#barGrad)"/>
+    <rect x="84" y="-132" width="44" height="132" rx="6" fill="url(#barGrad)" opacity="0.92"/>
+    <rect x="156" y="-58" width="44" height="58" rx="6" fill="url(#barGrad)" opacity="0.85"/>
+    <rect x="228" y="-36" width="44" height="36" rx="6" fill="url(#barGrad)" opacity="0.78"/>
+    <text x="34" y="18" text-anchor="middle" font-size="11" fill="#475569" font-family="system-ui,sans-serif">Intents</text>
+    <text x="106" y="18" text-anchor="middle" font-size="11" fill="#475569" font-family="system-ui,sans-serif">Agent</text>
+    <text x="178" y="18" text-anchor="middle" font-size="11" fill="#475569" font-family="system-ui,sans-serif">Nav</text>
+    <text x="250" y="18" text-anchor="middle" font-size="11" fill="#475569" font-family="system-ui,sans-serif">Other</text>
+    <text x="34" y="-102" text-anchor="middle" font-size="10" fill="#64748b" font-family="system-ui,sans-serif">38</text>
+    <text x="106" y="-139" text-anchor="middle" font-size="10" fill="#64748b" font-family="system-ui,sans-serif">52</text>
+    <text x="178" y="-65" text-anchor="middle" font-size="10" fill="#64748b" font-family="system-ui,sans-serif">24</text>
+    <text x="250" y="-43" text-anchor="middle" font-size="10" fill="#64748b" font-family="system-ui,sans-serif">15</text>
+  </g>
+  <!-- Latency horizontal bars -->
+  <text x="400" y="112" font-family="system-ui,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#334155">Intent to expression (example ms)</text>
+  <text x="400" y="128" font-family="system-ui,Segoe UI,sans-serif" font-size="10" fill="#94a3b8">p50 vs p95</text>
+  <g transform="translate(400, 155)">
+    <text x="0" y="0" font-size="11" fill="#64748b" font-family="system-ui,sans-serif">p50</text>
+    <rect x="36" y="-10" width="112" height="14" rx="4" fill="#bae6fd"/>
+    <rect x="36" y="-10" width="112" height="14" rx="4" fill="url(#lineGrad)" opacity="0.35"/>
+    <rect x="36" y="-10" width="36" height="14" rx="4" fill="#0ea5e9"/>
+    <text x="152" y="2" font-size="10" fill="#0f172a" font-family="system-ui,sans-serif">12 ms</text>
+    <text x="0" y="36" font-size="11" fill="#64748b" font-family="system-ui,sans-serif">p95</text>
+    <rect x="36" y="26" width="112" height="14" rx="4" fill="#bae6fd"/>
+    <rect x="36" y="26" width="112" height="14" rx="4" fill="url(#lineGrad)" opacity="0.35"/>
+    <rect x="36" y="26" width="98" height="14" rx="4" fill="#6366f1"/>
+    <text x="152" y="38" font-size="10" fill="#0f172a" font-family="system-ui,sans-serif">47 ms</text>
+  </g>
+  <!-- Sparkline: events per minute -->
+  <text x="400" y="248" font-family="system-ui,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#334155">Events / minute (session excerpt)</text>
+  <rect x="400" y="262" width="336" height="100" rx="10" fill="#f1f5f9" stroke="#e2e8f0"/>
+  <polygon fill="#6366f1" fill-opacity="0.12" stroke="none"
+    points="418,330 448,318 478,325 508,295 538,305 568,288 598,302 628,275 658,268 688,280 718,260 718,352 418,352"/>
+  <polyline fill="none" stroke="url(#lineGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+    points="418,330 448,318 478,325 508,295 538,305 568,288 598,302 628,275 658,268 688,280 718,260"/>
+  <text x="412" y="352" font-size="9" fill="#94a3b8" font-family="system-ui,sans-serif">t</text>
+  <text x="700" y="352" font-size="9" fill="#94a3b8" font-family="system-ui,sans-serif" text-anchor="end">t + 10 min</text>
+  <!-- Flow state chips -->
+  <text x="48" y="318" font-family="system-ui,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#334155">Active flows (snapshot)</text>
+  <g transform="translate(48, 332)">
+    <rect x="0" y="0" width="118" height="32" rx="8" fill="#ecfdf5" stroke="#6ee7b7"/>
+    <circle cx="16" cy="16" r="5" fill="#10b981"/>
+    <text x="28" y="20" font-size="11" fill="#065f46" font-family="system-ui,sans-serif">auth ù running</text>
+    <rect x="130" y="0" width="118" height="32" rx="8" fill="#fff7ed" stroke="#fdba74"/>
+    <circle cx="146" cy="16" r="5" fill="#f97316"/>
+    <text x="158" y="20" font-size="11" fill="#9a3412" font-family="system-ui,sans-serif">shop ù idle</text>
+    <rect x="260" y="0" width="128" height="32" rx="8" fill="#eff6ff" stroke="#93c5fd"/>
+    <circle cx="276" cy="16" r="5" fill="#3b82f6"/>
+    <text x="288" y="20" font-size="11" fill="#1e3a8a" font-family="system-ui,sans-serif">profile ù sleeping</text>
+  </g>
+  <text x="48" y="422" font-family="system-ui,Segoe UI,sans-serif" font-size="11" fill="#94a3b8">Figures are not live data  they show the kind of views Omegas event + flow model enables.</text>
+</svg>

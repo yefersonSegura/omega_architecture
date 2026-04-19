@@ -573,7 +573,7 @@ class OmegaCreateAppCommand {
     final useProviderApi = args.contains("--provider-api");
 
     stdout.writeln(
-      "🚀 ${_tr(en: "Creating new Omega app: $appName", es: "Creando nueva Omega app: $appName")}...",
+      "${_tr(en: "Creating new Omega app: $appName", es: "Creando nueva Omega app: $appName")}...",
     );
 
     // 1. Flutter Create
@@ -659,14 +659,14 @@ class OmegaCreateAppCommand {
     Directory.current = projectRoot;
     try {
       stdout.writeln(
-        "🛠️ ${_tr(en: "Initializing Omega architecture", es: "Inicializando arquitectura Omega")}...",
+        "${_tr(en: "Initializing Omega architecture", es: "Inicializando arquitectura Omega")}...",
       );
       OmegaInitCommand.run([]);
 
       // 4. Setup modules with AI if requested
       if (kickstart != null) {
         stdout.writeln(
-          "✨ ${_tr(en: "Omi is kickstarting your app: $kickstart", es: "Omi arranca tu app: $kickstart")}...",
+          "${_tr(en: "Omi is kickstarting your app: $kickstart", es: "Omi arranca tu app: $kickstart")}...",
         );
 
         final modules = await runWithProgress<List<String>>(
@@ -685,7 +685,7 @@ class OmegaCreateAppCommand {
 
         for (final module in modules) {
           stdout.writeln(
-            "🏗️ ${_tr(en: "Generating module: $module", es: "Generando modulo: $module")}...",
+            "${_tr(en: "Generating module: $module", es: "Generando modulo: $module")}...",
           );
           final coachOk = await OmegaAiCommand._coachModule(
             feature: module,
@@ -744,7 +744,7 @@ class OmegaCreateAppCommand {
     );
     OmegaValidateCommand.validateProjectRoot(projectRoot);
 
-    stdout.writeln("\n✨ ${_tr(en: "App ready!", es: "App lista!")}");
+    stdout.writeln("\n${_tr(en: "App ready!", es: "App lista!")}");
     stdout.writeln("  cd $appName");
     stdout.writeln("  flutter run");
   }
@@ -920,13 +920,13 @@ void main() {
       final short = rel.startsWith(rootNorm)
           ? rel.substring(rootNorm.length).replaceFirst(RegExp(r"^/"), "")
           : entry.key;
-      stdout.writeln("  ✨ ${_tr(en: "Updated", es: "Actualizado")}: $short");
+      stdout.writeln("  ${_tr(en: "Updated", es: "Actualizado")}: $short");
     }
   }
 
   static Future<void> _selfHealProject(String root, bool useAi) async {
     stdout.writeln(
-      "\n🔍 ${_tr(en: "Verifying project health...", es: "Verificando salud del proyecto...")}",
+      "\n${_tr(en: "Verifying project health...", es: "Verificando salud del proyecto...")}",
     );
 
     // 1. Pub get
@@ -951,7 +951,7 @@ void main() {
 
     if (analyzeRes.exitCode == 0) {
       stdout.writeln(
-        "✅ ${_tr(en: "Project is clean and compiles.", es: "El proyecto está limpio y compila.")}",
+        _tr(en: "Project is clean and compiles.", es: "El proyecto está limpio y compila."),
       );
       return;
     }
@@ -962,7 +962,7 @@ void main() {
     if (errors.isEmpty) {
       final warnCount = lines.where((l) => l.startsWith("WARNING|")).length;
       stdout.writeln(
-        "✅ ${_tr(en: "No analyzer errors (only warnings or infos; exit code ${analyzeRes.exitCode}).", es: "Sin errores del analizador (solo advertencias o infos; código de salida ${analyzeRes.exitCode}).")}",
+        _tr(en: "No analyzer errors (only warnings or infos; exit code ${analyzeRes.exitCode}).", es: "Sin errores del analizador (solo advertencias o infos; código de salida ${analyzeRes.exitCode})."),
       );
       if (warnCount > 0) {
         stdout.writeln(
@@ -973,13 +973,13 @@ void main() {
     }
 
     stdout.writeln(
-      "⚠️ ${_tr(en: "Found ${errors.length} analyzer error(s). Attempting fix...", es: "Se encontraron ${errors.length} error(es) del analizador. Intentando corrección...")}",
+      _tr(en: "Found ${errors.length} analyzer error(s). Attempting fix...", es: "Se encontraron ${errors.length} error(es) del analizador. Intentando corrección..."),
     );
 
     var workingErrors = errors;
     if (_omegaTryDeterministicOmegaSetupHeal(root)) {
       stdout.writeln(
-        "⚡ ${_tr(en: "Applied deterministic fixes to lib/omega/omega_setup.dart; re-running dart analyze.", es: "Correcciones deterministas en lib/omega/omega_setup.dart; ejecutando dart analyze de nuevo.")}",
+        _tr(en: "Applied deterministic fixes to lib/omega/omega_setup.dart; re-running dart analyze.", es: "Correcciones deterministas en lib/omega/omega_setup.dart; ejecutando dart analyze de nuevo."),
       );
       final afterDet = await runWithProgress<ProcessResult>(
         _tr(en: "Re-analyzing after setup fixes", es: "Re-analisis tras correcciones de setup"),
@@ -987,7 +987,7 @@ void main() {
       );
       if (afterDet.exitCode == 0) {
         stdout.writeln(
-          "✅ ${_tr(en: "Deterministic setup fixes cleared all analyzer errors.", es: "Las correcciones deterministas en omega_setup eliminaron todos los errores del analizador.")}",
+          _tr(en: "Deterministic setup fixes cleared all analyzer errors.", es: "Las correcciones deterministas en omega_setup eliminaron todos los errores del analizador."),
         );
         return;
       }
@@ -995,12 +995,12 @@ void main() {
       workingErrors = _extractAnalyzerErrors(detLines);
       if (workingErrors.isEmpty) {
         stdout.writeln(
-          "✅ ${_tr(en: "No analyzer errors after deterministic fixes (non-zero exit may be warnings only).", es: "Sin errores del analizador tras correcciones deterministas (código distinto de 0 puede ser advertencias).")}",
+          _tr(en: "No analyzer errors after deterministic fixes (non-zero exit may be warnings only).", es: "Sin errores del analizador tras correcciones deterministas (código distinto de 0 puede ser advertencias)."),
         );
         return;
       }
       stdout.writeln(
-        "⚠️ ${_tr(en: "${workingErrors.length} analyzer error(s) remain after deterministic fixes.", es: "Quedan ${workingErrors.length} error(es) del analizador tras las correcciones deterministas.")}",
+        _tr(en: "${workingErrors.length} analyzer error(s) remain after deterministic fixes.", es: "Quedan ${workingErrors.length} error(es) del analizador tras las correcciones deterministas."),
       );
     }
 
@@ -1012,7 +1012,7 @@ void main() {
 
     if (!useAi || !aiEnabled) {
       stdout.writeln(
-        "❌ ${_tr(en: "Omi cannot heal this project (assistant disabled). Fix manually:", es: "Omi no puede sanar el proyecto (asistente desactivado). Corrige manualmente:")}",
+        _tr(en: "Omi cannot heal this project (assistant disabled). Fix manually:", es: "Omi no puede sanar el proyecto (asistente desactivado). Corrige manualmente:"),
       );
       _printMachineErrors(workingErrors);
       return;
@@ -1021,7 +1021,7 @@ void main() {
     final providerLc = (env["OMEGA_AI_PROVIDER"] ?? "").trim().toLowerCase();
     if (providerLc != "openai" && providerLc != "gemini") {
       stdout.writeln(
-        "❌ ${_tr(en: "Omi self-heal requires OMEGA_AI_PROVIDER=openai or gemini.", es: "La sanación con Omi requiere OMEGA_AI_PROVIDER=openai o gemini.")}",
+        _tr(en: "Omi self-heal requires OMEGA_AI_PROVIDER=openai or gemini.", es: "La sanación con Omi requiere OMEGA_AI_PROVIDER=openai o gemini."),
       );
       _printMachineErrors(workingErrors);
       return;
@@ -1029,7 +1029,7 @@ void main() {
 
     if (_OmegaAiRemote.effectiveApiKey().isEmpty) {
       stdout.writeln(
-        "❌ ${_tr(en: "No API key for the assistant (OMEGA_AI_API_KEY, or OMEGA_AI_GEMINI_API_KEY when using gemini). Omi cannot auto-fix.", es: "Falta clave API del asistente (OMEGA_AI_API_KEY, u OMEGA_AI_GEMINI_API_KEY con gemini). Omi no puede corregir solo.")}",
+        _tr(en: "No API key for the assistant (OMEGA_AI_API_KEY, or OMEGA_AI_GEMINI_API_KEY when using gemini). Omi cannot auto-fix.", es: "Falta clave API del asistente (OMEGA_AI_API_KEY, u OMEGA_AI_GEMINI_API_KEY con gemini). Omi no puede corregir solo."),
       );
       _printMachineErrors(workingErrors);
       return;
@@ -1041,7 +1041,7 @@ void main() {
     for (var pass = 0; pass < maxPasses; pass++) {
       if (pass > 0) {
         stdout.writeln(
-          "🔁 ${_tr(en: "Re-check: errors remain — Omi tries another pass", es: "Revisión: aún hay errores — Omi intenta otra pasada")} (${pass + 1}/$maxPasses)...",
+          "${_tr(en: "Re-check: errors remain — Omi tries another pass", es: "Revisión: aún hay errores — Omi intenta otra pasada")} (${pass + 1}/$maxPasses)...",
         );
       }
 
@@ -1065,14 +1065,14 @@ void main() {
         final afterPub = await _dartAnalyzeMachine(root);
         if (afterPub.exitCode == 0) {
           stdout.writeln(
-            "✅ ${_tr(en: "Project healed successfully (pub add cleared errors)!", es: "¡Proyecto sanado (pub add resolvió errores)!")}",
+            _tr(en: "Project healed successfully (pub add cleared errors)!", es: "¡Proyecto sanado (pub add resolvió errores)!"),
           );
           return;
         }
         currentErrors = _extractAnalyzerErrors(_analyzeMachineLines(afterPub));
         if (currentErrors.isEmpty) {
           stdout.writeln(
-            "✅ ${_tr(en: "No analyzer errors after pub add (non-zero exit may be warnings only).", es: "Sin errores del analizador tras pub add (código distinto de 0 puede ser advertencias).")}",
+            _tr(en: "No analyzer errors after pub add (non-zero exit may be warnings only).", es: "Sin errores del analizador tras pub add (código distinto de 0 puede ser advertencias)."),
           );
           return;
         }
@@ -1088,25 +1088,25 @@ void main() {
 
       if (fixedFiles == null || fixedFiles.isEmpty) {
         stdout.writeln(
-          "❌ ${_tr(en: "Omi got no usable fixes from the assistant.", es: "Omi no recibió correcciones utilizables del asistente.")}",
+          _tr(en: "Omi got no usable fixes from the assistant.", es: "Omi no recibió correcciones utilizables del asistente."),
         );
         _printMachineErrors(currentErrors);
         return;
       }
 
       stdout.writeln(
-        "🔍 ${_tr(en: "Applying fixes...", es: "Aplicando correcciones...")}",
+        _tr(en: "Applying fixes...", es: "Aplicando correcciones..."),
       );
       _writeAiFixedFiles(root, fixedFiles);
 
       stdout.writeln(
-        "🔍 ${_tr(en: "Re-verifying with dart analyze...", es: "Re-verificando con dart analyze...")}",
+        _tr(en: "Re-verifying with dart analyze...", es: "Re-verificando con dart analyze..."),
       );
       final secondAnalyze = await _dartAnalyzeMachine(root);
 
       if (secondAnalyze.exitCode == 0) {
         stdout.writeln(
-          "✅ ${_tr(en: "Project healed successfully!", es: "¡Proyecto sanado correctamente!")}",
+          _tr(en: "Project healed successfully!", es: "¡Proyecto sanado correctamente!"),
         );
         return;
       }
@@ -1115,14 +1115,14 @@ void main() {
       currentErrors = _extractAnalyzerErrors(afterLines);
       if (currentErrors.isEmpty) {
         stdout.writeln(
-          "✅ ${_tr(en: "No analyzer errors after fix (non-zero exit may be warnings only).", es: "Sin errores del analizador tras la corrección (código distinto de 0 puede ser por advertencias).")}",
+          _tr(en: "No analyzer errors after fix (non-zero exit may be warnings only).", es: "Sin errores del analizador tras la corrección (código distinto de 0 puede ser por advertencias)."),
         );
         return;
       }
     }
 
     stdout.writeln(
-      "❌ ${_tr(en: "Omi could not clear all errors after $maxPasses pass(es). Remaining:", es: "Omi no eliminó todos los errores tras $maxPasses pase(s). Restantes:")}",
+      _tr(en: "Omi could not clear all errors after $maxPasses pass(es). Remaining:", es: "Omi no eliminó todos los errores tras $maxPasses pase(s). Restantes:"),
     );
     _printMachineErrors(currentErrors);
   }
@@ -1229,7 +1229,7 @@ void main() {
     var any = false;
     for (final pkg in toAdd) {
       stdout.writeln(
-        "📦 ${_tr(en: "Heal: adding missing dependency: $pkg", es: "Sanación: agregando dependencia faltante: $pkg")}",
+        _tr(en: "Heal: adding missing dependency: $pkg", es: "Sanación: agregando dependencia faltante: $pkg"),
       );
       final res = await Process.run(
         "dart",
@@ -2847,7 +2847,7 @@ void registerInOmegaSetup(
       registerFlow &&
       !registerAgent) {
     stdout.writeln(
-      "⚠️ ${_tr(en: "$pascal needs a shared agent in omega_setup — add import + final $agentVar + list it in agents: and pass it to ${pascal}Flow(..., agent: $agentVar). Page may also need agent: $agentVar on the route.", es: "$pascal requiere el mismo agente en omega_setup: import + final $agentVar + en agents: y ${pascal}Flow(..., agent: $agentVar). La página puede necesitar agent: $agentVar en la ruta.")}",
+      _tr(en: "$pascal needs a shared agent in omega_setup — add import + final $agentVar + list it in agents: and pass it to ${pascal}Flow(..., agent: $agentVar). Page may also need agent: $agentVar on the route.", es: "$pascal requiere el mismo agente en omega_setup: import + final $agentVar + en agents: y ${pascal}Flow(..., agent: $agentVar). La página puede necesitar agent: $agentVar en la ruta."),
     );
   }
 
@@ -3737,7 +3737,7 @@ class OmegaAiCommand {
   static const String _omegaAiConceptualArchitecture = r'''
 CONCEPT — how Omega is wired (read first; avoids inventing APIs from other frameworks):
 - **OmegaScope** is intentionally minimal: **`channel`**, **`flowManager`**, **`initialFlowId`**, optional **`initialNavigationIntent`** (for [OmegaInitialRoute]). It is **not** a service locator: there is **no** `agentManager`, **no** `getAgent`, **no** `repositories` on scope. Anything else your app needs (HTTP clients, DB, extra repos) lives in **your** classes and is passed through **constructors** from `createOmegaConfig` / routes / flow fields — never “discovered” via a fake scope API.
-- **Two lanes from the UI:** (1) **`flowManager.handleIntent(OmegaIntent.fromName(...))`** — delivers to **running** [OmegaFlow]s and optional intent-handlers; good for **wizard / flow steps** that the flow’s `onIntent` handles. (2) **`channel.emit(OmegaEvent.fromName(...))` / `emitTyped(...)`** — **broadcast**; **agents** (behavior → `onAction`) and **flows** (`onEvent`) listen here; **OmegaNavigator** listens for **`navigation.intent`**. Domain “load list / refresh” tied to `ctx.event` belongs here, not only `handleIntent`.
+- **Two lanes from the UI:** (1) **`flowManager.handleIntent(OmegaIntent.fromName(...))`** or **`flowManager.handleTypedIntent(...)`** when the payload is an **`OmegaTypedIntent`** (same object supplies wire `name` + data — see example `AuthLoginIntent`) — delivers to **running** [OmegaFlow]s and optional intent-handlers; good for **wizard / flow steps** that the flow’s `onIntent` handles. (2) **`channel.emit(OmegaEvent.fromName(...))` / `emitTyped(...)`** — **broadcast**; **agents** (behavior → `onAction`) and **flows** (`onEvent`) listen here; **OmegaNavigator** listens for **`navigation.intent`**. Domain “load list / refresh” tied to `ctx.event` belongs here, not only `handleIntent`.
 - **Where agents come from:** one shared **instance per module** registered in [OmegaConfig] and wired into **flows** (`agent:` ctor) and/or **routes** (`OmegaAgentScope`, or `required this.agent` on the page). Widgets use **`OmegaAgentBuilder(agent: …)`** or **`OmegaScopedAgentBuilder`** (two-arg builder). You **cannot** obtain an agent by string id from `flowManager` or `OmegaScope` — those methods do not exist by design.
 - **Why invention fails:** every method you add in generated code must already exist on a type from **`package:omega_architecture/omega_architecture.dart`**. If you cannot point to it in PACKAGE GROUND TRUTH or that export, **do not emit it** — mirror `example/lib/auth/*` + `omega_setup.dart` instead.
 ''';
@@ -3784,31 +3784,33 @@ SCREEN ENTRY — lists, grids, catalogs, dashboards, profile/settings **data** (
   static const String _omegaAiFlowActivatorAndFlowManager = r'''
 OMEGA — OmegaFlowActivator + OmegaFlowManager (exact API from package — never invent parameters or manager methods):
 - **OmegaFlowActivator** (`omega_flow_activator.dart`): constructor allows ONLY `key`, **`flowId`** ([String] or [OmegaFlowId] e.g. `AppFlowId.myModule`), **`child`** ([Widget]), optional **`useSwitchTo`** (bool — default calls [activate]; if true calls [switchTo]). Implementation runs [activate]/[switchTo] once inside [didChangeDependencies]. **FORBIDDEN:** `onActivate`, `onReady`, `onFlowReady`, `builder`, or any callback that receives [OmegaFlowManager] — those parameters **do not exist**. WRONG: `OmegaFlowActivator(flowId: x, onActivate: (fm) { ... }, child: ...)`.
-- **OmegaFlowManager** (`omega_flow_manager.dart`): UI/flow integration uses **`registerFlow`**, **`getFlow`** / **`getFlowFlexible`**, **`activate`**, **`activateExclusive`**, **`switchTo`**, **`handleIntent`**, optional **`registerIntentHandler`** / **`clearIntentHandlers`**, snapshot APIs (`getFlowSnapshot`, `getAppSnapshot`, `restoreFromSnapshot`), **`registeredFlowIds`**, **`activeFlowId`**, **`channel`**. **FORBIDDEN:** **`getAgent`**, **`getAgent<T>`**, **`agents`**, **`findAgent`**, or any API that returns an [OmegaAgent] from the manager — **not in the package**. Agents are registered in [OmegaConfig.agents], held on flow fields, and exposed to widgets via [OmegaAgentScope] / [OmegaFlow.uiScopeAgent] + [OmegaScopedAgentBuilder] or [OmegaAgentBuilder(agent: ...)].
+- **OmegaFlowManager** (`omega_flow_manager.dart`): UI/flow integration uses **`registerFlow`**, **`getFlow`** / **`getFlowFlexible`**, **`activate`**, **`activateExclusive`**, **`switchTo`**, **`handleIntent`**, **`handleTypedIntent`** ([OmegaTypedIntent] — same object is wire + payload), optional **`registerIntentHandler`** / **`clearIntentHandlers`**, snapshot APIs (`getFlowSnapshot`, `getAppSnapshot`, `restoreFromSnapshot`), **`registeredFlowIds`**, **`activeFlowId`**, **`channel`**. **FORBIDDEN:** **`getAgent`**, **`getAgent<T>`**, **`agents`**, **`findAgent`**, or any API that returns an [OmegaAgent] from the manager — **not in the package**. Agents are registered in [OmegaConfig.agents], held on flow fields, and exposed to widgets via [OmegaAgentScope] / [OmegaFlow.uiScopeAgent] + [OmegaScopedAgentBuilder] or [OmegaAgentBuilder(agent: ...)].
 - **Never** `flowManager.getAgent(...).viewStateStream` or similar. To react to agent loading: use [OmegaScopedAgentBuilder]/[OmegaAgentBuilder] and read `state.isLoading`, or `StreamBuilder` on `agent.stateStream` with `initialData: agent.viewState` when you already have an `agent` reference (see `_omegaAiAgentUiStateListening`).
 - **OmegaScope** (`omega_scope.dart`): **`channel`**, **`flowManager`**, **`initialFlowId`**, optional **`initialNavigationIntent`**. **FORBIDDEN (invented — does not compile):** `scope.agentManager`, **`scope.agentManager.getAgent('ModuleName')`**, `scope.getAgent<T>(...)`, or any “registry” on scope. WRONG: `_buildProfileForm(context, state, scope.agentManager.getAgent('UserManagement') as UserManagementAgent)`. RIGHT: pass `UserManagementAgent` via `required this.agent` on the page + [OmegaAgentBuilder], or [OmegaAgentScope] + [OmegaScopedAgentBuilder], or [OmegaFlowExpressionBuilder] + flow [uiScopeAgent] (see package examples).
 ''';
 
-  /// **User prompt:** bus = `OmegaEvent` only; typed payloads via `payloadAs`; explains why `event is MyTypedEvent` fails.
+  /// **User prompt:** bus = `OmegaEvent` only; typed payloads via `payloadAs` / `typedPayloadAs`; explains why `event is MyTypedEvent` fails.
   static const String _omegaAiOmegaChannelEvents = r'''
 OMEGA CHANNEL EVENTS (Stream<OmegaEvent>, flow onEvent ctx.event, agent listeners):
 - **`OmegaChannel.emit` / `OmegaEventBus.emit` — ONE API only:** **`void emit(OmegaEvent event)`** — a **single** positional [OmegaEvent]. **FORBIDDEN:** `channel.emit(ctx.intent!.name, payload: ctx.intent!.payload)`, `channel.emit('my.event', payload: x)`, or any **`emit(String, {payload})`** on **`channel`** / **`namespace(...).emit`** — that signature belongs to **[OmegaAgent.emit]** inside *_agent.dart*, not the bus. **RIGHT:** `channel.emit(OmegaEvent.fromName(MyEvent.requested, payload: data));` or `channel.emitTyped(MyTypedEvent(...))`.
 - Listing / loading / refresh: if your module starts work when an event appears on the bus (e.g. product.catalog.requested, orders.refresh), the button must emit that event: scope.channel.emit(OmegaEvent.fromName(MyEvent.requested)) or emitTyped(MyRequestedEvent(...)). Agents never see handleIntent — they see channel.events. Using only handleIntent when behavior uses ctx.event?.name == MyEvent.requested.name will not load data.
 - Every emission on the bus is an OmegaEvent (id, name, payload, namespace). It is NOT an instance of your `class FooEvent implements OmegaTypedEvent`.
 - emitTyped(ShoppingCartAddProductEvent(...)) builds OmegaEvent(name: event.name, payload: that same instance). Listeners must unwrap:
-  final add = event.payloadAs<ShoppingCartAddProductEvent>();
+  final add = event.typedPayloadAs<ShoppingCartAddProductEvent>() ?? event.payloadAs<ShoppingCartAddProductEvent>();
   if (add != null) { ... add.product ... }
-  Or filter by name then unwrap: if (event.name == ShoppingCartEvent.productAdded.name) { final add = event.payloadAs<ShoppingCartAddProductEvent>(); ... }
+  Or filter by name then unwrap: if (event.name == ShoppingCartEvent.productAdded.name) { final add = event.typedPayloadAs<ShoppingCartAddProductEvent>() ?? event.payloadAs<ShoppingCartAddProductEvent>(); ... }
 - WRONG (no promotion / product getter on OmegaEvent): if (event is ShoppingCartAddProductEvent) { event.product } — OmegaTypedEvent classes are not subtypes of OmegaEvent, so `event` stays OmegaEvent.
-- OmegaIntent is separate: use ctx.intent?.payloadAs<YourPayload>() in flows (see example/lib/auth/auth_flow.dart).
-- Extension: import omega_architecture.dart — OmegaEventPayloadExtension.payloadAs<T>() on OmegaEvent.
+- **Strong typing (package API):** **`OmegaEvent.fromName<T>(enumCase, payload: …)`** and **`OmegaIntent.fromName<T>(enumCase, payload: …)`** are **static** methods — the generic **`T`** constrains **`payload`** at compile time when you pass it (e.g. `OmegaEvent.fromName<LoginSuccessPayload>(AppEvent.authLoginSuccess, payload: dto)`). **`emitTyped(MyClass)`** already ties payload type to **`MyClass`** implementing **[OmegaTypedEvent]**.
+- **Strong intents (UI → flow):** declare **`final class MyAction implements OmegaTypedIntent`** (implements **[OmegaIntentName]** via `String get name => AppIntent.someCase.name` or module intent enum `.name`). UI: **`flowManager.handleTypedIntent(MyAction(...))`**. Flow **`onIntent`**: **`ctx.intent?.typedPayloadAs<MyAction>()`** (not only `payloadAs` on a separate DTO). The **same instance** is both the wire descriptor and **`OmegaIntent.payload`** — behavior **`ctx.intent?.payload`** may be that object; **`onAction`** must accept it if rules forward the intent payload (see example `auth_agent` + `AuthLoginIntent`).
+- OmegaIntent with **enum + separate DTO** remains valid: **`OmegaIntent.fromName<Credentials>(AppIntent.authLogin, payload: creds)`** — still use **`ctx.intent?.payloadAs<Credentials>()`** in flows.
+- Extension: import omega_architecture.dart — **`OmegaEventPayloadExtension.payloadAs<T>()`**, **`OmegaEventTypedPayloadExtension.typedPayloadAs<T extends OmegaTypedEvent>()`**, **`OmegaIntentTypedPayloadExtension.typedPayloadAs<T extends OmegaTypedIntent>()`**.
 
 OMEGAEVENT / OMEGAINTENT — required id:
 - OmegaEvent( and OmegaIntent( direct constructors require BOTH id: and name: (see package). channel.emit(OmegaEvent(name: 'x')) without id fails analysis.
-- Preferred: OmegaEvent.fromName(MyEventEnum.foo, payload: ...) and OmegaIntent.fromName(MyIntentEnum.bar, payload: ...) — factories generate id unless you pass id: explicitly.
-- **`OmegaEvent.fromName` — copy this API literally:** positional **`eventName`** = **enum constant** implementing [OmegaEventName] (e.g. `HomeEvent.toggleTaskStatus`), **FORBIDDEN** as first arg: a string wire, `OmegaEventName('…')`, or **`HomeEvent.toggleTaskStatus.name`** (that is a [String]; the factory expects the enum value). Optional named **`payload:`** = any object; receivers use **`event.payloadAs<YourDto>()`**. **Intent → bus (flow `onIntent`):** when behavior/agent keys off `ctx.event?.name == HomeEvent.toggleTaskStatus.name` but the UI sent a **handleIntent** with a typed payload, re-emit on the channel in one line — do NOT invent a second API:
+- Preferred: **`OmegaEvent.fromName`** / **`OmegaIntent.fromName`** (static methods — ids auto unless you pass **`id:`**).
+- **`OmegaEvent.fromName` — copy this API literally:** positional **`eventName`** = **enum constant** implementing [OmegaEventName] (e.g. `HomeEvent.toggleTaskStatus`), **FORBIDDEN** as first arg: a string wire, `OmegaEventName('…')`, or **`HomeEvent.toggleTaskStatus.name`** (that is a [String]; the API expects the enum value). Optional named **`payload:`** = any object; receivers use **`event.payloadAs<YourDto>()`** or **`typedPayloadAs<...>`** for classes that implement **[OmegaTypedEvent]**. **Intent → bus (flow `onIntent`):** when behavior/agent keys off `ctx.event?.name == HomeEvent.toggleTaskStatus.name` but the UI sent **handleIntent** with a typed payload, re-emit on the channel in one line — do NOT invent a second API:
   `channel.emit(OmegaEvent.fromName(HomeEvent.toggleTaskStatus, payload: ctx.intent?.payloadAs<ToggleTaskStatusPayload>()));`
-  Preconditions: `toggleTaskStatus` exists on `enum HomeEvent with OmegaEventNameDottedCamel`; plain class `ToggleTaskStatusPayload` in `*_events.dart`; flow holds `channel` (same as flow ctor). Same rule as [OmegaIntent.fromName]: **enum constant first**, then **`payload:`** only if you need data.
+  Preconditions: `toggleTaskStatus` exists on `enum HomeEvent with OmegaEventNameDottedCamel`; plain class `ToggleTaskStatusPayload` in `*_events.dart`; flow holds `channel` (same as flow ctor). Same rule as **`OmegaIntent.fromName`**: **enum constant first**, then **`payload:`** only if you need data.
 - FORBIDDEN (analyzer: abstract class can't be instantiated): OmegaEventName('navigation.intent') or OmegaIntentName('navigate.register') — [OmegaEventName] and [OmegaIntentName] are abstract contracts only. You MUST pass a concrete enum value, e.g. `OmegaEvent.fromName(AppEvent.navigationIntent, payload: OmegaIntent.fromName(AppIntent.navigateRoot))` (or whichever **`AppIntent`** cases **your** `app_semantics.dart` declares — e.g. auth apps: `navigateLogin` / `navigateHome`).
 - **`lib/omega/app_semantics.dart` (AppEvent / AppIntent)** — **canonical = same as modules:** `enum AppEvent with OmegaEventNameDottedCamel implements OmegaEventName { navigationIntent, … }` and `enum AppIntent with OmegaIntentNameDottedCamel implements OmegaIntentName { … }` — **camelCase members only**; `.name` is the dotted wire. **Greenfield `omega init`** seeds **`navigateRoot` → `navigate.root`**; full apps often add more cases (see **example/lib/omega/app_semantics.dart** for a login+home reference). **FORBIDDEN:** hand-wired `const Case('a.b'); const Foo(this.name); @override final String name;` on these enums — use the DottedCamel mixins only.
 - **Feature `lib/<module>/*_events.dart`:** same — **`with OmegaIntentNameDottedCamel` / `with OmegaEventNameDottedCamel` only**; never hand-wired per-case string constructors there.
@@ -4082,12 +4084,12 @@ STRING LITERALS (encoding):
     return """
 
 OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_architecture vs what you invent):
-- ALLOWED in this file ONLY: (1) **`enum ${moduleName}Intent with OmegaIntentNameDottedCamel implements OmegaIntentName { … }`** — members are **identifiers only** (e.g. `${lower}Start`, `navigateRegister`); **no** `const Case('literal')` and **no** `@override final String name` on these module enums. (2) **`enum ${moduleName}Event with OmegaEventNameDottedCamel implements OmegaEventName { … }`** — same rule; include `navigationIntent` when this file emits navigation envelopes. (3) optional classes implementing OmegaTypedEvent **only** for channel.emitTyped (bus) — with `@override String get name => ${moduleName}Event.<matchingCase>.name`, (4) optional plain Dart class ${moduleName}ViewState (final fields + copyWith + factory idle) and plain data classes for **intent** payloads (OmegaIntent.fromName payload:) and list rows — those classes do **not** implement OmegaTypedEvent; call sites must use the same named args as the fields (e.g. `userName:` not `name:` when the field is `userName`).
+- ALLOWED in this file ONLY: (1) **`enum ${moduleName}Intent with OmegaIntentNameDottedCamel implements OmegaIntentName { … }`** — members are **identifiers only** (e.g. `${lower}Start`, `navigateRegister`); **no** `const Case('literal')` and **no** `@override final String name` on these module enums. (2) **`enum ${moduleName}Event with OmegaEventNameDottedCamel implements OmegaEventName { … }`** — same rule; include `navigationIntent` when this file emits navigation envelopes. (3) optional classes implementing OmegaTypedEvent **only** for channel.emitTyped (bus) — with `@override String get name => ${moduleName}Event.<matchingCase>.name`, (3b) optional **`final class … implements OmegaTypedIntent`** for **`handleTypedIntent`** (wire = same string as the matching **`${moduleName}Intent`/`AppIntent` case `.name`**), (4) optional plain Dart class ${moduleName}ViewState (final fields + copyWith + factory idle) and plain data classes for **intent** payloads (**`OmegaIntent.fromName<Dto>(..., payload:)`**) and list rows — plain DTOs do **not** implement OmegaTypedEvent; call sites must use the same named args as the fields (e.g. `userName:` not `name:` when the field is `userName`).
 - FORBIDDEN — **Auth-style manual wire enums** in this file: `enum X implements OmegaIntentName { loginRequested('login.requested'); const X(this.name); final String name; }` — wrong for Omega **modules**; use **`with OmegaIntentNameDottedCamel`** and a single camelCase member **`loginRequested`** (wire becomes **`login.requested`** automatically). Same for events: use **`OmegaEventNameDottedCamel`**, not per-case string constructors.
 - FORBIDDEN — type does NOT exist in omega_architecture: extends OmegaViewState, class OmegaViewState, mixin EquatableMixin on ${moduleName}ViewState, or any “base ViewState” from this package. OmegaStatefulAgent<T> uses YOUR plain class T — copy the template’s plain ${moduleName}ViewState only.
 - FORBIDDEN — redundant app enums: do NOT declare enum AppIntent / enum AppEvent again here. Cross-module navigation uses ONE shared **`lib/omega/app_semantics.dart`** — there **`AppEvent` / `AppIntent` MUST use `with OmegaEventNameDottedCamel` / `with OmegaIntentNameDottedCamel`** and **identifier-only** members (`navigationIntent`, `navigateRoot`, … or whatever the app defines — see **example/lib/omega/app_semantics.dart** for a richer app). **not** `enum AppIntent implements OmegaIntentName { navigateLogin('navigate.login'); const …(this.name); final String name; }`. Import app_semantics and use the declared `AppIntent.*` / `AppEvent.*` cases — see example/lib/auth/auth_events.dart.
 - FORBIDDEN — “fix analyzer” imports in *_events.dart*: package:equatable/equatable.dart, or foundation.dart @immutable on ViewState only to silence errors. If the template ViewState is enough, do not add Equatable.
-- FORBIDDEN — **invented payload marker types:** `implements OmegaIntentPayload`, `implements OmegaEventPayload`, or `implements OmegaIntentPayload, OmegaEventPayload` — **those interfaces do not exist** in package:omega_architecture (only **extension** names like `OmegaIntentPayloadExtension` exist on [OmegaIntent] / [OmegaEvent], not types for your DTO). **RIGHT:** plain `class LoginPayload { final String email; … const LoginPayload({required this.email, …}); }` — no `implements` from omega_architecture except **OmegaTypedEvent** for bus-only typed events.
+- FORBIDDEN — **invented payload marker types:** `implements OmegaIntentPayload`, `implements OmegaEventPayload`, or `implements OmegaIntentPayload, OmegaEventPayload` — **those interfaces do not exist** in package:omega_architecture (only **extension** names like `OmegaIntentPayloadExtension` exist on [OmegaIntent] / [OmegaEvent], not types for your DTO). **RIGHT:** plain `class LoginPayload { final String email; … const LoginPayload({required this.email, …}); }` — no `implements` from omega_architecture except **OmegaTypedEvent** for bus-only typed events, or **`implements OmegaTypedIntent`** for **`handleTypedIntent`** (package interface — see example `AuthLoginIntent` / `AuthLogoutIntent` in **example/lib/auth/auth_events.dart**).
 - FORBIDDEN — wrong interfaces on enums: implements OmegaIntent or implements OmegaEvent. ONLY OmegaIntentName / OmegaEventName.
 - Action ids in behavior are Strings: OmegaAgentReaction('loadFeed', …) and matching onAction must use the same string in switch: case 'loadFeed': (or case "loadFeed":). A separate enum ActionId is optional; NEVER write case ActionId.loadFeed.name — invalid const case. Use literals as in example/lib/auth/auth_agent.dart.
 
@@ -5341,31 +5343,31 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
       final ev = toWrite["events"] ?? "";
       if (ev.trim().isNotEmpty && !_omegaAiEventsPassSanity(ev, moduleName)) {
         stdout.writeln(
-          "⚠️ ${_tr(en: "Omi spotted possible issues in events — self-heal will try...", es: "Omi ve posibles problemas en eventos — se intentará auto-sanación...")}",
+          _tr(en: "Omi spotted possible issues in events — self-heal will try...", es: "Omi ve posibles problemas en eventos — se intentará auto-sanación..."),
         );
       }
       final pg = toWrite["page"] ?? "";
       if (pg.trim().isNotEmpty && !_omegaAiPagePassSanity(pg, moduleName)) {
         stdout.writeln(
-          "⚠️ ${_tr(en: "Omi spotted possible issues in the page — self-heal will try...", es: "Omi ve posibles problemas en la página — se intentará auto-sanación...")}",
+          _tr(en: "Omi spotted possible issues in the page — self-heal will try...", es: "Omi ve posibles problemas en la página — se intentará auto-sanación..."),
         );
       }
       final bh = toWrite["behavior"] ?? "";
       if (bh.trim().isNotEmpty && !_omegaAiBehaviorPassSanity(bh)) {
         stdout.writeln(
-          "⚠️ ${_tr(en: "Omi: behavior may not match OmegaAgentBehaviorEngine (addRule/evaluate). Self-heal will try...", es: "Omi: el behavior podría no coincidir con OmegaAgentBehaviorEngine (addRule/evaluate). Se intentará auto-sanación...")}",
+          _tr(en: "Omi: behavior may not match OmegaAgentBehaviorEngine (addRule/evaluate). Self-heal will try...", es: "Omi: el behavior podría no coincidir con OmegaAgentBehaviorEngine (addRule/evaluate). Se intentará auto-sanación..."),
         );
       }
       final ag = toWrite["agent"] ?? "";
       if (ag.trim().isNotEmpty && !_omegaAiAgentPassSanity(ag)) {
         stdout.writeln(
-          "⚠️ ${_tr(en: "Omi: agent may use state.copyWith — prefer viewState.copyWith (OmegaStatefulAgent). Self-heal will try...", es: "Omi: el agente podría usar state.copyWith — con OmegaStatefulAgent usa viewState.copyWith. Se intentará auto-sanación...")}",
+          _tr(en: "Omi: agent may use state.copyWith — prefer viewState.copyWith (OmegaStatefulAgent). Self-heal will try...", es: "Omi: el agente podría usar state.copyWith — con OmegaStatefulAgent usa viewState.copyWith. Se intentará auto-sanación..."),
         );
       }
       final fl = toWrite["flow"] ?? "";
       if (fl.trim().isNotEmpty && !_omegaAiFlowPassSanity(fl)) {
         stdout.writeln(
-          "⚠️ ${_tr(en: "Omi: flow may use failStep with a second positional arg — use failStep('code', message: ...). Self-heal will try...", es: "Omi: el flow podría usar failStep con un segundo argumento posicional — usa failStep('code', message: ...). Se intentará auto-sanación...")}",
+          _tr(en: "Omi: flow may use failStep with a second positional arg — use failStep('code', message: ...). Self-heal will try...", es: "Omi: el flow podría usar failStep con un segundo argumento posicional — usa failStep('code', message: ...). Se intentará auto-sanación..."),
         );
       }
       for (final key in ["events", "behavior", "agent", "flow", "page"]) {
@@ -5374,7 +5376,7 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
             chunk.trim().isNotEmpty &&
             !_omegaAiAbstractNameConstructorPassSanity(chunk)) {
           stdout.writeln(
-            "⚠️ ${_tr(en: "Omi: file \"$key\" uses OmegaEventName(...) or OmegaIntentName(...) — use enum values (AppEvent.*, AppIntent.*). Self-heal will try...", es: "Omi: el archivo \"$key\" usa OmegaEventName(...) u OmegaIntentName(...) — usa valores de enum (ej. AppEvent.*, AppIntent.*). Se intentará auto-sanación...")}",
+            _tr(en: "Omi: file \"$key\" uses OmegaEventName(...) or OmegaIntentName(...) — use enum values (AppEvent.*, AppIntent.*). Self-heal will try...", es: "Omi: el archivo \"$key\" usa OmegaEventName(...) u OmegaIntentName(...) — usa valores de enum (ej. AppEvent.*, AppIntent.*). Se intentará auto-sanación..."),
           );
           break;
         }
@@ -5382,7 +5384,7 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
             chunk.trim().isNotEmpty &&
             !_omegaAiSourceEncodingPassSanity(chunk)) {
           stdout.writeln(
-            "⚠️ ${_tr(en: "Omi: file \"$key\" may contain invalid control characters or mojibake. Self-heal will try...", es: "Omi: el archivo \"$key\" puede tener caracteres de control o texto corrupto. Se intentará auto-sanación...")}",
+            _tr(en: "Omi: file \"$key\" may contain invalid control characters or mojibake. Self-heal will try...", es: "Omi: el archivo \"$key\" puede tener caracteres de control o texto corrupto. Se intentará auto-sanación..."),
           );
           break;
         }
@@ -5398,7 +5400,7 @@ OMEGA — FILE ${lower}_events.dart ALLOWLIST (what exists in package:omega_arch
         );
       }
       for (final w in post.warnings) {
-        stdout.writeln("⚠️ $w");
+        stdout.writeln("Warning: $w");
       }
       for (final e in post.errors) {
         _err(e);
@@ -5760,7 +5762,7 @@ class _${moduleName}PageState extends State<${moduleName}Page> {
     if (reasoning != null && reasoning.trim().isNotEmpty) {
       stdout.writeln("");
       stdout.writeln(
-        "🧠 ${_tr(en: "Omi's design notes", es: "Notas de diseño de Omi")}:",
+        "${_tr(en: "Omi's design notes", es: "Notas de diseño de Omi")}:",
       );
       stdout.writeln(reasoning.trim());
       stdout.writeln("");
@@ -5819,7 +5821,7 @@ class _${moduleName}PageState extends State<${moduleName}Page> {
     if (reasoning != null && reasoning.trim().isNotEmpty) {
       stdout.writeln("");
       stdout.writeln(
-        "🧠 ${_tr(en: "Omi's UI notes", es: "Notas de UI de Omi")}:",
+        "${_tr(en: "Omi's UI notes", es: "Notas de UI de Omi")}:",
       );
       stdout.writeln(reasoning.trim());
       stdout.writeln("");
@@ -5849,7 +5851,7 @@ class _${moduleName}PageState extends State<${moduleName}Page> {
         raw.containsKey("events") ||
         raw.containsKey("behavior")) {
       stdout.writeln(
-        "⚠️ ${_tr(en: "Omi returned non-UI keys; only \"page\" will be written.", es: "Omi devolvió claves fuera de la vista; solo se escribirá \"page\".")}",
+        _tr(en: "Omi returned non-UI keys; only \"page\" will be written.", es: "Omi devolvió claves fuera de la vista; solo se escribirá \"page\"."),
       );
     }
 
@@ -6142,7 +6144,7 @@ $filesContextBlock
 $packageContextBlock
 REFERENCE (official package patterns; PRIMARY: example/lib/omega/omega_setup.dart in PACKAGE GROUND TRUTH — agents, flows, routes, initialFlowId, initialNavigationIntent; **example/lib/main.dart** for `lib/main.dart` — OmegaScope + OmegaInitialRoute + RootHandler; auth_flow.dart for Flow ctor with channel + agent):
 - **omega_setup.dart is the source of truth:** same agent variable in `agents:` and in each `SomeFlow(channel: ns, agent: thatAgent)`; optional `channel.namespace('x')` per module. **DEDUPE:** each agent variable **once** in `agents: <OmegaAgent>[...]`; each `OmegaRoute(id: 'X')` **once** per id in `routes:` (never two routes with the same `id:`); each flow ctor **once** in `flows:`. For flows with **extra** non-agent deps (offline queue, repos), mirror your app’s existing patterns or the package docs site — not duplicated in this prompt to save tokens.
-- Agent + behavior ground truth (same repo): example/lib/auth/auth_behavior.dart + example/lib/auth/auth_agent.dart — match their structure before inventing patterns.
+- Agent + behavior ground truth (same repo): example/lib/auth/auth_behavior.dart + example/lib/auth/auth_agent.dart — match their structure before inventing patterns. **Typed intents:** example/lib/auth/auth_events.dart (`AuthLoginIntent` / `AuthLogoutIntent` + **`OmegaTypedIntent`**) and example/lib/auth/ui/auth_page.dart (**`handleTypedIntent`**) + auth_flow (**`typedPayloadAs`**).
 - Typed ids: if the app has `lib/omega/app_runtime_ids.dart`, use `super(id: AppFlowId.$moduleName.id, ...)` / `super(id: AppAgentId.$moduleName.id, ...)` with `import 'package:$pkgId/omega/app_runtime_ids.dart';` and ensure both enums contain a `$moduleName,` entry (user would run `omega g ecosystem $moduleName` to merge; in JSON you may edit that file to add the member). CLI: `omega g ecosystem` updates both enums; `omega g agent` only AppAgentId; `omega g flow` only AppFlowId.
 - Flow id: ${moduleName}Flow must use super(id: ...) consistent with getFlow / OmegaFlowExpressionBuilder (string or AppFlowId.$moduleName.id). If this module is the app entry flow, OmegaConfig.initialFlowId in omega_setup.dart must be that same wire string (example legacy: AuthFlow id "authFlow" and OmegaConfig.initialFlowId: "authFlow").
 - Pages: scope.flowManager.getFlow('$moduleName'); StreamBuilder<OmegaFlowExpression>(stream: flow.expressions, ...).
@@ -6174,13 +6176,13 @@ CRITICAL RULES:
    - "events", "behavior", "agent", "flow", "page": full Dart file contents as strings (same as before).
    - "response" (optional): if the user asked for a single "template" or "código de pantalla", you MAY put the same full Dart as "page" here too so tools can read one field; if omitted, "page" alone is enough.
 5. ENUMS in **"events"** (module `*_events.dart`): **`enum ${moduleName}Intent with OmegaIntentNameDottedCamel implements OmegaIntentName`** and **`enum ${moduleName}Event with OmegaEventNameDottedCamel implements OmegaEventName`** — camelCase members only; wire strings come from the mixin (e.g. member `navigateRegister` → wire `navigate.register`). NEVER write `implements OmegaIntent` / `implements OmegaEvent` on an enum. NEVER call `OmegaEventName('...')` / `OmegaIntentName('...')`. **FORBIDDEN everywhere in greenfield code (modules AND `lib/omega/app_semantics.dart`):** `const MyCase('a.b'); const Foo(this.name); @override final String name;` — use **example/lib/omega/app_semantics.dart** as the app-wide pattern (`AppEvent` / `AppIntent` with DottedCamel mixins only).
-6. **`OmegaIntent.fromName` / `OmegaEvent.fromName`:** first positional = **enum constant** only — e.g. `OmegaIntent.fromName(${moduleName}Intent.${lower}Start)` and `OmegaEvent.fromName(${moduleName}Event.${lower}Requested)`. **FORBIDDEN:** string wire as first arg, `OmegaEventName('…')`, or **`.name`** as the first argument (`.name` is a [String]). Optional **`payload:`** — plain DTO or forward from flow: `channel.emit(OmegaEvent.fromName(${moduleName}Event.someCase, payload: ctx.intent?.payloadAs<SomePayload>()));` when behavior listens on `ctx.event` but the screen used **handleIntent**; declare **`someCase`** on `enum ${moduleName}Event with OmegaEventNameDottedCamel` and **`SomePayload`** in the same **events** file.
+6. **`OmegaIntent.fromName` / `OmegaEvent.fromName`:** these are **static** methods (not constructors with type params on `factory`). First positional = **enum constant** only — e.g. `OmegaIntent.fromName(${moduleName}Intent.${lower}Start)` and `OmegaEvent.fromName(${moduleName}Event.${lower}Requested)`. **FORBIDDEN:** string wire as first arg, `OmegaEventName('…')`, or **`.name`** as the first argument (`.name` is a [String]). Optional **`payload:`** — use **generics** when you want analyzer-checked payloads: `OmegaEvent.fromName<SomePayload>(${moduleName}Event.someCase, payload: obj)`, `OmegaIntent.fromName<SomePayload>(${moduleName}Intent.someIntent, payload: obj)`. **Optional UI pattern:** **`final class MyTypedIntent implements OmegaTypedIntent`** + **`flowManager.handleTypedIntent(MyTypedIntent(...))`**; flow reads **`ctx.intent?.typedPayloadAs<MyTypedIntent>()`**. Forwarding: `channel.emit(OmegaEvent.fromName(${moduleName}Event.someCase, payload: ctx.intent?.payloadAs<SomePayload>()));` when behavior listens on `ctx.event` but the screen used **handleIntent**; declare enums + DTOs in the same **events** file.
 6b. **`channel.emit` / `namespace(...).emit`:** **[OmegaEventBus.emit]** = **`void emit(OmegaEvent event)`** — **one** positional [OmegaEvent] only. **FORBIDDEN:** `channel.emit(ctx.intent!.name, payload: ctx.intent!.payload)` or any `channel.emit(String, …)` — that is **[OmegaAgent.emit]**, not the channel. Wrap bus emissions with **`OmegaEvent.fromName(…Event.case, payload: …)`** or **`emitTyped`**.
 7. If the page uses OmegaAgentBuilder with `required ${moduleName}Agent agent`, put in "reasoning" one line: user must set omega_setup route to ${moduleName}Page(agent: $camelAgentVar) and declare `final $camelAgentVar = ${moduleName}Agent(channel);` (or `channel: channel` if ctor is named-only) in agents — same pattern as example omega_setup + auth page.
 8. **Data / list / profile screens:** the "page" MUST implement an on-open kickoff per SCREEN ENTRY rules (activate or switchTo + one-shot handleIntent(*Start)); the **"flow" `onIntent`** MUST then **`channel.emit(OmegaEvent.fromName(<Module>Event.*Requested))`** (or equivalent) whenever **behavior** rules key off **`ctx.event`** — omitting that emit leaves loading forever. **Login / auth credential screens:** **FORBIDDEN** the same auto-kick on `initState` / first frame — do not call `handleIntent(login…)` until the user submits or taps sign-in (unless the user explicitly asked for auto-demo login).
 9. Do NOT reply with plain text outside JSON. Do NOT wrap the JSON in markdown. The entire assistant message must parse as one JSON object.
 10. JSON string values that contain Dart: in JSON a backslash may only introduce the usual escapes (quote, another backslash, slash, b, f, n, r, t, or u plus four hex digits). Any other backslash-plus-character (including before a dollar sign, space, or letters) is invalid and breaks jsonDecode (FormatException: unrecognized string escape). Avoid lone backslashes in embedded Dart; use concatenation or double each literal backslash per JSON rules. The CLI repairs some invalid escapes before decode; still emit valid JSON when possible.
-11. Intent payload classes (passed to OmegaIntent.fromName(..., payload: YourPayload(...))): **plain Dart only** — NOT [OmegaTypedEvent]. **FORBIDDEN:** `implements OmegaIntentPayload`, `implements OmegaEventPayload`, or both — **those types are not in** package:omega_architecture (undefined class). Optional: `extends Equatable` only if pubspec has `equatable` and you avoid fake omega `implements`. Named arguments when constructing the payload MUST match **field names** (e.g. `userName:` not `name:` when the field is `userName`).
+11. Intent payloads: (A) **Plain DTO** passed to **`OmegaIntent.fromName<YourDto>(..., payload: YourDto(...))`** — **NOT** [OmegaTypedEvent]. (B) **Or** one class that is both wire + data: **`final class MyIntent implements OmegaTypedIntent`** (same **`name`** wire as your **`AppIntent`/`${moduleName}Intent` enum `.name`**) — UI uses **`handleTypedIntent(MyIntent(...))`**; flow uses **`typedPayloadAs<MyIntent>()`**; **FORBIDDEN:** `implements OmegaIntentPayload`, `implements OmegaEventPayload` — **not in** package:omega_architecture. **FORBIDDEN:** using **[OmegaTypedEvent]** for an intent payload (that interface is for **`emitTyped`** on the **bus** only). Optional: `extends Equatable` only if pubspec has `equatable`. Named args on DTOs MUST match **field names**.
 12. If the JSON includes **`lib/omega/omega_setup.dart`**: `OmegaConfig` MUST include **`initialFlowId:`** (entry flow’s `super(id: …)` wire) **and** **`initialNavigationIntent:`** as **`OmegaIntent.fromName(AppIntent.<entry>)`** matching a registered **`OmegaRoute(id: …)`** (same order as product: often the first route). **Never omit either field when `routes:` and `flows:` are non-empty** — `omega validate` fails; the CLI may auto-insert them, but your JSON should already be complete. **Hard rule:** every **`OmegaRoute(id: '…')`** for a **`navigate.*`** screen MUST be **entirely lowercase** (no uppercase letters in the string). Examples: **`navigateRoot` → `OmegaRoute(id: 'root', …)`**; auth-style **`navigate.login` / `login`**, **`navigate.home` / `home`**. **`OmegaRoute(id:)`** must match the **navigator wire** (strip `navigate.` → lowercase dotted remainder): **`navigateProfile` → id `'profile'`**, **`navigateSettings` → `'settings'`** — **FORBIDDEN:** `id: 'Profile'` / `'Settings'` because the folder is `lib/Profile/` (runtime: *Route 'profile' not found*). Never duplicate the same agent in `agents:` or the same `id:` twice in `routes:`.
 13. **`AppIntent` + routes:** Every `OmegaIntent.fromName(AppIntent.someCase)` must use a **`someCase` that exists** in `app_semantics.dart` (exact spelling — no `navigateOrderDetails` vs `navigateOrderDetail` mix-ups). Every such navigation target needs **`OmegaRoute(id: '<segment after navigate.>', …)`** with that segment **all lowercase** (DottedCamel → dotted wire; e.g. `navigateDeliveryDetail` → id **`delivery.detail`**). If you emit a navigate intent, register the matching route in the same JSON or state it explicitly in **reasoning**.
 14. If the JSON includes **`lib/main.dart`** (or you describe the host entry): **[OmegaScope]** MUST use **`initialFlowId: runtime.initialFlowId`** and **`initialNavigationIntent: runtime.initialNavigationIntent`** after **`OmegaRuntime.bootstrap(createOmegaConfig)`** — **FORBIDDEN** string literals on `OmegaScope` for cold start (e.g. `initialFlowId: 'Auth'`) and **FORBIDDEN** omitting **`initialNavigationIntent`** when `MaterialApp` uses **`OmegaInitialRoute`**. Single source of truth: **`OmegaConfig`** in `omega_setup.dart`; `main.dart` only forwards **`runtime`**.
@@ -6687,7 +6689,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
           );
           stdout.writeln("");
           stdout.writeln(
-            "⏹️ ${_tr(en: "Stopped — Omi's response was missing or invalid; module left unchanged.", es: "Detenido — la respuesta de Omi faltaba o era inválida; el módulo no se modificó.")}",
+            _tr(en: "Stopped — Omi's response was missing or invalid; module left unchanged.", es: "Detenido — la respuesta de Omi faltaba o era inválida; el módulo no se modificó."),
           );
           if (asJson) {
             _emitAiOutput(
@@ -6717,7 +6719,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
           );
           stdout.writeln("");
           stdout.writeln(
-            "⏹️ ${_tr(en: "Generation aborted. No ecosystem files were written for this module.", es: "Generación cancelada. No se escribieron archivos del ecosistema para este módulo.")}",
+            _tr(en: "Generation aborted. No ecosystem files were written for this module.", es: "Generación cancelada. No se escribieron archivos del ecosistema para este módulo."),
           );
           if (asJson) {
             _emitAiOutput(
@@ -6778,7 +6780,7 @@ Return ONLY one JSON object with string values, including "reasoning" plus "even
 
       if (uiOnly && aiGeneratedCode != null) {
         stdout.writeln(
-          "✅ ${_tr(en: "Updated UI file only (${lower}_page.dart); agent, flow, behavior, and events were not modified.", es: "Solo se actualizó la vista (${lower}_page.dart); no se modificaron agent, flow, behavior ni events.")}",
+          _tr(en: "Updated UI file only (${lower}_page.dart); agent, flow, behavior, and events were not modified.", es: "Solo se actualizó la vista (${lower}_page.dart); no se modificaron agent, flow, behavior ni events."),
         );
       }
 
