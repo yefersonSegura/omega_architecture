@@ -289,18 +289,6 @@ Key files: [omega_setup.dart](example/lib/omega/omega_setup.dart), [auth_flow.da
 | [API on pub.dev](https://pub.dev/documentation/omega_architecture/latest) | Generated API reference |
 | [Web documentation (VitePress)](https://yefersonsegura.github.io/omega_architecture/) | Guide site (same stack as Omega Angular `docs/`) |
 
-Local **VitePress** site: `cd docs && npm install && npm run dev`. The **VM Service Inspector** page is `docs/public/inspector.html` (deployed at `/inspector.html` next to the docs site).
-
-**GitHub Pages — if you see “There isn’t a GitHub Pages site here”**
-
-1. Run **Actions → Deploy documentation site** (or push under `docs/`) and wait for a green run so branch **`gh-pages`** exists with files.
-2. **Settings → Pages → Source:** **Deploy from a branch** → **`gh-pages`** → folder **`/ (root)`** → Save.
-3. Use the **project** URL: **`https://yefersonsegura.github.io/omega_architecture/`** (must include `/omega_architecture/`). Renamed repo? Set **`base`** in `docs/.vitepress/config.mts` to `/<your-repo-name>/`.
-4. **Actions → General → Workflow permissions:** **Read and write** so the workflow can push to `gh-pages`.
-5. **Private** repos need a paid GitHub plan to host Pages.
-
-`docs/public/.nojekyll` disables Jekyll on Pages so the VitePress build is served as static files.
-
 ---
 
 ## Package layout (library)
