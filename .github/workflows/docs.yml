@@ -1,16 +1,13 @@
-# VitePress (docs/) → push static files to branch `gh-pages`.
+# VitePress (docs/) → force-push branch `gh-pages` (GitHub Pages: Deploy from branch → gh-pages → /).
 #
-# Omega Angular uses actions/deploy-pages + "Pages source: GitHub Actions" and that works there.
-# This repo often hits HttpError 404 on createPagesDeployment when that API is not available for
-# the repository (Pages not set to GitHub Actions, org policy, etc.). Publishing via `gh-pages`
-# avoids that API entirely — same public URL once Pages points at the branch.
+# Uses plain `git push` instead of a third-party action so CI logs show the real error if publish fails.
 #
-# ONE-TIME:
-#   Settings → Pages → Source: "Deploy from a branch" → Branch: gh-pages → Folder: / (root)
-#   Settings → Actions → General → Workflow permissions: "Read and write" (token must push gh-pages)
+# If build succeeds but the site does not update:
+#   1. Settings → Actions → General → Workflow permissions → Read and write permissions
+#   2. Settings → Pages → Deploy from a branch → gh-pages → / (root)
+#   3. Branch protection: allow force-push to gh-pages (this workflow uses git push --force)
 #
 # VitePress `base` in docs/.vitepress/config.mts must be '/<repo>/' (e.g. /omega_architecture/).
-# Do NOT add another workflow that publishes a different Pages artifact to the same site.
 name: Deploy documentation
 
 on:
@@ -47,11 +44,25 @@ jobs:
           npm run build
 
       - name: Verify dist
-        run: test -f docs/.vitepress/dist/index.html
+        run: |
+          test -f docs/.vitepress/dist/index.html
+          echo "Dist size:" && du -sh docs/.vitepress/dist
+          echo "Top files:" && ls -la docs/.vitepress/dist | head -25
 
-      - name: Push to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/.vitepress/dist
-          force_orphan: true
+      - name: Push dist to gh-pages
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euxo pipefail
+          DIST="${GITHUB_WORKSPACE}/docs/.vitepress/dist"
+          cd "$DIST"
+          git init
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add -A
+          git status
+          git commit -m "docs: publish ${GITHUB_SHA:0:7}"
+          git branch -M gh-pages
+          git remote add origin "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin gh-pages
+          echo "OK: pushed gh-pages for ${GITHUB_REPOSITORY}"
