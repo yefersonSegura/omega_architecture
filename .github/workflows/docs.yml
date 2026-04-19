@@ -65,4 +65,31 @@ jobs:
           git branch -M gh-pages
           git remote add origin "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push --force origin gh-pages
-          echo "OK: pushed gh-pages for ${GITHUB_REPOSITORY}"
+          echo ""
+          echo "========== PUBLICACIÓN (dónde quedó el sitio) =========="
+          echo "Rama actualizada: gh-pages (en el repo ${GITHUB_REPOSITORY})"
+          echo "Ver archivos en GitHub: https://github.com/${GITHUB_REPOSITORY}/tree/gh-pages"
+          OWNER="${GITHUB_REPOSITORY%%/*}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          echo "URL pública esperada (GitHub Pages proyecto): https://${OWNER}.github.io/${REPO}/"
+          echo "Si esa URL da 404: Settings → Pages → Source = Deploy from a branch → gh-pages → / (root)"
+          echo "======================================================"
+
+      - name: Resumen en la pestaña Summary del workflow
+        if: success()
+        run: |
+          OWNER="${GITHUB_REPOSITORY%%/*}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          SITE="https://${OWNER}.github.io/${REPO}/"
+          TREE="https://github.com/${GITHUB_REPOSITORY}/tree/gh-pages"
+          {
+            echo "## Dónde se publicó la documentación"
+            echo ""
+            echo "| Campo | Valor |"
+            echo "|-------|-------|"
+            echo "| Rama (git) | \`gh-pages\` |"
+            echo "| Ver archivos en GitHub | ${TREE} |"
+            echo "| URL pública (Pages proyecto) | ${SITE} |"
+            echo ""
+            echo "**Si ${SITE} responde 404:** en el repo → **Settings → Pages** → **Deploy from a branch** → rama **gh-pages** → carpeta **/ (root)**. El workflow solo sube archivos a la rama; Pages hay que enlazarlo una vez."
+          } >> "$GITHUB_STEP_SUMMARY"

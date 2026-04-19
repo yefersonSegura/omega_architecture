@@ -289,6 +289,8 @@ Key files: [omega_setup.dart](example/lib/omega/omega_setup.dart), [auth_flow.da
 | [API on pub.dev](https://pub.dev/documentation/omega_architecture/latest) | Generated API reference |
 | [Web documentation (VitePress)](https://yefersonsegura.github.io/omega_architecture/) | Guide site (same stack as Omega Angular `docs/`) |
 
+**How the web docs are published:** [`.github/workflows/docs.yml`](.github/workflows/docs.yml) pushes the VitePress build to branch **`gh-pages`**. Each successful run prints **where** in the log (**“Push dist to gh-pages”** — banner with URLs) and in the **Actions** run **Summary** tab (table: branch, link to `tree/gh-pages`, public URL). GitHub only serves **`https://yefersonsegura.github.io/omega_architecture/`** after **Settings → Pages** → **Deploy from a branch** → **`gh-pages`** → **`/ (root)`**. **Settings → Actions → General** → **Read and write** so the workflow can push.
+
 ---
 
 ## Package layout (library)
