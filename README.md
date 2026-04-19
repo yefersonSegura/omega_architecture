@@ -291,6 +291,8 @@ Key files: [omega_setup.dart](example/lib/omega/omega_setup.dart), [auth_flow.da
 
 Local **VitePress** site: `cd docs && npm install && npm run dev`. The **VM Service Inspector** page is `docs/public/inspector.html` (deployed at `/inspector.html` next to the docs site).
 
+**GitHub Pages (maintainers):** In the repo, open **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**. If that source is still **Deploy from a branch** or Pages is disabled, the workflow `docs-pages.yml` fails when creating the deployment (HTTP 404). After switching, re-run the workflow from the **Actions** tab.
+
 ---
 
 ## Package layout (library)

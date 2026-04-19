@@ -1,5 +1,11 @@
 # VitePress site from docs/ → GitHub Pages (same stack as omega-workspace/docs).
-# Settings → Pages → Source: GitHub Actions
+#
+# ONE-TIME (repo owner): If deploy fails with HttpError 404 / "Creating Pages deployment failed":
+#   Settings → Pages → Build and deployment → Source → select "GitHub Actions" (NOT "Deploy from a branch").
+#   Until Pages is enabled this way, actions/deploy-pages cannot create a deployment.
+#   Optional: Settings → Environments → github-pages — approve the environment on first run if protected.
+#
+# https://docs.github.com/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-with-a-custom-github-actions-workflow
 name: Deploy documentation site
 
 on:
