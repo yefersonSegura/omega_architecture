@@ -187,9 +187,9 @@ For small apps you can register [OmegaFlowManager.registerIntentHandler](https:/
 | Topic | Where it lives |
 |-------|----------------|
 | **Failures** | [OmegaFailure](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFailure-class.html) for semantic errors on the channel or return paths |
-| **Contracts (debug)** | [OmegaFlowContract](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowContract-class.html), [OmegaAgentContract](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaAgentContract-class.html) |
-| **Time travel** | [OmegaTimeTravelRecorder](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaTimeTravelRecorder-class.html), [OmegaRecordedSession](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaRecordedSession-class.html) — **`omega trace view`** / **`omega trace validate`** ([CLI](./cli)) |
-| **Offline-first intents** | [OmegaOfflineQueue](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaOfflineQueue-class.html) |
+| **Contracts (debug)** | [OmegaFlowContract](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaFlowContract-class.html), [OmegaAgentContract](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaAgentContract-class.html) — guide: **[Contracts](./contracts)** |
+| **Time travel** | [OmegaTimeTravelRecorder](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaTimeTravelRecorder-class.html), [OmegaRecordedSession](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaRecordedSession-class.html) — **[Time travel](./time-travel)**, **`omega trace`** ([CLI](./cli)) |
+| **Offline-first intents** | [OmegaOfflineQueue](https://pub.dev/documentation/omega_architecture/latest/omega_architecture/OmegaOfflineQueue-class.html) — **[Offline-first](./offline-first)** |
 | **Package barrel** | [omega_architecture.dart](https://github.com/yefersonSegura/omega_architecture/blob/main/lib/omega_architecture.dart) — canonical exports |
 
 ---
