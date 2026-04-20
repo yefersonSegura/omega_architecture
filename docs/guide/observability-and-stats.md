@@ -12,6 +12,18 @@ The diagram below is **not live data** from your app: it shows the **kinds of ch
 
 <OmegaObservabilityDashboard />
 
+### What each panel means
+
+The figure is a **layout example** with placeholder numbers. In a real setup you would compute the same views from traces, inspector exports, or your own timers.
+
+1. **Channel events (1 min)** — A **count mix** of everything that crossed the Omega channel in the last minute, grouped by rough kind: **Intents** (mostly UI → flow), **Agent** (agent / bus traffic you attribute to agents), **Nav** (`navigate.*` and related), and **Other** (everything else). Spikes in one bucket often point to a chatty widget, a loop, or a navigation storm.
+
+2. **Intent to expression (ms)** — **Latency bands** for “how long from handling an intent until the owning flow emits the next `OmegaFlowExpression`.” **p50** is the typical case; **p95** catches tail latency users still feel. This is the closest single chart to “Omega felt speed” for the screen.
+
+3. **Events per minute (session excerpt)** — A **time series** of channel throughput (events per minute) over a short window (here labeled **start → +10 min**). Use it to spot bursts, plateaus, or regressions after a release.
+
+4. **Active flows (snapshot)** — A **point-in-time row** of flows that exist in the session: each **pill** is a flow name plus a **coarse state** (for example running vs idle vs sleeping). It answers “what is alive right now?” — useful next to the inspector’s flow list.
+
 ---
 
 ## Why this matters for your product
